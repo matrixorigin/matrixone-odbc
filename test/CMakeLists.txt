@@ -30,6 +30,7 @@
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/test)
 
+
 # put the test exe's in test/
 SET(EXECUTABLE_OUTPUT_PATH "${CMAKE_BINARY_DIR}/test")
 
@@ -101,13 +102,26 @@ FOREACH(FN my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
   ENDIF(WIN32)
   ADD_TEST(${T} ${T})
 
-if(APPLE)
-  set_property(TARGET ${T} PROPERTY BUILD_WITH_INSTALL_RPATH ON)
-  set_property(TARGET ${T} APPEND PROPERTY INSTALL_RPATH "@loader_path")
-elseif(NOT WIN32)
-  set_property(TARGET ${T} PROPERTY BUILD_WITH_INSTALL_RPATH ON)
-  set_property(TARGET ${T} APPEND PROPERTY INSTALL_RPATH "$ORIGIN")
-endif()
+
+  if(
+    CMAKE_CXX_COMPILER_ID MATCHES "GNU"
+    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9
+  )
+
+    # Note: Some unit tests use std::filesystem part of the standard C++ library
+    # Before version 9 of gcc that requires linking with the additional library
+
+    target_link_libraries(${T} -lstdc++fs)
+
+  endif()
+
+  if(APPLE)
+    set_property(TARGET ${T} PROPERTY BUILD_WITH_INSTALL_RPATH ON)
+    set_property(TARGET ${T} APPEND PROPERTY INSTALL_RPATH "@loader_path")
+  elseif(NOT WIN32)
+    set_property(TARGET ${T} PROPERTY BUILD_WITH_INSTALL_RPATH ON)
+    set_property(TARGET ${T} APPEND PROPERTY INSTALL_RPATH "$ORIGIN")
+  endif()
 
 ENDFOREACH(FN)
 
