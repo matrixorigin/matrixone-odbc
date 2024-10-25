@@ -1332,23 +1332,8 @@ SQLRETURN my_SQLExecute( STMT *pStmt )
 
   pStmt->clear_attr_names();
 
-  if (ssps_used(pStmt))
-  {
-    // Telemetry info will be added on top of query_attr_names
-    pStmt->query_attr_names.resize(pStmt->param_count);
-    // For parameter binds the telemetry info is written into
-    // an existing element of the params set. Need to make sure it exists.
-    pStmt->allocate_param_bind(pStmt->param_count +
-      (pStmt->telemetry.disabled(pStmt) ? 0 : 1)
-    );
-
-    pStmt->telemetry.span_start(pStmt, "SQL execute");
-  }
-  else
-  {
-    // Start the span for direct query execution "SQL statement"
-    pStmt->telemetry.span_start(pStmt);
-  }
+  pStmt->telemetry.span_start(pStmt,
+    ssps_used(pStmt) ? "SQL execute" : "SQL statement");
 
   try
   {

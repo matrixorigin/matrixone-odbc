@@ -971,14 +971,16 @@ bool bind_param(MYSQL_BIND *bind, const char *value, unsigned long length,
                 enum enum_field_types buffer_type);
 
 
-void STMT::add_query_attr(const char *name, std::string val)
-{
-  query_attr_names.emplace_back(name);
-  size_t num = query_attr_names.size();
-  // Consolidate the size of attribute names and param binds vectors.
-  allocate_param_bind(num);
+/*
+  This function is only called for internal attributes such
+  as telemetry.
+*/
 
-  MYSQL_BIND *bind = &param_bind[num - 1];
+void STMT::add_internal_attr(const char *name, std::string val)
+{
+  auto & new_data = attr_data.emplace_back(std::make_pair(name, MYSQL_BIND{}));
+
+  MYSQL_BIND *bind = &new_data.second;
   bind_param(bind, val.c_str(), val.length(), MYSQL_TYPE_STRING);
 }
 
@@ -1003,13 +1005,13 @@ bool STMT::query_attr_exists(const char *name)
 
 SQLRETURN STMT::bind_query_attrs(bool use_ssps)
 {
-  // Count of how many records we have in param descriptor.
-  // NOTE: it does not contain telemetry data
-  uint rcount = (uint)apd->rcount();
+  /*
+    Count of how many (external) records we have in param descriptor.
+    NOTE: it contains the real parameters and attributes specified
+    by the user, but not internal such as telemetry data
+  */
 
-  // When telemetry is active we need to account for an extra QAttr
-  uint telemetry_cnt = (telemetry.disabled(this) ? 0 : 1);
-  rcount += telemetry_cnt;
+  uint rcount = (uint)apd->rcount();
 
   if (rcount < param_count)
   {
@@ -1018,31 +1020,43 @@ SQLRETURN STMT::bind_query_attrs(bool use_ssps)
                      "than he number of parameters provided", 0);
   }
 
-  // If anything is added to query_attr_names it means the parameter was added as well.
-  // All other attributes go after it.
-  uint param_idx = query_attr_names.size();
-  allocate_param_bind(rcount);
-  // Adjust names to have the same size as the new size.
-  // NOTE: param_bind vector can have a larger size because we want to
-  //       avoid copying of MYSQL_BIND data and don't down-size it.
-  query_attr_names.resize(rcount);
+  /*
+    At this stage the real parameters are already added to
+    param_names/param_bind.
+    We need to add the external (user defined) attributes
+    and the internal attributes starting from the position
+    after the real parameters.
+  */
 
+  uint param_idx = param_count;
+
+  uint attr_count = attr_data.size();
+
+  /*
+    Adjust names to have the same size as the new size.
+    NOTE: param_bind vector can have a larger size because we want to
+          avoid copying of MYSQL_BIND data and don't down-size it.
+  */
+
+  param_names.resize(rcount + attr_count);
+  allocate_param_bind(rcount + attr_count);
+
+  // Add external attributes given by the user.
   while(param_idx < rcount)
   {
-    // If telemetry is present it will not be in descriptors.
-    // Therefore desc index has to be decrfemented.
-    DESCREC *aprec = desc_get_rec(apd, param_idx - telemetry_cnt, false);
-    DESCREC *iprec = desc_get_rec(ipd, param_idx - telemetry_cnt, false);
+    DESCREC *aprec = desc_get_rec(apd, param_idx, false);
+    DESCREC *iprec = desc_get_rec(ipd, param_idx, false);
 
     /*
       IPREC and APREC should both be not NULL if query attributes
       or parameters are set.
     */
+
     if (!aprec || !iprec)
       return SQL_SUCCESS; // Nothing to do
 
     MYSQL_BIND *bind = &param_bind[param_idx];
-    query_attr_names[param_idx] = iprec->par.val();
+    param_names[param_idx] = iprec->par.val();
 
     // This will just fill the bind structure and do the param data conversion
     if(insert_param(this, bind, apd, aprec, iprec, 0) == SQL_ERROR)
@@ -1054,6 +1068,15 @@ SQLRETURN STMT::bind_query_attrs(bool use_ssps)
     ++param_idx;
   }
 
+  // Now add internal attributes.
+  for (auto &attr : attr_data)
+  {
+    param_names[param_idx] = attr.first;
+    param_bind[param_idx] = attr.second;
+
+    ++param_idx;
+  }
+
   if (use_ssps)
   {
     bool bind_failed = false;
@@ -1062,12 +1085,12 @@ SQLRETURN STMT::bind_query_attrs(bool use_ssps)
     // For older servers that don't support named params
     // we just don't count them and specify the number of unnamed params.
     unsigned int p_number =
-      dbc->has_query_attrs ? query_attr_names.size() : param_count;
+      dbc->has_query_attrs ? param_names.size() : param_count;
 
     if (p_number) {
       bind_failed =
         mysql_stmt_bind_named_param(ssps, param_bind.data(),
-                                    p_number, query_attr_names.data());
+                                    p_number, param_names.data());
     }
 
 #else
@@ -1090,11 +1113,10 @@ SQLRETURN STMT::bind_query_attrs(bool use_ssps)
     return SQL_SUCCESS;
   }
 
-
   MYSQL_BIND *bind = param_bind.data();
-  const char** names = (const char**)query_attr_names.data();
+  const char** names = (const char**)param_names.data();
 
-  if (mysql_bind_param(dbc->mysql, (unsigned int)query_attr_names.size(),
+  if (mysql_bind_param(dbc->mysql, (unsigned int)param_names.size(),
                        bind, names))
   {
     set_error("HY000");

@@ -153,7 +153,12 @@ namespace telemetry
       ctx.span_id().ToLowerBase16({buf, trace::SpanId::kSize * 2});
       std::string span_id{buf, trace::SpanId::kSize * 2};
 
-      stmt->add_query_attr(
+      /*
+        If traceparent is added automatically it is regarded
+        as internal attribute.
+      */
+
+      stmt->add_internal_attr(
         "traceparent", "00-" + trace_id + "-" + span_id + "-00"
       );
     }

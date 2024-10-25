@@ -1014,7 +1014,17 @@ struct STMT
 
   MY_PARSED_QUERY	query, orig_query;
   std::vector<MYSQL_BIND> param_bind;
-  std::vector<const char*> query_attr_names;
+  std::vector<const char*> param_names;
+
+  /*
+    For attributes added internally.
+    This data has to be kept separately because the order of
+    specifying of internal and external attributes cannot be
+    guaranteed. They will be combined right before parameter
+    binding is done via mysql_stmt_bind_named_param().
+  */
+
+  std::vector<std::pair<const char*, MYSQL_BIND>> attr_data;
 
   std::unique_ptr<my_bool[]> rb_is_null;
   std::unique_ptr<my_bool[]> rb_err;
@@ -1105,9 +1115,9 @@ struct STMT
   */
   SQLRETURN set_error(myodbc_errid errid);
 
-  void add_query_attr(const char *name, std::string val);
+  void add_internal_attr(const char *name, std::string val);
   bool query_attr_exists(const char *name);
-  void clear_attr_names() { query_attr_names.clear(); }
+  void clear_attr_names() { param_names.clear(); attr_data.clear(); }
 
   /*
     Error message and errno is taken from dbc->mysql
@@ -1156,7 +1166,7 @@ struct STMT
 
   STMT(DBC *d, size_t param_cnt)
     : dbc{d}
-    , query_attr_names{param_cnt}
+    , param_names{param_cnt}
     , ssps(nullptr)
     , m_ard(this, SQL_DESC_ALLOC_AUTO, DESC_APP, DESC_ROW)
     , m_ird(this, SQL_DESC_ALLOC_AUTO, DESC_IMP, DESC_ROW)
