@@ -612,6 +612,26 @@ SQLRETURN DBC::connect(DataSource *dsrc)
 
   try
   {
+    unsigned int dev = dsrc->opt_WEBAUTHN_DEVICE_NUMBER;
+    // Set only non-zero device. Zero will be set by default otherwise.
+    if (dev)
+    {
+      setter.set_plugin_option(
+        "authentication_webauthn_client",
+        "device",
+        &dev
+      );
+    }
+  }
+  CATCH_PLUGIN_ERROR(
+    "Failed to set a WebAuthn authentication device "
+      "beacause the WebAuthn authentication "
+      "plugin could not be loaded",
+    "Failed to set a WebAuthn authentication device"
+  )
+
+  try
+  {
     setter.set_plugin_option(
       "authentication_oci_client",
       "oci-config-file",

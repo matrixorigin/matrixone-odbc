@@ -886,6 +886,7 @@ static char *ui_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" \
                             "<property name=\"y_options\"/>\n" \
                           "</packing>\n" \
                         "</child>\n" \
+
                         "<child>\n" \
                           "<object class=\"GtkLabel\">\n" \
                             "<property name=\"visible\">True</property>\n" \
@@ -963,6 +964,37 @@ static char *ui_xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" \
                             "<property name=\"bottom_attach\">5</property>\n" \
                             "<property name=\"x_options\">GTK_EXPAND | GTK_SHRINK | GTK_FILL</property>\n" \
                             "<property name=\"y_options\"/>\n" \
+                          "</packing>\n" \
+                        "</child>\n" \
+
+                        "<child>\n" \
+                          "<object class=\"GtkLabel\">\n" \
+                            "<property name=\"visible\">True</property>\n" \
+                            "<property name=\"can_focus\">False</property>\n" \
+                            "<property name=\"label\" translatable=\"yes\">WebAuthn Device Number:</property>\n" \
+                            "<property name=\"xalign\">1</property>\n" \
+                          "</object>\n" \
+                          "<packing>\n" \
+                            "<property name=\"top_attach\">5</property>\n" \
+                            "<property name=\"bottom_attach\">6</property>\n" \
+                          "</packing>\n" \
+                        "</child>\n" \
+                        "<child>\n" \
+                          "<object class=\"GtkSpinButton\" id=\"WEBAUTHN_DEVICE_NUMBER\">\n" \
+                            "<property name=\"visible\">True</property>\n" \
+                            "<property name=\"can_focus\">True</property>\n" \
+                            "<property name=\"sensitive\">True</property>\n" \
+                            "<property name=\"primary_icon_activatable\">False</property>\n" \
+                            "<property name=\"secondary_icon_activatable\">False</property>\n" \
+                            "<property name=\"adjustment\">adjustment1</property>\n" \
+                            "<property name=\"climb_rate\">1</property>\n" \
+                          "</object>\n" \
+                          "<packing>\n" \
+                            "<property name=\"left_attach\">1</property>\n" \
+                            "<property name=\"right_attach\">2</property>\n" \
+                            "<property name=\"y_options\"/>\n" \
+                            "<property name=\"top_attach\">5</property>\n" \
+                            "<property name=\"bottom_attach\">6</property>\n" \
                           "</packing>\n" \
                         "</child>\n" \
 

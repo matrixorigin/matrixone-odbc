@@ -294,7 +294,7 @@ class Driver {
 #define INT_OPTIONS_LIST(X)                                         \
   X(PORT)                                                           \
   X(READTIMEOUT) X(WRITETIMEOUT) X(CLIENT_INTERACTIVE)              \
-      X(PREFETCH)
+      X(PREFETCH) X(WEBAUTHN_DEVICE_NUMBER)
 
 // TODO: remove AUTO_RECONNECT when special handling (warning)
 //       is not needed anymore.
