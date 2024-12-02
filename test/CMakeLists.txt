@@ -39,6 +39,31 @@ IF(EXPOSE_TOFIX_TESTS)
 ENDIF(EXPOSE_TOFIX_TESTS)
 
 
+# Note: Some unit tests use std::filesystem part of the standard C++ library
+# and for some versions of the standard library its implementation is in
+# additional library stdc++fs.
+
+set(EXTRA_TEST_LIBS)
+if(NOT WIN32)
+
+  set(check_src "${CMAKE_CURRENT_BINARY_DIR}/filesystem_chk.cc")
+  file(WRITE "${check_src}"
+    "#include <filesystem>\n"
+    "int main() { (void)std::filesystem::current_path(); }"
+  )
+
+  try_compile(COMPILE_RESULT
+    ${CMAKE_CURRENT_BINARY_DIR} "${check_src}"
+    # OUTPUT_VARIABLE build_log
+  )
+
+  if(NOT COMPILE_RESULT)
+    list(APPEND EXTRA_TEST_LIBS -lstdc++fs)
+  endif()
+
+endif()
+
+
 ENABLE_TESTING()
 
 IF(NOT WIN32)
@@ -78,6 +103,7 @@ FOREACH(FN my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
   ENDIF(MYSQL_CXX_LINKAGE)
 
   install_test(${T})
+
   SET_TARGET_PROPERTIES(${T} PROPERTIES
       LINK_FLAGS "${MYSQLODBCCONN_LINK_FLAGS_ENV} ${MYSQL_LINK_FLAGS}")
 
@@ -88,8 +114,9 @@ FOREACH(FN my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
         LINK_FLAGS_RELWITHDEBINFO "/NODEFAULTLIB:${WITH_NODEFAULTLIB}"
         LINK_FLAGS_RELEASE "/NODEFAULTLIB:${WITH_NODEFAULTLIB}")
     ENDIF ()
-
   ENDIF(WIN32)
+
+  target_link_libraries(${T} ${EXTRA_TEST_LIBS})
 
   IF(WIN32)
     IF(MYSQL8)
@@ -101,19 +128,6 @@ FOREACH(FN my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
     TARGET_LINK_LIBRARIES(${T} ${ODBC_LINK_FLAGS} ${ODBCINSTLIB} myodbc-util)
   ENDIF(WIN32)
   ADD_TEST(${T} ${T})
-
-
-  if(
-    CMAKE_CXX_COMPILER_ID MATCHES "GNU"
-    AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9
-  )
-
-    # Note: Some unit tests use std::filesystem part of the standard C++ library
-    # Before version 9 of gcc that requires linking with the additional library
-
-    target_link_libraries(${T} -lstdc++fs)
-
-  endif()
 
   if(APPLE)
     set_property(TARGET ${T} PROPERTY BUILD_WITH_INSTALL_RPATH ON)
