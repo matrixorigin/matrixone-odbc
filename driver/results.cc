@@ -1544,11 +1544,7 @@ SQLRETURN SQL_API SQLGetData(SQLHSTMT      StatementHandle,
     }
     else
     {
-      /* catalog functions with "fake" results won't have lengths */
       length= irrec->row.datalen;
-      if (!length && stmt->current_values[sColNum])
-        length = (ulong)strlen(stmt->current_values[sColNum]);
-
       arrec= desc_get_rec(stmt->ard, sColNum, FALSE);
 
       /* String will be used as a temporary storage which frees itself automatically */
@@ -1863,13 +1859,7 @@ fill_fetch_buffers(STMT *stmt, MYSQL_ROW values, uint rownum)
                                           (SQLINTEGER)arrec->octet_length, rownum);
       }
 
-      /* catalog functions with "fake" results won't have lengths */
       length= irrec->row.datalen;
-
-      if (!length && *values)
-      {
-        length = (ulong)strlen(*values);
-      }
 
       /* We need to pass that pointer to the sql_get_data so it could detect
          22002 error - for NULL values that pointer has to be supplied by user.

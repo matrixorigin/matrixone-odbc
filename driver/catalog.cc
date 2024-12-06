@@ -197,7 +197,7 @@ const char *my_next_token(const char *prev_token,
   @return SQL_SUCCESS or SQL_ERROR (and diag is set)
 */
 SQLRETURN
-create_fake_resultset(STMT *stmt, MYSQL_ROW rowval, size_t rowsize,
+create_fake_resultset(STMT *stmt, MYSQL_ROW rowval,
                       my_ulonglong rowcnt, MYSQL_FIELD *fields, uint fldcnt,
                       bool copy_rowval = true)
 {
@@ -223,12 +223,23 @@ create_fake_resultset(STMT *stmt, MYSQL_ROW rowval, size_t rowsize,
 
   if (copy_rowval)
   {
-    stmt->result_array.set(rowval, rowsize);
+    stmt->result_array.set(rowval, rowcnt * fldcnt);
   }
 
   set_row_count(stmt, rowcnt);
 
   myodbc_link_fields(stmt, fields, fldcnt);
+
+  /*
+    The lengths of data in should be set in the
+    internal lengths array, which will be used to read data using
+    ODBC API functions.
+  */
+
+  size_t total_num = rowcnt * fldcnt;
+  stmt->alloc_lengths(total_num);
+  for (size_t i = 0; i < total_num; ++i)
+    stmt->lengths[i] = rowval[i] ? strlen(rowval[i]) : 0;
 
   return SQL_SUCCESS;
 }
@@ -246,10 +257,10 @@ create_fake_resultset(STMT *stmt, MYSQL_ROW rowval, size_t rowsize,
   @return SQL_SUCCESS or SQL_ERROR (and diag is set)
 */
 SQLRETURN
-create_empty_fake_resultset(STMT *stmt, MYSQL_ROW rowval, size_t rowsize,
+create_empty_fake_resultset(STMT *stmt, MYSQL_ROW rowval,
                             MYSQL_FIELD *fields, uint fldcnt)
 {
-  return create_fake_resultset(stmt, rowval, rowsize, 0 /* rowcnt */,
+  return create_fake_resultset(stmt, rowval, 0 /* rowcnt */,
                                fields, fldcnt);
 }
 
@@ -908,7 +919,7 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
   if (rows == 0)
   {
     return create_empty_fake_resultset(stmt, SQLCOLUMNS_values,
-     sizeof(SQLCOLUMNS_values), SQLCOLUMNS_fields, SQLCOLUMNS_FIELDS);
+                                       SQLCOLUMNS_fields, SQLCOLUMNS_FIELDS);
   }
 
   auto &data = stmt->m_row_storage;
@@ -1017,16 +1028,13 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
       With the non-empty result the function should return from this block
     */
     stmt->result_array = (MYSQL_ROW)data.data();
-    create_fake_resultset(stmt, stmt->result_array, SQLCOLUMNS_FIELDS, rows,
+    create_fake_resultset(stmt, stmt->result_array, rows,
       SQLCOLUMNS_fields, SQLCOLUMNS_FIELDS, false);
-    myodbc_link_fields(stmt, SQLCOLUMNS_fields, SQLCOLUMNS_FIELDS);
     return SQL_SUCCESS;
   }
 
   create_empty_fake_resultset(stmt, SQLCOLUMNS_values,
-                                     SQLCOLUMNS_FIELDS,
-                                     SQLCOLUMNS_fields,
-                                     SQLCOLUMNS_FIELDS);
+                              SQLCOLUMNS_fields, SQLCOLUMNS_FIELDS);
   return SQL_SUCCESS;
 }
 
@@ -1469,17 +1477,13 @@ special_columns_i_s(SQLHSTMT hstmt, SQLUSMALLINT fColType,
     if (rnum > 1)
     {
       stmt->result_array = (MYSQL_ROW)data.data();
-      create_fake_resultset(stmt, stmt->result_array, SQLSPECIALCOLUMNS_FIELDS, rnum - 1,
+      create_fake_resultset(stmt, stmt->result_array, rnum - 1,
         SQLSPECIALCOLUMNS_fields, SQLSPECIALCOLUMNS_FIELDS, false);
-
-      myodbc_link_fields(stmt,SQLSPECIALCOLUMNS_fields,SQLSPECIALCOLUMNS_FIELDS);
     }
     else
     {
       create_empty_fake_resultset(stmt, SQLSPECIALCOLUMNS_values,
-                                        SQLSPECIALCOLUMNS_FIELDS,
-                                        SQLSPECIALCOLUMNS_fields,
-                                        SQLSPECIALCOLUMNS_FIELDS);
+                                  SQLSPECIALCOLUMNS_fields, SQLSPECIALCOLUMNS_FIELDS);
 
     }
     return SQL_SUCCESS;

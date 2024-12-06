@@ -32,6 +32,8 @@
 */
 
 #include "driver.h"
+#include "catalog.h"
+
 
 #define MYINFO_SET_ULONG(val) \
 do { \
@@ -1092,6 +1094,7 @@ SQLRETURN SQL_API MySQLGetTypeInfo(SQLHSTMT hstmt, SQLSMALLINT fSqlType)
 {
   STMT *stmt = (STMT *)hstmt;
   uint i;
+  unsigned long row_count = 0;
 
   my_SQLFreeStmt(hstmt, FREE_STMT_RESET);
 
@@ -1112,39 +1115,26 @@ SQLRETURN SQL_API MySQLGetTypeInfo(SQLHSTMT hstmt, SQLSMALLINT fSqlType)
     }
   }
 
-  /* Set up result Data dictionary. */
-  stmt->result = (MYSQL_RES *)myodbc_malloc(sizeof(MYSQL_RES), MYF(MY_ZEROFILL));
-  stmt->fake_result = 1;
+  stmt->m_row_storage.set_size(MYSQL_DATA_TYPES, SQL_GET_TYPE_INFO_FIELDS);
+  auto &data = stmt->m_row_storage;
 
-  if (!stmt->result) {
-    stmt_result_free(stmt);
-    return stmt->set_error("S1001", "Not enough memory", 4001);
-  }
-  stmt->result_array.set_size(sizeof(SQL_GET_TYPE_INFO_values));
+  for (auto el : SQL_GET_TYPE_INFO_values)
+  {
+    if (fSqlType != SQL_ALL_TYPES &&
+        atoi(el[1]) != fSqlType && atoi(el[15]) != fSqlType)
+      continue;
 
-  if (fSqlType == SQL_ALL_TYPES)
-  {
-    memcpy(stmt->result_array,
-           SQL_GET_TYPE_INFO_values,
-           sizeof(SQL_GET_TYPE_INFO_values));
-    stmt->result->row_count = MYSQL_DATA_TYPES;
-  }
-  else
-  {
-    stmt->result->row_count= 0;
-    for (i = 0; i < MYSQL_DATA_TYPES; ++i)
+    for (int idx = 0; idx < SQL_GET_TYPE_INFO_FIELDS; ++idx)
     {
-      if (atoi(SQL_GET_TYPE_INFO_values[i][1]) == fSqlType ||
-          atoi(SQL_GET_TYPE_INFO_values[i][15]) == fSqlType)
-      {
-        memcpy(&stmt->result_array[stmt->result->row_count++ *
-               SQL_GET_TYPE_INFO_FIELDS],
-               &SQL_GET_TYPE_INFO_values[i][0],
-               sizeof(char *) * SQL_GET_TYPE_INFO_FIELDS);
-      }
+      data[idx] = el[idx];
     }
+    data.next_row();
+    ++row_count;
   }
-  myodbc_link_fields(stmt, SQL_GET_TYPE_INFO_fields, SQL_GET_TYPE_INFO_FIELDS);
+  stmt->result_array = (MYSQL_ROW)data.data();
+
+  create_fake_resultset(stmt, stmt->result_array, row_count,
+    SQL_GET_TYPE_INFO_fields, SQL_GET_TYPE_INFO_FIELDS, false);
 
   return SQL_SUCCESS;
 }

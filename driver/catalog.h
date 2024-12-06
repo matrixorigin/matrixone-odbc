@@ -118,11 +118,11 @@ const char *my_next_token(const char *prev_token,
                           const char chr);
 
 SQLRETURN
-create_empty_fake_resultset(STMT *stmt, MYSQL_ROW rowval, size_t rowsize,
+create_empty_fake_resultset(STMT *stmt, MYSQL_ROW rowval,
                             MYSQL_FIELD *fields, uint fldcnt);
 
 SQLRETURN
-create_fake_resultset(STMT *stmt, MYSQL_ROW rowval, size_t rowsize,
+create_fake_resultset(STMT *stmt, MYSQL_ROW rowval,
                       my_ulonglong rowcnt, MYSQL_FIELD *fields, uint fldcnt,
                       bool copy_rowval);
 

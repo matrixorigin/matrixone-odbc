@@ -767,6 +767,9 @@ struct ODBC_RESULTSET
   MYSQL_RES * operator=(MYSQL_RES *r)
   { reset(r); return res; }
 
+  MYSQL_RES* operator->() const
+  { return res; }
+
   operator MYSQL_RES*() const
   { return res; }
 

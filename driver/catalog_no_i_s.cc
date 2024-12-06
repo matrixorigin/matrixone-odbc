@@ -472,13 +472,14 @@ primary_keys_no_i_s(SQLHSTMT hstmt,
     STMT *stmt= (STMT *) hstmt;
     MYSQL_ROW row;
     uint      row_count;
+    ODBC_RESULTSET odbc_rs;
 
     assert(stmt);
     LOCK_DBC(stmt->dbc);
 
     auto db = get_database_name(stmt, catalog, catalog_len,
                                 schema, schema_len);
-    if (!(stmt->result= server_list_dbkeys(stmt, (SQLCHAR*)db.c_str(),
+    if (!(odbc_rs = server_list_dbkeys(stmt, (SQLCHAR*)db.c_str(),
                                            (SQLSMALLINT)db.length(),
                                            table, table_len)))
     {
@@ -490,29 +491,18 @@ primary_keys_no_i_s(SQLHSTMT hstmt,
     stmt->reset_result_array();
 
     // We will use the ROW_STORAGE here
-    stmt->m_row_storage.set_size(stmt->result->row_count,
+    stmt->m_row_storage.set_size(odbc_rs->row_count,
                                  SQLPRIM_KEYS_FIELDS);
     auto &data = stmt->m_row_storage;
 
-    stmt->alloc_lengths(SQLPRIM_KEYS_FIELDS*(ulong) stmt->result->row_count);
-
-    if (!stmt->lengths)
-    {
-      set_mem_error(stmt->dbc->mysql);
-      return handle_connection_error(stmt);
-    }
-
     row_count= 0;
-    while ( (row= mysql_fetch_row(stmt->result)) )
+    while ( (row= mysql_fetch_row(odbc_rs)) )
     {
         if ( row[1][0] == '0' )     /* If unique index */
         {
             if ( row_count && !strcmp(row[3],"1") )
                 break;    /* Already found unique key */
 
-            fix_row_lengths(stmt, SQLPRIM_LENGTHS, row_count, SQLPRIM_KEYS_FIELDS);
-
-            ++row_count;
             /* TABLE_CAT and TABLE_SCHEMA */
             CAT_SCHEMA_SET(data[0], data[1], db);
             /* TABLE_NAME */
@@ -528,12 +518,13 @@ primary_keys_no_i_s(SQLHSTMT hstmt,
             data[5] = "PRIMARY";
 
             data.next_row();
+            ++row_count;
         }
     }
 
     stmt->result_array = (MYSQL_ROW)data.data();
-    set_row_count(stmt, row_count);
-    myodbc_link_fields(stmt,SQLPRIM_KEYS_fields,SQLPRIM_KEYS_FIELDS);
+    create_fake_resultset(stmt, stmt->result_array, row_count,
+      SQLPRIM_KEYS_fields, SQLPRIM_KEYS_FIELDS, false);
 
     return SQL_SUCCESS;
 }
@@ -683,8 +674,8 @@ procedure_columns_no_i_s(SQLHSTMT hstmt,
   STMT *stmt= (STMT *)hstmt;
   SQLRETURN nReturn= SQL_SUCCESS;
   MYSQL_ROW row;
-  MYSQL_RES *proc_list_res;
-  int params_num= 0, return_params_num= 0;
+  ODBC_RESULTSET proc_list_res;
+  int params_num = 0;
   unsigned int total_params_num = 0;
   std::string db;
 
@@ -841,13 +832,9 @@ procedure_columns_no_i_s(SQLHSTMT hstmt,
   }
 
   stmt->result_array = data.is_valid() ? (MYSQL_ROW)data.data() : nullptr;
-  return_params_num = total_params_num;
 
-  stmt->result= proc_list_res;
-
-  set_row_count(stmt, return_params_num);
-
-  myodbc_link_fields(stmt, SQLPROCEDURECOLUMNS_fields, SQLPROCEDURECOLUMNS_FIELDS);
+  create_fake_resultset(stmt, stmt->result_array, total_params_num,
+    SQLPROCEDURECOLUMNS_fields, SQLPROCEDURECOLUMNS_FIELDS, false);
 
   }
   catch(ODBCEXCEPTION &ex)
@@ -857,10 +844,9 @@ procedure_columns_no_i_s(SQLHSTMT hstmt,
       case EXCEPTION_TYPE::EMPTY_SET:
         nReturn = create_empty_fake_resultset(
             (STMT*)hstmt, SQLPROCEDURECOLUMNS_values,
-            sizeof(SQLPROCEDURECOLUMNS_values),
             SQLPROCEDURECOLUMNS_fields,
             SQLPROCEDURECOLUMNS_FIELDS);
-        mysql_free_result(proc_list_res);
+        break;
       case EXCEPTION_TYPE::GENERAL:
         break;
     }
@@ -997,14 +983,12 @@ statistics_no_i_s(SQLHSTMT hstmt,
 
     if (rnum) {
       stmt->result_array = (MYSQL_ROW)data.data();
-      create_fake_resultset(stmt, stmt->result_array, SQLSTAT_FIELDS, rnum,
+      create_fake_resultset(stmt, stmt->result_array, rnum,
                             SQLSTAT_fields, SQLSTAT_FIELDS, false);
-      myodbc_link_fields(stmt, SQLSTAT_fields, SQLSTAT_FIELDS);
       return SQL_SUCCESS;
     }
   }
   return create_empty_fake_resultset(stmt, SQLSTAT_values,
-                                     sizeof(SQLSTAT_values),
                                      SQLSTAT_fields, SQLSTAT_FIELDS);
 }
 
@@ -1019,10 +1003,10 @@ uint SQLTABLES_qualifier_order[]= {0};
 const char *SQLTABLES_values[] = {"","",NULL,"TABLE","MySQL table"};
 const char *SQLTABLES_qualifier_values[] = {"",NULL,NULL,NULL,NULL};
 const char *SQLTABLES_owner_values[] = {NULL,"",NULL,NULL,NULL};
-const char *SQLTABLES_type_values[3][5] = {
-    {NULL,NULL,NULL,"TABLE",NULL},
-    {NULL,NULL,NULL,"SYSTEM TABLE",NULL},
-    {NULL,NULL,NULL,"VIEW",NULL},
+const char *SQLTABLES_type_values[] = {
+    NULL,NULL,NULL,"TABLE",NULL,
+    NULL,NULL,NULL,"SYSTEM TABLE",NULL,
+    NULL,NULL,NULL,"VIEW",NULL
 };
 
 MYSQL_FIELD SQLTABLES_fields[]=
@@ -1073,8 +1057,7 @@ tables_no_i_s(SQLHSTMT hstmt,
       {
         /* Return set of TableType qualifiers */
         rc = create_fake_resultset(stmt, (MYSQL_ROW)SQLTABLES_type_values,
-                                   sizeof(SQLTABLES_type_values[0]),
-                                   array_elements(SQLTABLES_type_values),
+                                   3, // Number of pre-set rows
                                    SQLTABLES_fields, SQLTABLES_FIELDS,
                                    true);
         return rc;
@@ -1102,7 +1085,6 @@ tables_no_i_s(SQLHSTMT hstmt,
                !type_len && type)
       {
         rc = create_fake_resultset(stmt, (MYSQL_ROW)SQLTABLES_owner_values,
-                                   sizeof(SQLTABLES_owner_values),
                                    1, SQLTABLES_fields, SQLTABLES_FIELDS,
                                    true);
         return rc;
@@ -1247,14 +1229,11 @@ tables_no_i_s(SQLHSTMT hstmt,
       {
         case EXCEPTION_TYPE::EMPTY_SET:
           return create_empty_fake_resultset(stmt, (MYSQL_ROW)SQLTABLES_values,
-                                             sizeof(SQLTABLES_values),
-                                             SQLTABLES_fields,
-                                             SQLTABLES_FIELDS);
+                                             SQLTABLES_fields, SQLTABLES_FIELDS);
       }
     }
 
-  set_row_count(stmt, row_count);
-
-  myodbc_link_fields(stmt, SQLTABLES_fields, SQLTABLES_FIELDS);
+  create_fake_resultset(stmt, stmt->result_array, row_count,
+    SQLTABLES_fields, SQLTABLES_FIELDS, false);
   return SQL_SUCCESS;
 }

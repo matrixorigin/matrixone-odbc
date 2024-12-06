@@ -1194,9 +1194,8 @@ DECLARE_TEST(t_wl16171_vector)
   // Check 3: SQLGetTypeInfo()
   auto check_type_info = [](SQLHSTMT hstmt)
   {
-    std::vector<SQLSMALLINT> type_opt = { SQL_VARBINARY, SQL_ALL_TYPES };
     SQLCHAR char_buf[64];
-    for (auto opt : type_opt)
+    for (auto opt : { SQL_VARBINARY, SQL_ALL_TYPES })
     {
       bool vector_detected = false;
       ok_stmt(hstmt, SQLGetTypeInfo(hstmt, opt));
@@ -1345,8 +1344,83 @@ DECLARE_TEST(t_bug21115726)
   ENDCATCH;
 }
 
+/*
+  Bug#37286526/116657 - Retrieving list of records that contain an
+  empty blob causes undefined behaviour.
+*/
+DECLARE_TEST(t_bug37286526_empty_blob)
+{
+  try
+  {
+    const size_t buflen = 32;
+
+    odbc::xbuf data_char(buflen);
+    odbc::xbuf data_bin(buflen);
+
+    odbc::table tab(hstmt, "tab37286526", "C1 varchar(32), C2 BLOB");
+
+    tab.insert("('A', 'ABCDE'), ('B', '')");
+
+    enum { BIND_COL, GET_DATA };
+
+    SQLLEN expected_len[][2] = {{1, 5}, {1, 0}};
+    const char* expected_data[][2] = {{"A", "ABCDE"}, {"B", ""}};
+
+    for (auto v : { BIND_COL, GET_DATA })
+    {
+      SQLLEN len_bin = 0;
+      SQLLEN len_char = 0;
+
+      odbc::stmt_prepare(hstmt, "SELECT * FROM tab37286526");
+
+      // For BIND_COL we bind buffers before executing of the statement.
+      if (v == BIND_COL)
+      {
+        ok_stmt(hstmt, SQLBindCol(hstmt, 1, SQL_C_CHAR, data_char, buflen, &len_char));
+        ok_stmt(hstmt, SQLBindCol(hstmt, 2, SQL_C_BINARY, data_bin, buflen, &len_bin));
+      }
+      odbc::stmt_execute(hstmt);
+
+      int row_num = 0;
+
+      while(SQL_SUCCESS == SQLFetch(hstmt))
+      {
+        //  For GET_DATA case getting of data is done after SQLFetch() call.
+        if (v == GET_DATA)
+        {
+          ok_stmt(hstmt, SQLGetData(hstmt, 1, SQL_C_CHAR, data_char, buflen, &len_char));
+          ok_stmt(hstmt, SQLGetData(hstmt, 2, SQL_C_BINARY, data_bin, buflen, &len_bin));
+        }
+
+        is_num(expected_len[row_num][0], len_char);
+        is_num(expected_len[row_num][1], len_bin);
+
+        is_num(0, memcmp(expected_data[row_num][0], data_char, len_char));
+
+        /*
+          No need to check contents of the row with empty blob data.
+          Buffers are not modified.
+        */
+
+        if (len_bin)
+          is_num(0, memcmp(expected_data[row_num][1], data_bin, len_bin));
+
+        ++row_num;
+      }
+
+      // Expect to get 2 rows
+      is_num(2, row_num);
+
+      odbc::stmt_close(hstmt);
+    }
+
+  }
+  ENDCATCH;
+}
+
 
 BEGIN_TESTS
+  ADD_TEST(t_bug37286526_empty_blob)
   ADD_TEST(t_wl16171_vector)
   ADD_TEST(t_bug21115726)
   ADD_TEST(t_bug26474471)
