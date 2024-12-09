@@ -44,7 +44,7 @@ ENDIF(EXPOSE_TOFIX_TESTS)
 # additional library stdc++fs.
 
 set(EXTRA_TEST_LIBS)
-if(NOT WIN32)
+if(NOT WIN32 AND NOT APPLE)
 
   set(check_src "${CMAKE_CURRENT_BINARY_DIR}/filesystem_chk.cc")
   file(WRITE "${check_src}"
