@@ -605,7 +605,7 @@ SQLRETURN DBC::connect(DataSource *dsrc)
   }
   CATCH_PLUGIN_ERROR(
     "Failed to set a WebAuthn authentciation "
-      "callback beacause the WebAuthn authentication "
+      "callback because the WebAuthn authentication "
       "plugin could not be loaded",
     "Failed to set a WebAuthn authentication callback function"
   )
@@ -625,7 +625,7 @@ SQLRETURN DBC::connect(DataSource *dsrc)
   }
   CATCH_PLUGIN_ERROR(
     "Failed to set a WebAuthn authentication device "
-      "beacause the WebAuthn authentication "
+      "because the WebAuthn authentication "
       "plugin could not be loaded",
     "Failed to set a WebAuthn authentication device"
   )
