@@ -30,6 +30,9 @@
 #include <vector>
 #include <chrono>
 #include <locale>
+#include <sstream>
+#include <iomanip>
+
 
 #include "odbc_util.h"
 #include "../VersionInfo.h"
@@ -1418,8 +1421,178 @@ DECLARE_TEST(t_bug37286526_empty_blob)
   ENDCATCH;
 }
 
+/*
+  Bug#37298936/114470 - returned data that does not match expected
+  data length for column
+*/
+
+DECLARE_TEST(t_bug37298936_pad_spaces)
+{
+  try
+  {
+    const size_t pad_width = 32;
+    const size_t buflen = pad_width * 5;
+    SQLSMALLINT target_type = unicode_driver ? SQL_C_WCHAR : SQL_C_CHAR;
+
+    // For Unicode driver the expected length is more because of SQLWCHAR
+    size_t char_size = unicode_driver ? sizeof(SQLWCHAR) : sizeof(SQLCHAR);
+
+    /*
+      Each entry in `test_data` is an utf8 string and the number of characters
+      in that string.
+    */
+    std::vector<std::pair<std::string, size_t>> test_data =
+    {
+      {"ABC", 3}, {"", 0}, {"\xD0\xA4", 1}
+    };
+
+    // Create table. The table has one column per each test string above.
+
+    std::stringstream sql;
+
+    for (size_t i=0; i < test_data.size(); ++i)
+    {
+      if (i) sql << " ,";
+      sql << "C" << (i+1) << " CHAR(" << pad_width << ")";
+    };
+
+    odbc::table tab(hstmt, "tab37298936", sql.str());
+
+    /*
+      Insert data.
+
+      Note: Converstion to utf8 is done using expressions like this one
+      ```
+        convert(UNHEX('d0a4') using utf8)
+      ```
+    */
+
+    sql.str("");
+
+    sql << "INSERT INTO tab37298936 VALUES (";
+    for (size_t i=0; i < test_data.size(); ++i)
+    {
+      if (i) sql << " ,";
+      sql << "convert(UNHEX('";
+      for (char c : test_data[i].first)
+        sql << std::hex << std::setw(2) << std::setfill('0')
+            << (int)(unsigned char)c;
+      sql << "') using utf8)";
+    };
+    sql << ")";
+
+    odbc::sql(hstmt, sql.str());
+
+    /*
+      Select data with or without padding and check that returned data
+      is as expected.
+    */
+
+    for (bool pad : {false, true})
+    {
+      sql.str("");
+      sql << "PAD_SPACE=" << (pad ? "1" : "0");
+
+      // Make sure the ANSI driver uses the right charset.
+      if (!unicode_driver)
+        sql << ";CHARSET=utf8mb4";
+
+      odbc::connection con(nullptr, nullptr, nullptr, nullptr, sql.str());
+      odbc::HSTMT hstmt1(con);
+
+      for (bool bind : {false, true})
+      {
+        std::vector<SQLLEN> len(test_data.size());
+        std::vector<odbc::xbuf> buf;
+
+        /*
+          Depending on `bind` flag we either bind buffers for prepared
+          statement or fetch data into buffers after execution.
+        */
+
+        auto attach_buffers = [&](bool bind)
+        {
+          buf.clear();
+
+          for (size_t i=0; i < test_data.size(); ++i)
+          {
+            buf.emplace_back(buflen);
+
+            if (bind)
+              ok_stmt(hstmt1, SQLBindCol(
+                hstmt1, i+1, target_type, (SQLPOINTER)buf[i], buflen, &len[i]
+              ));
+            else
+              ok_stmt(hstmt1, SQLGetData(
+                hstmt1, i+1, target_type, (SQLPOINTER)buf[i], buflen, &len[i]
+              ));
+          }
+        };
+
+        odbc::stmt_prepare(hstmt1, "SELECT * FROM tab37298936");
+
+        if (bind)
+          attach_buffers(true);
+
+        odbc::stmt_execute(hstmt1);
+
+        is(SQL_SUCCESS == SQLFetch(hstmt1));
+
+        if (!bind)
+          attach_buffers(false);
+
+        // Check received data
+
+        for (size_t i=0; i < test_data.size(); ++i)
+        {
+          /*
+            Note: d.first is a utf8 string, d.second is the number of chars
+            in that string.
+          */
+
+          auto &d = test_data[i];
+
+          /*
+            Expected length.
+
+            The length `str_len` is measured in characters for Unicode driver
+            and in bytes for ANSI one (in the latter case we have utf8 strings).
+
+            `pad_len` is the number of spaces that need to be added to pad
+            to `pad_width` (0 if no padding). This is computed using the number
+            of *characters* in the test data as given by `d.second`.
+          */
+
+          SQLLEN str_len = unicode_driver ? d.second : d.first.length();
+          SQLLEN pad_len = pad ? pad_width - d.second : 0;
+          SQLLEN expected_len = str_len + pad_len;
+
+          is_num(expected_len * char_size, len[i]);
+
+          // Check that correct number of spaces is added after the string.
+
+          for (size_t k = 0; k < pad_len; ++k)
+          {
+            if (unicode_driver)
+            {
+              is((SQLWCHAR)' ' == ((SQLWCHAR*)(buf[i]))[str_len + k]);
+            }
+            else
+            {
+              is((SQLCHAR)' ' == ((SQLCHAR*)(buf[i]))[str_len + k]);
+            }
+          }
+        }
+        odbc::stmt_close(hstmt1);
+      }
+    }
+  }
+  ENDCATCH;
+}
+
 
 BEGIN_TESTS
+  ADD_TEST(t_bug37298936_pad_spaces)
   ADD_TEST(t_bug37286526_empty_blob)
   ADD_TEST(t_wl16171_vector)
   ADD_TEST(t_bug21115726)

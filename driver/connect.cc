@@ -1121,6 +1121,22 @@ SQLRETURN DBC::connect(DataSource *dsrc)
     return SQL_ERROR;
   }
 
+  /*
+    The padding of CHAR(N) data should be done on the server.
+    To enable this behavior the SQL_MODE should be set to
+    PAD_CHAR_TO_FULL_LENGTH.
+
+    NOTE: If @@sql_mode is empty the concatenation with preceding
+          comma is acceptable.
+  */
+
+  if (dsrc->opt_PAD_SPACE &&
+      execute_query("SET sql_mode=concat(@@sql_mode,',PAD_CHAR_TO_FULL_LENGTH');",
+      SQL_NTS, true) != SQL_SUCCESS)
+  {
+    return SQL_ERROR;
+  }
+
   ds = *dsrc;
   /* init all needed UTF-8 strings */
   const char *opt_db = ds.opt_DATABASE;

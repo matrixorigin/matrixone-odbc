@@ -341,6 +341,7 @@ char *fix_padding(STMT *stmt, SQLSMALLINT fCType, char *value, std::string &out_
               SQLLEN cbValueMax, ulong &data_len, DESCREC *irrec)
 {
     if (stmt->dbc->ds.opt_PAD_SPACE &&
+         (irrec->row.field->flags & ENUM_FLAG || irrec->row.field->flags & SET_FLAG) &&
          (irrec->type == SQL_CHAR || irrec->type == SQL_WCHAR) &&
          (fCType == SQL_C_CHAR || fCType == SQL_C_WCHAR || fCType == SQL_C_BINARY)
        )
