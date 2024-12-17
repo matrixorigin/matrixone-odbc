@@ -687,28 +687,46 @@ void STMT::free_reset_params()
   apd->records2.clear();
 }
 
-void STMT::free_fake_result(bool clear_all_results)
+
+/*
+  The function to properly free result sets.
+
+  For fake result it clears the internal row storage and
+  resets the result array.
+
+  For real result sets if `clear_pending` parameter is
+  true the function makes sure that all pending data from
+  the server was read in order to be able to send a command
+  to the server later.
+*/
+
+void STMT::free_all_results(bool clear_pending)
 {
-  if (!fake_result)
+  /*
+    Clear the internal row storage, reset the result array.
+    This has to be done in case of fake resultset.
+    Also, do other resets that are needed for the proper
+    disposal of the real and fake resultsets.
+  */
+
+  reset();
+
+  if (!fake_result && clear_pending)
   {
-    if (clear_all_results)
+    /* We seiously CLOSEing statement for preparing handle object for
+        new query */
+    while (!next_result(this))
     {
-      /* We seiously CLOSEing statement for preparing handle object for
-         new query */
-      while (!next_result(this))
-      {
-        get_result_metadata(this, TRUE);
-      }
+      get_result_metadata(this, TRUE);
     }
   }
-  else
-  {
-    // Result array must be reset for fake resultset.
-    // Otherwise the data in the next resultset might be corrupted.
-    reset_result_array();
-    stmt_result_free(this);
-  }
 
+  /*
+    After the result contents were read and cleared
+    the result handle has to be freed as well.
+  */
+
+  stmt_result_free(this);
 }
 
 

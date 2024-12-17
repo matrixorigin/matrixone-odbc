@@ -424,8 +424,6 @@ SQLRETURN SQL_API my_SQLFreeStmtExtended(SQLHSTMT hstmt, SQLUSMALLINT f_option,
       DO_LOCK_STMT();
     }
 
-    stmt->reset();
-
     if (f_option == SQL_UNBIND)
     {
       stmt->free_unbind();
@@ -440,7 +438,7 @@ SQLRETURN SQL_API my_SQLFreeStmtExtended(SQLHSTMT hstmt, SQLUSMALLINT f_option,
       return SQL_SUCCESS;
     }
 
-    stmt->free_fake_result((bool)(f_extra & FREE_STMT_CLEAR_RESULT));
+    stmt->free_all_results((bool)(f_extra & FREE_STMT_CLEAR_RESULT));
 
     x_free(stmt->fields);   // TODO: Looks like STMT::fields is not used anywhere
     stmt->result= 0;

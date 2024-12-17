@@ -1106,7 +1106,7 @@ struct STMT
   void free_unbind();
   void free_reset_out_params();
   void free_reset_params();
-  void free_fake_result(bool clear_all_results);
+  void free_all_results(bool clear_pending);
 
   bool is_dynamic_cursor();
 

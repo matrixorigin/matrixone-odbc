@@ -524,7 +524,64 @@ DECLARE_TEST(t_bug26474373_setpos)
   ENDCATCH;
 }
 
+
+DECLARE_TEST(t_bug36906892_procparams_crash)
+{
+  try {
+    /*
+      No underscores in the proc name, we don't want
+      to potentially have more than two rows in the result.
+      Each row corresponds to a parameter in the procedure.
+    */
+
+    odbc::procedure proc(hstmt, "procbug36906892",
+      "(INOUT p1 INT, OUT p2 INT)"
+      "BEGIN "
+      "  SELECT p1 INTO p2; "
+      "END");
+
+    // The number of columns in the resultset
+    const size_t res_cols = 19;
+    const size_t buf_len = 128;
+
+    ok_stmt(hstmt, SQLProcedureColumns(hstmt, nullptr, 0, nullptr, 0,
+      (SQLCHAR*)"procbug36906892", SQL_NTS, nullptr, 0));
+
+    ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_UNBIND));
+
+    SQLSMALLINT col_count = 0;
+    ok_stmt(hstmt, SQLNumResultCols(hstmt, &col_count));
+
+    /*
+      UNBIND and RESET calls should not affect the result of catalog
+      function such as SQLProcedureColumns() above.
+      Subsequent SQLFetch() on that result should work as always.
+    */
+
+    odbc::stmt_unbind(hstmt);
+    odbc::stmt_reset(hstmt);
+
+    std::vector<odbc::xbuf> char_buf;
+    std::vector<SQLLEN> len(col_count);
+
+    char_buf.reserve(col_count);
+
+    for (int i = 0; i < res_cols; ++i)
+    {
+      char_buf.emplace_back(buf_len);
+      ok_stmt(hstmt, SQLBindCol(hstmt, i + 1, SQL_C_CHAR,
+        (SQLPOINTER)char_buf[i], 64, &len[i]));
+    }
+
+    // Two rows are expected.
+    is_num(2, my_print_non_format_result(hstmt));
+  }
+  ENDCATCH;
+}
+
+
 BEGIN_TESTS
+  ADD_TEST(t_bug36906892_procparams_crash)
   // TODO: enable test when the problem is fixed
   // ADD_TEST(t_stmt_thread)
   ADD_TEST(t_bug26474373_setpos)
