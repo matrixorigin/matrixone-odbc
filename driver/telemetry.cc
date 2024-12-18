@@ -140,7 +140,14 @@ namespace telemetry
       stmt->conn_telemetry().span->GetContext()
     );
 
-    // Add "treaceparent" attribute if not already set by user.
+    /*
+      Add "treaceparent" attribute if not already set by user.
+
+      NOTE: Currently "traceparent" attribute has no effect when
+            preparing statements - the information can be transferred
+            to the server only when prepared statements are executed.
+            We set the attribute regardless to simplify the logic.
+    */
 
     if (!stmt->query_attr_exists("traceparent"))
     {

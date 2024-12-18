@@ -1120,7 +1120,7 @@ struct STMT
 
   void add_internal_attr(const char *name, std::string val);
   bool query_attr_exists(const char *name);
-  void clear_attr_names() { param_names.clear(); attr_data.clear(); }
+  void clear_attr_names();
 
   /*
     Error message and errno is taken from dbc->mysql

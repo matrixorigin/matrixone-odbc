@@ -738,7 +738,6 @@ void STMT::clear_param_bind()
     bind.buffer = nullptr;
   }
   // No need to clear param_bind. It will be reused.
-  // param_bind.clear();
 }
 
 // Reset result array in case when the row storage is not valid.
@@ -1002,6 +1001,15 @@ void STMT::add_internal_attr(const char *name, std::string val)
   bind_param(bind, val.c_str(), val.length(), MYSQL_TYPE_STRING);
 }
 
+void STMT::clear_attr_names()
+{
+  param_names.clear();
+  for (auto &item : attr_data)
+    x_free(item.second.buffer);
+
+  attr_data.clear();
+}
+
 
 bool STMT::query_attr_exists(const char *name)
 {
@@ -1090,7 +1098,12 @@ SQLRETURN STMT::bind_query_attrs(bool use_ssps)
   for (auto &attr : attr_data)
   {
     param_names[param_idx] = attr.first;
+
+    // Transfer Ownership of bind.buffer from attr_data to param_bind
+    x_free(param_bind[param_idx].buffer);
     param_bind[param_idx] = attr.second;
+    attr.second.buffer = nullptr;
+    attr.second.buffer_length = 0;
 
     ++param_idx;
   }
