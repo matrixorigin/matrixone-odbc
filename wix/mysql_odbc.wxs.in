@@ -48,6 +48,10 @@
     <?define upgrade_code="7AEDB3F3-7B9D-4FE2-8D8F-3CE3DE6F5B6B" ?>
   <?endif?>
 
+  <?define redist_ver_required="2022" ?>
+  <?define min_vs14_major="14" ?>
+  <?define min_vs14_minor="40" ?>
+
   <Package
     UpgradeCode="$(var.upgrade_code)"
     Codepage="utf-8"
@@ -108,7 +112,7 @@
         We want to compare numbers, rather than strings. -->
       <Property Id="TESTPROP" Hidden="yes" Value="#12345"/>
       <CustomAction Id="DwordToNumber" Script="vbscript" Execute="immediate" ScriptSourceFile="DwordToNumber.vbs" />
-      <Launch Condition="Installed OR (VS14REDISTX64_64_MAJOR = 14 AND VS14REDISTX64_64_MINOR &gt;= 20) OR (VS14REDISTX64_32_MAJOR = 14 AND VS14REDISTX64_32_MINOR &gt;= 20)" Message="This application requires Visual Studio 2019 x64 Redistributable. Please install the Redistributable then run this installer again." />
+      <Launch Condition="Installed OR (VS14REDISTX64_64_MAJOR = $(var.min_vs14_major) AND VS14REDISTX64_64_MINOR &gt;= $(var.min_vs14_minor)) OR (VS14REDISTX64_32_MAJOR = $(var.min_vs14_major) AND VS14REDISTX64_32_MINOR &gt;= $(var.min_vs14_minor))" Message="This application requires Visual Studio $(var.redist_ver_required) x64 Redistributable version $(var.min_vs14_major).$(var.min_vs14_minor). Please install the Redistributable then run this installer again." />
     <?else?>
       <Property Id="VS14REDISTX86_64_MAJOR">
         <RegistrySearch Id="FindRedistVS14_64_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Major" Type="raw" Bitness="always64" />
@@ -126,7 +130,7 @@
         We have to get rid of it before using properties in the condition check,
         We want to compare numbers, rather than strings. -->
       <CustomAction Id="DwordToNumber" Script="vbscript" ScriptSourceFile="DwordToNumber.vbs" />
-      <Launch Condition="Installed OR (VS14REDISTX86_64_MAJOR = 14 AND VS14REDISTX86_64_MINOR &gt;= 20) OR (VS14REDISTX86_32_MAJOR = 14 AND VS14REDISTX86_32_MINOR &gt;= 20)" Message="This application requires Visual Studio 2019 x86 Redistributable. Please install the Redistributable then run this installer again." />
+      <Launch Condition="Installed OR (VS14REDISTX86_64_MAJOR = $(var.min_vs14_major) AND VS14REDISTX86_64_MINOR &gt;= $(var.min_vs14_minor)) OR (VS14REDISTX86_32_MAJOR = $(var.min_vs14_major) AND VS14REDISTX86_32_MINOR &gt;= $(var.min_vs14_minor))" Message="This application requires Visual Studio $(var.redist_ver_required) x86 Redistributable version $(var.min_vs14_major).$(var.min_vs14_minor). Please install the Redistributable then run this installer again." />
     <?endif?>
     <InstallExecuteSequence>
       <Custom Action="DwordToNumber" Before="LaunchConditions" />
