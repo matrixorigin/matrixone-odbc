@@ -68,6 +68,9 @@ inline struct tm *gmtime_r(const time_t *clock, struct tm *res) {
   return res;
 }
 
+namespace myodbc
+{
+
 /**
    Sleep the given number of seconds. POSIX compatibility.
 
@@ -76,6 +79,8 @@ inline struct tm *gmtime_r(const time_t *clock, struct tm *res) {
 inline void sleep(unsigned long seconds) {
   std::this_thread::sleep_for(std::chrono::seconds{seconds});
 }
+
+} /* namespace myodbc */
 
 #endif /* _WIN32 */
 
