@@ -74,7 +74,7 @@ IF(WIN32)
   ENDIF(${LICENSE})
   WRITE_FILE("myodbc_version.wxs" "</Include>" APPEND)
   # --------------------------------------------------
-  INCLUDE(${CMAKE_SOURCE_DIR}/myodbc_version.cmake)
+  INCLUDE(${CMAKE_BINARY_DIR}/myodbc_version.cmake)
 
   IF(ODBC_VERSION_SUFFIX STREQUAL "a")
 	  SET(PACKAGE_SUFFIX "a")
