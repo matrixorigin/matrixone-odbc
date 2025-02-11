@@ -1864,7 +1864,6 @@ SQLRETURN SQL_API SQLPutData( SQLHSTMT      hstmt,
 */
 SQLRETURN SQL_API SQLCancel(SQLHSTMT hstmt)
 {
-  MYSQL *second= NULL;
   DBC *dbc;
   STMT *stmt = (STMT *)hstmt;
 
@@ -1892,7 +1891,8 @@ SQLRETURN SQL_API SQLCancel(SQLHSTMT hstmt)
     interfere with the existing one. Therefore, locking is not needed in
     the following block.
   */
-  second = new_mysql();
+  std::unique_ptr<MYSQL, decltype(&mysql_close)>
+    second(new_mysql(), mysql_close);
 
   if (!second)
   {
@@ -1905,7 +1905,7 @@ SQLRETURN SQL_API SQLCancel(SQLHSTMT hstmt)
 
   /** @todo need to preserve and use ssl params */
 
-  if (!mysql_real_connect(second, dbc->ds.opt_SERVER, dbc->ds.opt_UID,
+  if (!mysql_real_connect(second.get(), dbc->ds.opt_SERVER, dbc->ds.opt_UID,
                           dbc->ds.opt_PWD, NULL, dbc->ds.opt_PORT,
                           dbc->ds.opt_SOCKET, 0))
   {
@@ -1917,15 +1917,12 @@ SQLRETURN SQL_API SQLCancel(SQLHSTMT hstmt)
     char buff[40];
     /* buff is always big enough because max length of %lu is 15 */
     myodbc_snprintf(buff, sizeof(buff), "KILL /*!50000 QUERY */ %lu", mysql_thread_id(dbc->mysql));
-    if (mysql_real_query(second, buff, (unsigned long)strlen(buff)))
+    if (mysql_real_query(second.get(), buff, (unsigned long)strlen(buff)))
     {
-      mysql_close(second);
       /* We do not set the SQLSTATE here, per the ODBC spec. */
       return SQL_ERROR;
     }
   }
-
-  mysql_close(second);
 
   return SQL_SUCCESS;
 }
