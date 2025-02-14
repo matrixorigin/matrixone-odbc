@@ -198,6 +198,11 @@ DESCREC *desc_get_rec(DESC *desc, int recnum, my_bool expand)
 {
   DESCREC *rec= NULL;
 
+  /*
+    The only bookmark use the driver supports is SQL_UB_VARIABLE.
+    If bookmarks are enabled it is always set.
+    Otherwise the negative column number is invalid.
+  */
   if (recnum == -1 && desc->stmt->stmt_options.bookmarks == SQL_UB_VARIABLE)
   {
     if (expand)

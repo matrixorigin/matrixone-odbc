@@ -1362,6 +1362,14 @@ SQLRETURN SQL_API SQLBindCol(SQLHSTMT      StatementHandle,
   if (!TargetValuePtr && !StrLen_or_IndPtr) /* Handling unbinding */
   {
     /*
+      In ODBC specification zero column number reserved for bookmark use.
+      Normal columns numeration starts from 1.
+      If no records in ARD there is nothing to do, just return success.
+    */
+    if (!ColumnNumber && !stmt->ard->rcount())
+      return SQL_SUCCESS;
+
+    /*
        If unbinding the last bound column, we reduce the
        ARD records until the highest remaining bound column.
     */
@@ -1379,6 +1387,11 @@ SQLRETURN SQL_API SQLBindCol(SQLHSTMT      StatementHandle,
     }
     else
     {
+      /*
+        For ColumnNumber == 0 (bookmark) the parameter number value
+        passed to desc_get_rec() will be negative (-1), which is normal
+        because the function knows how to handle this.
+      */
       arrec= desc_get_rec(stmt->ard, ColumnNumber - 1, FALSE);
       if (arrec)
       {
@@ -1396,6 +1409,11 @@ SQLRETURN SQL_API SQLBindCol(SQLHSTMT      StatementHandle,
                           MYERR_07009);
   }
 
+  /*
+    For ColumnNumber == 0 (bookmark) the parameter number value
+    passed to desc_get_rec() will be negative (-1), which is normal
+    because the function knows how to handle this.
+  */
   arrec= desc_get_rec(stmt->ard, ColumnNumber - 1, TRUE);
 
   if ((rc= stmt_SQLSetDescField(stmt, stmt->ard, ColumnNumber,

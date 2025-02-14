@@ -1591,7 +1591,36 @@ DECLARE_TEST(t_bug37298936_pad_spaces)
 }
 
 
+/*
+  Bug#18641803 - ASSERT FAILURE IN SQLBINDCOL WHEN CALLED WITHOUT
+  SETTING SQL_ATTR_USE_BOOKMARKS
+*/
+DECLARE_TEST(t_bug18641803_bind_col)
+{
+  try
+  {
+    odbc::stmt_prepare(hstmt, "SELECT 1234");
+
+    ok_stmt(hstmt, SQLBindCol(hstmt, 0, SQL_C_VARBOOKMARK, NULL, 0, NULL));
+    ok_stmt(hstmt, SQLBindCol(hstmt, 0, SQL_C_VARBOOKMARK, NULL, 0, NULL));
+
+    odbc::stmt_execute(hstmt);
+    int rnum = 0;
+    odbc::xbuf buf(16);
+
+    while (SQL_SUCCESS == SQLFetch(hstmt))
+    {
+      const char *s = odbc::my_fetch_str(hstmt, buf, 1);
+      is_str("1234", s, SQL_NTS);
+      ++rnum;
+    }
+    is_num(1, rnum);
+  }
+  ENDCATCH;
+}
+
 BEGIN_TESTS
+  ADD_TEST(t_bug18641803_bind_col)
   ADD_TEST(t_bug37298936_pad_spaces)
   ADD_TEST(t_bug37286526_empty_blob)
   ADD_TEST(t_wl16171_vector)
