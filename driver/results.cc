@@ -1633,7 +1633,32 @@ SQLRETURN SQL_API SQLMoreResults( SQLHSTMT hstmt )
         nReturn = stmt->set_error("HY000");
         goto exitSQLMoreResults;
       default:
-        nReturn = stmt->set_error("HY000", "unhandled error from mysql_next_result()", nRetVal );
+        /*
+          As per ODBC specs [1]:
+
+          If one of the statements in a batch fails, SQLMoreResults will return
+          either SQL_ERROR or SQL_SUCCESS_WITH_INFO. If the batch was aborted
+          when the statement failed or the failed statement was the last
+          statement in the batch, SQLMoreResults will return SQL_ERROR.
+          If the batch was not aborted when the statement failed and the
+          failed statement was not the last statement in the batch,
+          SQLMoreResults will return SQL_SUCCESS_WITH_INFO.
+          SQL_SUCCESS_WITH_INFO indicates that at least one result set
+          or count was generated and that the batch was not aborted.
+
+          [1] https://learn.microsoft.com/en-us/sql/odbc/reference/develop-app/multiple-results?view=sql-server-ver16
+
+          In case of MySQL a batch is aborted upon the first encountered error
+          so we return SQL_ERROR in that case.
+
+          NOTE: For multiple result sets returned by a stored procedure one
+                could consider using error handlers to intercept errors and
+                resume execution after the error.
+        */
+
+        nReturn = stmt->set_error("HY000",
+          mysql_error(stmt->dbc->mysql), nRetVal);
+
         goto exitSQLMoreResults;
     }
   }

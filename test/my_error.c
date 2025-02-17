@@ -892,7 +892,7 @@ BEGIN_TESTS
   ADD_TEST(getdata_need_nullind)
   ADD_TEST(sqlerror)
   ADD_TEST(t_bug27158)
-  // ADD_TOFIX(t_bug49466) TODO: Fix
+  ADD_TEST(t_bug49466)
   // ADD_TEST(t_cleartext_password) TODO: Fix Segfault
 END_TESTS
 
