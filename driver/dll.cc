@@ -41,7 +41,6 @@ static int mysys_inited=0;
 std::string current_dll_location;
 std::string default_plugin_location;
 
-
 /*
   Sigpipe handler
 */

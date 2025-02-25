@@ -2441,35 +2441,67 @@ my_bool is_minimum_version(const char *server_version,const char *version)
 }
 
 
-/**
- Escapes a string that may contain wildcard characters (%, _) and other
- problematic characters (", ', \n, etc). Like mysql_real_escape_string() but
- also including % and _. Can be used with an identified by passing escape_id.
+/*
+  Escapes a string that may contain wildcard characters (%, _) and other
+  problematic characters (", ', \n, etc) to produce a valid SQL string literal to be enclosed
+  in single quotes (the quotes are not added).
 
- @param[in]   mysql         Pointer to MYSQL structure
- @param[out]  to            Buffer for escaped string
- @param[in]   to_length     Length of destination buffer, or 0 for "big enough"
- @param[in]   from          The string to escape
- @param[in]   length        The length of the string to escape
- @param[in]   escape_id     Escaping an identified that will be quoted
+  If escape_id is true then treats input string as an identifier name and produces literal to be
+  enclosed in backquotes -- in that case the only escaping that happens is doubling the backquote
+  character if it is part of the identifier name.
 
+  Note: If server flag SERVER_STATUS_NO_BACKSLASH_ESCAPES is enabled then no backslash escaping
+  can be used and the only escaping that happens is doubling single quote characters.
+
+  Note: This function is analogous to mysql_real_escape_string() but can also escape wildcard
+  characters.
+
+  @param[in]   mysql         Pointer to MYSQL structure
+  @param[out]  to            Buffer for escaped string
+  @param[in]   to_length     Length of destination buffer, or 0 for "big enough"
+  @param[in]   from          The string to escape
+  @param[in]   length        The length of the string to escape
+  @param[in]   escape_id     If true then escape an identifier, otherwise a string literal
+  @param[in]   esc_wildcard  Escaping wildcard (true) _ and % or allowing
+                             wildcard characters (false) unescaped
 */
+
 ulong myodbc_escape_string(STMT *stmt,
                            char *to, ulong to_length,
-                           const char *from, ulong length, int escape_id)
+                           const char *from, ulong length,
+                           bool escape_id,
+                           bool esc_wildcard)
 {
   const char *to_start= to;
   const char *end, *to_end=to_start + (to_length ? to_length-1 : 2*length);
+
   my_bool overflow= FALSE;
-  /*get_charset_by_csname(charset,
-                        MYF(MY_CS_PRIMARY),
-                        MYF(0));*/
   myodbc::CHARSET_INFO *charset_info= stmt->dbc->cxn_charset_info;
+
+  /*
+    The character to be escaped by doubling it -- for identifiers it is the backquote, for string
+    literals it is the single quote.
+  */
+
+  char double_char = (escape_id ? '`' : '\'');
+
+  /*
+    Whether to use backslash escapes. Note that this is not the case when escaping an identifier.
+  */
+
+  bool use_backslash
+    = (!escape_id &&
+      !(stmt->dbc->mysql->server_status & SERVER_STATUS_NO_BACKSLASH_ESCAPES));
+
   my_bool use_mb_flag= use_mb(charset_info);
+
   for (end= from + length; from < end; ++from)
   {
     char escape= 0;
     int tmp_length;
+
+    // Handle multi-byte sequences
+
     if (use_mb_flag && (tmp_length= my_ismbchar(charset_info, from, end)))
     {
       if (to + tmp_length > to_end)
@@ -2482,49 +2514,57 @@ ulong myodbc_escape_string(STMT *stmt,
       --from;
       continue;
     }
-    /*
-     If the next character appears to begin a multi-byte character, we
-     escape that first byte of that apparent multi-byte character. (The
-     character just looks like a multi-byte character -- if it were actually
-     a multi-byte character, it would have been passed through in the test
-     above.)
 
-     Without this check, we can create a problem by converting an invalid
-     multi-byte character into a valid one. For example, 0xbf27 is not
-     a valid GBK character, but 0xbf5c is. (0x27 = ', 0x5c = \)
-    */
-    if (use_mb_flag && (tmp_length= my_mbcharlen(charset_info, *from)) > 1)
+    if (double_char && *from == double_char)
+      escape = double_char;
+
+      /*
+        If the next character appears to begin a multi-byte character, we
+        escape that first byte of that apparent multi-byte character. (The
+        character just looks like a multi-byte character -- if it were actually
+        a multi-byte character, it would have been passed through in the test
+        above.)
+
+        Without this check, we can create a problem by converting an invalid
+        multi-byte character into a valid one. For example, 0xbf27 is not
+        a valid GBK character, but 0xbf5c is. (0x27 = ', 0x5c = \)
+      */
+
+    else if (use_mb_flag && (tmp_length= my_mbcharlen(charset_info, *from)) > 1)
       escape= *from;
-    else
-    switch (*from) {
-    case 0:         /* Must be escaped for 'mysql' */
-      escape= '0';
-      break;
-    case '\n':      /* Must be escaped for logs */
-      escape= 'n';
-      break;
-    case '\r':
-      escape= 'r';
-      break;
-    case '\\':
-    case '\'':
-    case '"':       /* Better safe than sorry */
-    case '_':
-    case '%':
-      escape= *from;
-      break;
-    case '\032':    /* This gives problems on Win32 */
-      escape= 'Z';
-      break;
-    }
-    /* if escaping an id, only handle back-tick */
-    if (escape_id)
-    {
-      if (*from == '`')
+
+      /*
+        Note: If use_backslash is false then we will not set `escape` character and the logic
+        below will copy input to output as is.
+      */
+
+    else if (use_backslash)
+      switch (*from)
+      {
+      case 0:         // Must be escaped for 'mysql'
+        escape= '0';
+        break;
+      case '\n':      // Must be escaped for logs
+        escape= 'n';
+        break;
+      case '\r':
+        escape= 'r';
+        break;
+      case '\\':
+      case '\'':
+      case '"':       // Better safe than sorry
         escape= *from;
-      else
-        escape= 0;
-    }
+        break;
+      case '\032':    // This gives problems on Win32
+        escape= 'Z';
+        break;
+      case '_':       // Escaping of the pattern characters
+      case '%':
+        if (esc_wildcard)
+          escape = *from;
+        break;
+      }
+
     if (escape)
     {
       if (to + 2 > to_end)
@@ -2532,7 +2572,7 @@ ulong myodbc_escape_string(STMT *stmt,
         overflow= TRUE;
         break;
       }
-      *to++= escape != '`' ? '\\' : '`';
+      *to++= (escape == double_char ? escape : '\\');
       *to++= escape;
     }
     else
@@ -2544,7 +2584,9 @@ ulong myodbc_escape_string(STMT *stmt,
       }
       *to++= *from;
     }
-  }
+
+  }  // for
+
   *to= 0;
   return overflow ? (ulong)~0 : (ulong) (to - to_start);
 }

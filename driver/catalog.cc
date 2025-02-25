@@ -270,8 +270,6 @@ create_empty_fake_resultset(STMT *stmt, MYSQL_ROW rowval,
 
   @param[in] stmt           Handle to statement
   @param[in] db_name        Database of table, @c NULL for current
-  @param[in] db_len         Length of database name
-  @param[in] wildcard       Whether the table name is a wildcard
 
   @return Result of SELECT ... FROM I_S.SCHEMATA or NULL if there is an error
           or empty result (check mysql_errno(stmt->dbc->mysql) != 0)
@@ -292,7 +290,7 @@ MYSQL_RES *db_status(STMT *stmt, std::string &db)
   {
     query.append("SCHEMA_NAME LIKE '");
     cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-                              (char *)db.c_str(), (ulong)db.length(), 1);
+      (char *)db.c_str(), (ulong)db.length());
     query.append(tmpbuff, cnt);
     query.append("' ");
   }
@@ -353,7 +351,7 @@ static MYSQL_RES *table_status_i_s(STMT    *stmt,
   {
     query.append("TABLE_SCHEMA LIKE '");
     cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-                              (char *)db_name, db_len, 1);
+                              (char *)db_name, db_len);
     query.append(tmpbuff, cnt);
     query.append("' ");
   }
@@ -393,17 +391,14 @@ static MYSQL_RES *table_status_i_s(STMT    *stmt,
   if (table_name && *table_name)
   {
     query.append("AND TABLE_NAME LIKE '");
-    if (wildcard)
-    {
-      cnt = mysql_real_escape_string(mysql, tmpbuff, (char *)table_name, table_len);
-      query.append(tmpbuff, cnt);
-    }
-    else
-    {
-      cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-                                (char *)table_name, table_len, 0);
-      query.append(tmpbuff, cnt);
-    }
+
+    /*
+      Note: If the table name is not a wildcard we escape wildcard
+            patterns in it
+    */
+    cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+      (char *)table_name, table_len, false, !wildcard);
+    query.append(tmpbuff, cnt);
     query.append("'");
   }
 
@@ -477,7 +472,8 @@ int add_name_condition_oa_id(HSTMT hstmt, std::string &query, SQLCHAR * name,
 
     query.append("'");
     char tmpbuff[1024];
-    size_t cnt = mysql_real_escape_string(stmt->dbc->mysql, tmpbuff, (char *)name, name_len);
+    size_t cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+      (char *)name, name_len);
     query.append(tmpbuff, cnt);
     query.append("' ");
   }
@@ -523,8 +519,8 @@ int add_name_condition_pv_id(HSTMT hstmt, std::string &query, SQLCHAR * name,
 
     query.append("'");
     char tmpbuff[1024];
-    size_t cnt = mysql_real_escape_string(stmt->dbc->mysql, tmpbuff,
-                                          (char *)name, name_len);
+    size_t cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+      (char *)name, name_len);
     query.append(tmpbuff, cnt);
     query.append("' ");
   }
@@ -706,8 +702,8 @@ void ODBC_CATALOG::add_param(const char *qstr, SQLCHAR *data,
 {
   query.append(qstr);
   query.append("'");
-  auto cnt = mysql_real_escape_string(stmt->dbc->mysql,
-    temp.buf, (char*)data, len);
+  size_t cnt = myodbc_escape_string(stmt, temp.buf, temp.buf_len,
+    (char *)data, len);
   query.append(temp.buf, cnt);
   query.append("'");
 }
@@ -880,7 +876,8 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
   ocat.add_column("IF(ISNULL(NUMERIC_PRECISION), NULL, 10) as NUM_PREC_RADIX");
   ocat.add_column("IF(EXTRA LIKE '%auto_increment%', 'YES', IS_NULLABLE) as NULLABLE");
   ocat.add_column("COLUMN_COMMENT as REMARKS");
-  ocat.add_column("IF(ISNULL(COLUMN_DEFAULT), 'NULL', IF(ISNULL(NUMERIC_PRECISION), CONCAT('\\'', COLUMN_DEFAULT, '\\''),COLUMN_DEFAULT)) as COLUMN_DEF");
+  // Escaping a single quote ' with '' works always for all SQL modes
+  ocat.add_column("IF(ISNULL(COLUMN_DEFAULT), 'NULL', IF(ISNULL(NUMERIC_PRECISION), CONCAT('''', COLUMN_DEFAULT, ''''),COLUMN_DEFAULT)) as COLUMN_DEF");
   ocat.add_column("0 as SQL_DATA_TYPE");
   ocat.add_column("NULL as SQL_DATA_TYPE_SUB");
   ocat.add_column("CASE DATA_TYPE"
@@ -1689,8 +1686,8 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
     if (!pk_db.empty())
     {
       query.append("'");
-      cnt = mysql_real_escape_string(mysql, tmpbuff, pk_db.c_str(),
-                                     (unsigned long)pk_db.length());
+      cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+        pk_db.c_str(), (unsigned long)pk_db.length());
       query.append(tmpbuff, cnt);
       query.append("' ");
     }
@@ -1700,9 +1697,8 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
     }
 
     query.append("AND A.REFERENCED_TABLE_NAME = '");
-
-    cnt = mysql_real_escape_string(mysql, tmpbuff, (char *)pk_table,
-                                    pk_table_len);
+    cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+      (char *)pk_table, pk_table_len);
     query.append(tmpbuff, cnt);
     query.append("' ");
 
@@ -1716,8 +1712,8 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
     if (!fk_db.empty())
     {
       query.append("'");
-      cnt = mysql_real_escape_string(mysql, tmpbuff, fk_db.c_str(),
-                                     (unsigned long)fk_db.length());
+      cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+        fk_db.c_str(), (unsigned long)fk_db.length());
       query.append(tmpbuff, cnt);
       query.append("' ");
     }
@@ -1728,8 +1724,8 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
 
     query.append("AND A.TABLE_NAME = '");
 
-    cnt = mysql_real_escape_string(mysql, tmpbuff, (char *)fk_table,
-                                    fk_table_len);
+    cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
+      (char*)fk_table, fk_table_len);
     query.append(tmpbuff, cnt);
     query.append("' ");
 

@@ -1197,7 +1197,9 @@ SQLRETURN insert_param(STMT *stmt, MYSQL_BIND *bind, DESC* apd,
           goto memerror;
         }
 
-        size_t added = mysql_real_escape_string(dbc->mysql, stmt->endbuf(), data, length);
+        size_t added = myodbc_escape_string(stmt, stmt->endbuf(),
+          stmt->buf_len() - stmt->buf_pos(), data, length);
+
         stmt->buf_add_pos(added);
         stmt->add_to_buffer("'", 1);
       }

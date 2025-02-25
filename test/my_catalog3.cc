@@ -218,7 +218,63 @@ DECLARE_TEST(t_sqlmode_sqlcolumns) {
 }
 
 
+/*
+  Bug#37250400 - ODBC connector uses deprecated
+  mysql_real_escape_string function
+*/
+
+DECLARE_TEST(t_bug37250400_mysql_escape) {
+  try {
+    odbc::table t(hstmt, "bug37250400_mysql_escape",
+      "id_col int primary key auto_increment, vc_col varchar(32)");
+
+    auto fetch_test = [&hstmt, &t] (unsigned idx) {
+      int rnum = 0;
+      odbc::xbuf buf(128);
+      while (SQL_SUCCESS == SQLFetch(hstmt)) {
+        // Test col name
+        const char *char_data = my_fetch_str(hstmt, buf, idx);
+        is_str("id_col", char_data, 6);
+        ++rnum;
+      }
+      return rnum;
+    };
+
+    for (auto m1 : { "", "NO_BACKSLASH_ESCAPES" }) {
+      for (auto m2 : { "", "ANSI_QUOTES" }) {
+        // Set some non-intrusive mode to avoid meddling with commas
+        odbc::xstring mode = "SET SESSION sql_mode='IGNORE_SPACE";
+
+        if (*m1)
+          mode.append(",").append(m1);
+        if (*m2)
+          mode.append(",").append(m2);
+
+        mode.append("'");
+
+        odbc::stmt_close(hstmt);
+        odbc::sql(hstmt, mode);
+
+        // SQLColumns() and SQLSpecialColumns() were impacted by the bug.
+        odbc::stmt_close(hstmt);
+        ok_stmt(hstmt, SQLColumns(hstmt, nullptr, 0, nullptr, 0,
+          (SQLCHAR*)t.table_name.c_str(), SQL_NTS, (SQLCHAR*)"id_col", SQL_NTS));
+        is_num(1, fetch_test(4));
+
+        odbc::stmt_close(hstmt);
+        ok_stmt(hstmt, SQLSpecialColumns(hstmt, SQL_BEST_ROWID, nullptr, 0, nullptr, 0,
+          (SQLCHAR*)t.table_name.c_str(), SQL_NTS, SQL_SCOPE_SESSION, SQL_NULLABLE));
+        is_num(1, fetch_test(2));
+
+      }
+    }
+  }
+  ENDCATCH;
+}
+
+
 BEGIN_TESTS
+  ADD_TEST(t_bug37250400_mysql_escape)
   ADD_TEST(t_sqlmode_sqlcolumns)
   ADD_TEST(t_bug35316630_sqlstatistics)
   ADD_TEST(t_bug34355094_sqlcolumns_wchar)

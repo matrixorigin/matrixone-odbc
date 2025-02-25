@@ -289,7 +289,9 @@ int     myodbc_casecmp            (const char *s, const char *t, uint len);
 int     reget_current_catalog     (DBC *dbc);
 
 ulong   myodbc_escape_string      (STMT *stmt, char *to, ulong to_length,
-                                  const char *from, ulong length, int escape_id);
+                                  const char *from, ulong length,
+                                  bool escape_id = false,
+                                  bool esc_wildcard = false);
 
 DESCREC*  desc_get_rec            (DESC *desc, int recnum, my_bool expand);
 

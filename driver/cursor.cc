@@ -224,8 +224,9 @@ static my_bool check_if_usable_unique_key_exists(STMT *stmt)
 
   /* Use SHOW KEYS FROM table to check for keys. */
   pos= myodbc_stpmov(buff, "SHOW KEYS FROM `");
-  pos+= mysql_real_escape_string(stmt->dbc->mysql, pos, table,
-    (unsigned long)strlen(table));
+  // Note: The string is escaped as identifier.
+  pos += myodbc_escape_string(stmt, pos, 0,
+      (char*)table, strlen(table), true);
   pos= myodbc_stpmov(pos, "`");
 
   MYLOG_QUERY(stmt, buff);
