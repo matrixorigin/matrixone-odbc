@@ -1234,9 +1234,13 @@ char * ssps_get_string(STMT *stmt, ulong column_number, char *value, ulong *leng
       MYSQL_TIME * t = (MYSQL_TIME *)(col_rbind->buffer);
 
       buffer= ALLOC_IFNULL(buffer, 20);
-      myodbc_snprintf(buffer, 10, "%s%02u:%02u:%02u", t->neg? "-":"", t->hour,
+
+      // Hours can be three digits (838 max value for hours).
+      ulong hour_extra = t->hour < 100 ? 0 : 1;
+
+      myodbc_snprintf(buffer, 10 + hour_extra, "%s%02u:%02u:%02u", t->neg? "-":"", t->hour,
                                               t->minute, t->second);
-      *length= t->neg ? 9 : 8;
+      *length= (t->neg ? 9 : 8) + hour_extra;
 
       if (t->second_part > 0)
       {

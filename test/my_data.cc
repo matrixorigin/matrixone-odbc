@@ -1619,7 +1619,66 @@ DECLARE_TEST(t_bug18641803_bind_col)
   ENDCATCH;
 }
 
+
+/*
+  Bug#37071646 - Time type not formatted correctly in SSPS mode
+*/
+DECLARE_TEST(t_bug37071646_time_format)
+{
+  try {
+
+    /*
+      Checking the min and max time values and also the fractional
+      seconds close to min and max values.
+    */
+    odbc::xstring vals[][2] = {
+      {"-838:59:59", "-838:59:58.987654"},
+      {"838:59:59", "838:59:58.987654"}
+    };
+
+    odbc::table tab(hstmt, "tab37071646", "typetime1 TIME(0), typetime2 TIME(6)");
+    odbc::xstring ins = "('";
+
+    ins.append(vals[0][0]).append("','").append(vals[0][1]).append("'),('").
+        append(vals[1][0]).append("','").append(vals[1][1]).append("')");
+    tab.insert(ins);
+
+    // It should work with both SSPS and and client-side statements
+    for (odbc::xstring opt : {"NO_SSPS=0", "NO_SSPS=1"}) {
+      odbc::connection con(nullptr, nullptr, nullptr, nullptr, opt);
+      SQLHSTMT hstmt1 = con.hstmt;
+
+      odbc::stmt_prepare(hstmt1,
+        "SELECT * FROM tab37071646 order by typetime1 ASC");
+
+      char buf[2][128];
+      SQLLEN len[] = {0, 0};
+      ok_stmt(hstmt1,
+        SQLBindCol(hstmt1, 1, SQL_C_CHAR, &buf[0], 128, &len[0]));
+      ok_stmt(hstmt1,
+        SQLBindCol(hstmt1, 2, SQL_C_CHAR, &buf[1], 128, &len[1]));
+
+      odbc::stmt_execute(hstmt1);
+
+      for (auto rv : vals) {
+        ok_stmt(hstmt1, SQLFetch(hstmt1));
+        // Check returned data lengths
+        is_num(rv[0].length(), len[0]);
+        is_num(rv[1].length(), len[1]);
+        // Check the data
+        is_str(rv[0], buf[0], rv[0].length());
+        is_str(rv[1], buf[1], rv[1].length());
+      }
+
+      is(SQL_NO_DATA == SQLFetch(hstmt1));
+    }
+  }
+  ENDCATCH;
+}
+
+
 BEGIN_TESTS
+  ADD_TEST(t_bug37071646_time_format)
   ADD_TEST(t_bug18641803_bind_col)
   ADD_TEST(t_bug37298936_pad_spaces)
   ADD_TEST(t_bug37286526_empty_blob)
