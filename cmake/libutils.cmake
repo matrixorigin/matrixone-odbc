@@ -328,10 +328,7 @@ function(mangle_osx_rpaths TARGET)
   #message("rpath mangling for target: ${TARGET}")
 
   set(paths_to_mangle)
-  list(APPEND paths_to_mangle "libssl.1.0.0.dylib")
-  list(APPEND paths_to_mangle "libcrypto.1.0.0.dylib")
-  list(APPEND paths_to_mangle "libssl.1.1.dylib")
-  list(APPEND paths_to_mangle "libcrypto.1.1.dylib")
+  # Only OpenSSL 3 is regarded as secure at the moment.
   list(APPEND paths_to_mangle "libssl.3.dylib")
   list(APPEND paths_to_mangle "libcrypto.3.dylib")
 

@@ -799,6 +799,19 @@ function(bundle_lib lib)
       DESTINATION "${INSTALL_LIBDIR}"
       COMPONENT OdbcDll
     )
+
+    # Symlinks need to be created to allow authenticating
+    # plugins to load dependencies in MacOS
+    #
+    # NOTE: in Linux the dependencies are adressed in
+    #       a different way
+    install(CODE "
+      execute_process(
+        COMMAND ${CMAKE_COMMAND} -E create_symlink ../${lib_name} ${lib_name}
+        WORKING_DIRECTORY \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/lib/plugin\"
+      )
+    ")
+
   else()
     install(FILES ${lib}
       DESTINATION "${INSTALL_LIBDIR}/private"
