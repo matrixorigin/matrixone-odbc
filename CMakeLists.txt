@@ -129,47 +129,55 @@ IF(SYSCONFDIR)
   SET(DEFAULT_SYSCONFDIR "${SYSCONFDIR}")
 ENDIF()
 
+# Detect use of clang compiler with MSVC
+
+if(MSVC)
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(CLANG ${CMAKE_CXX_COMPILER_VERSION} CACHE INTERNAL "")
+  endif()
+endif()
+
 #
 # Macro to enable C++14 for all targets in the current directory and below.
 #
 
 macro(enable_cxx14)
 
-if((CMAKE_VERSION VERSION_LESS 3.1) OR (CMAKE_CXX_COMPILER_ID MATCHES "SunPro"))
+  if((CMAKE_VERSION VERSION_LESS 3.1) OR (CMAKE_CXX_COMPILER_ID MATCHES "SunPro"))
 
-  # Note: cmake does not know how to enable C++14 for SunPro compiler
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+    # Note: cmake does not know how to enable C++14 for SunPro compiler
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
-else()
+  else()
 
-  # use C++14
-  set(CMAKE_CXX_STANDARD 14)
-  # error out if not supported
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  # do not use compiler specific extensions
-  set(CMAKE_CXX_EXTENSIONS OFF)
+    # use C++14
+    set(CMAKE_CXX_STANDARD 14)
+    # error out if not supported
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    # do not use compiler specific extensions
+    set(CMAKE_CXX_EXTENSIONS OFF)
 
-endif()
+  endif()
 
 endmacro()
 
 macro(enable_cxx17)
 
-if((CMAKE_VERSION VERSION_LESS 3.8) OR (CMAKE_CXX_COMPILER_ID MATCHES "SunPro"))
+  if((CMAKE_VERSION VERSION_LESS 3.8) OR (CMAKE_CXX_COMPILER_ID MATCHES "SunPro"))
 
-  # Note: cmake does not know how to enable C++17 for SunPro compiler
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    # Note: cmake does not know how to enable C++17 for SunPro compiler
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 
-else()
+  else()
 
-  # use C++14
-  set(CMAKE_CXX_STANDARD 17)
-  # error out if not supported
-  set(CMAKE_CXX_STANDARD_REQUIRED ON)
-  # do not use compiler specific extensions
-  set(CMAKE_CXX_EXTENSIONS OFF)
+    # use C++14
+    set(CMAKE_CXX_STANDARD 17)
+    # error out if not supported
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    # do not use compiler specific extensions
+    set(CMAKE_CXX_EXTENSIONS OFF)
 
-endif()
+  endif()
 
 endmacro()
 
@@ -374,16 +382,31 @@ ENDIF()
     ADD_DEFINITIONS(-DTHREAD)
   ENDIF(NOT NO_THREADS)
 
-#------------ build options for windows --------------
+#------------ build options --------------
+
+option(WERROR "Treat warnings as errors" OFF)
+
+if(WERROR OR FIX_WARNINGS)
+
+  if(MSVC AND NOT CLANG)
+    set(WERROR /WX)
+  else()
+    set(WERROR -Werror)
+  endif()
+
+  add_compile_options(${WERROR})
+
+endif()
 
 set(MAINTAINER_MODE OFF CACHE BOOL "Build sources in maintainer mode")
 mark_as_advanced(MAINTAINER_MODE)
 
-IF(WIN32)
-        REMOVE_DEFINITIONS(-DUNICODE)
-        ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
-        ADD_DEFINITIONS(-DENGLISH -D_USERDLL)
-        ADD_DEFINITIONS(-D_WIN32 -DWIN32 -D_WINDOWS -D__WIN__)
+if(WIN32)
+
+  REMOVE_DEFINITIONS(-DUNICODE)
+  ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
+  ADD_DEFINITIONS(-DENGLISH -D_USERDLL)
+  ADD_DEFINITIONS(-D_WIN32 -DWIN32 -D_WINDOWS -D__WIN__)
 
   #Since 5.5.13 libmysql introduces dependency on Secur32.lib
   FILE(STRINGS "${MYSQL_INCLUDE_DIR}\\mysql_version.h" mysql_version REGEX "^\#define[ \t]+MYSQL_VERSION_ID")
@@ -395,44 +418,17 @@ IF(WIN32)
     SET(SECURE32_LIB Secur32)
   ENDIF(MYSQL_CLIENT_VERSION GREATER 50512)
 
-        # edits for all config build flags
-        FOREACH(TYPE C CXX)
-                # makefiles use blank configuration
-                FOREACH(CFG "_DEBUG" "_MINSIZEREL" "_RELEASE" "_RELWITHDEBINFO")
+else()
 
-                        SET(NEW_FLAGS "${CMAKE_${TYPE}_FLAGS${CFG}}")
+  ADD_DEFINITIONS(-D_UNIX_)
 
-                        # fix up static libc flags
-                        IF(STATIC_MSVCRT)
-                          STRING(REPLACE "/MD" "/MT" NEW_FLAGS "${NEW_FLAGS}")
-                          IF(CFG STREQUAL "_DEBUG")
-                            SET(NEW_FLAGS "${NEW_FLAGS} /MTd")
-                          ELSEIF()
-                            SET(NEW_FLAGS "${NEW_FLAGS} /MT")
-                          ENDIF()
-                        ELSEIF()
-                          STRING(REPLACE "/MT" "/MD" NEW_FLAGS "${NEW_FLAGS}")
-                          IF(CFG STREQUAL "_DEBUG")
-                            SET(NEW_FLAGS "${NEW_FLAGS} /MDd")
-                          ELSEIF()
-                            SET(NEW_FLAGS "${NEW_FLAGS} /MD")
-                          ENDIF()
-                        ENDIF()
+endif()
 
-                        # Add some additional help for debug builds
-                        IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                                STRING(REPLACE "/Zi" "/ZI" NEW_FLAGS "${NEW_FLAGS}")
-                                SET(NEW_FLAGS "${NEW_FLAGS} /RTC1 ")
-                        ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug")
+# Warning options
 
-                        # *FORCE* to override whats already placed into the cache
-                        SET(CMAKE_${TYPE}_FLAGS${CFG} "${NEW_FLAGS}" CACHE STRING
-                                "CMAKE_${TYPE}_FLAGS${CFG} (overwritten for odbc)" FORCE)
+if(MSVC AND NOT CLANG)
 
-                ENDFOREACH(CFG)
-        ENDFOREACH(TYPE)
-
-  if (FIX_WARNINGS)
+  if (FIX_WARNINGS OR WERROR)
 
     # TODO: Increase warning level and once all warnings are cleared, enable
     # higher warning level in MAINTAINER_MODE. We start with no warnings on
@@ -446,20 +442,53 @@ IF(WIN32)
 
   endif()
 
+  # edits for all config build flags
 
-ELSE(WIN32)
+  FOREACH(TYPE C CXX)
+    # makefiles use blank configuration
+    FOREACH(CFG "_DEBUG" "_MINSIZEREL" "_RELEASE" "_RELWITHDEBINFO")
 
-  ADD_DEFINITIONS(-D_UNIX_)
+      SET(NEW_FLAGS "${CMAKE_${TYPE}_FLAGS${CFG}}")
 
-  if(FIX_WARNINGS)
+      # fix up static libc flags
+      IF(STATIC_MSVCRT)
+        STRING(REPLACE "/MD" "/MT" NEW_FLAGS "${NEW_FLAGS}")
+        IF(CFG STREQUAL "_DEBUG")
+          SET(NEW_FLAGS "${NEW_FLAGS} /MTd")
+        ELSEIF()
+          SET(NEW_FLAGS "${NEW_FLAGS} /MT")
+        ENDIF()
+      ELSEIF()
+        STRING(REPLACE "/MT" "/MD" NEW_FLAGS "${NEW_FLAGS}")
+        IF(CFG STREQUAL "_DEBUG")
+          SET(NEW_FLAGS "${NEW_FLAGS} /MDd")
+        ELSEIF()
+          SET(NEW_FLAGS "${NEW_FLAGS} /MD")
+        ENDIF()
+      ENDIF()
+
+      # Add some additional help for debug builds
+      IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        STRING(REPLACE "/Zi" "/ZI" NEW_FLAGS "${NEW_FLAGS}")
+        SET(NEW_FLAGS "${NEW_FLAGS} /RTC1 ")
+      ENDIF(CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+      # *FORCE* to override whats already placed into the cache
+      SET(CMAKE_${TYPE}_FLAGS${CFG} "${NEW_FLAGS}" CACHE STRING
+              "CMAKE_${TYPE}_FLAGS${CFG} (overwritten for odbc)" FORCE)
+
+    ENDFOREACH(CFG)
+  ENDFOREACH(TYPE)
+
+else()
+
+  if(FIX_WARNINGS OR WERROR)
 
     # TODO: Fix the compile warnings generated without `-w`. Once done,
     # remove this option in MAINTAINER_MODE so that we see when new
     # warnings appear. Then proceed to `-w extra`.
 
-    add_compile_options(-Werror)
-
-    else()
+  else()
 
     add_compile_options(
       -w
@@ -473,7 +502,7 @@ ELSE(WIN32)
 
   endif()
 
-ENDIF(WIN32)
+endif()
 
 #-----------------------------------------------------
 
