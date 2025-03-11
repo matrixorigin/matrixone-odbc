@@ -11,3 +11,4 @@ myodbc3.spec
 Uninstall.bat
 CMakeUserPresets.json
 VersionInfo.h
+.vscode
