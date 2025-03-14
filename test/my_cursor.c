@@ -3418,7 +3418,42 @@ DECLARE_TEST(t_18805455)
 }
 
 
+/*
+  Bug#26474326 - SQLCLOSECURSOR DOES NOT RETURN CORRECT ERROR
+*/
+DECLARE_TEST(t_bug26474326_sqlclosecursor)
+{
+  SQLCHAR sqlstate[6], message[SQL_MAX_MESSAGE_LENGTH + 1];
+  SQLINTEGER  native_error = 0;
+  SQLSMALLINT length = 0;
+  const char *expected_msg = "Invalid cursor state";
+
+  SQLRETURN res = SQLCloseCursor(hstmt);
+
+  // Make the buffer safe for use of strstr() function
+  #define CHECK_INVALID_CURSOR_ERROR is_num(SQL_ERROR, res); \
+    memset(message, 0, SQL_MAX_MESSAGE_LENGTH + 1); \
+    SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate, &native_error, \
+      message, SQL_MAX_MESSAGE_LENGTH - 1, &length); \
+    is_str("24000", sqlstate, 5); \
+    is(NULL != strstr((const char*)message, expected_msg))
+
+  CHECK_INVALID_CURSOR_ERROR;
+
+  ok_sql(hstmt, "SELECT 1");
+  // This call should succeed because the result set exists.
+  ok_stmt(hstmt, SQLCloseCursor(hstmt));
+
+  // Result set is closed by the previous call. Error is expected.
+  res = SQLCloseCursor(hstmt);
+  CHECK_INVALID_CURSOR_ERROR;
+
+  return OK;
+}
+
+
 BEGIN_TESTS
+  ADD_TEST(t_bug26474326_sqlclosecursor)
   ADD_TEST(my_positioned_cursor)
   ADD_TEST(my_setpos_cursor)
   ADD_TEST(t_bug5853)
