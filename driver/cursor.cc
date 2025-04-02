@@ -1986,6 +1986,21 @@ SQLRETURN SQL_API SQLBulkOperations(SQLHSTMT  Handle, SQLSMALLINT Operation)
 SQLRETURN SQL_API SQLCloseCursor(SQLHSTMT Handle)
 {
     CHECK_HANDLE(Handle);
+    STMT *stmt = (STMT*)Handle;
 
-    return  my_SQLFreeStmt(Handle, SQL_CLOSE);
+    /*
+      In this case the existence of a cursor is assumed if
+      a result exists in a statement.
+      The check has to be done before freeing STMT.
+    */
+    bool no_cursor = !stmt->result;
+    SQLRETURN res = my_SQLFreeStmt(Handle, SQL_CLOSE);
+
+
+    if ( no_cursor )
+    {
+      return stmt->set_error("24000", "Invalid cursor state", 0);
+    }
+
+    return res;
 }
