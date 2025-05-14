@@ -1294,7 +1294,7 @@ DECLARE_TEST(t_tls_opts)
 
     char connstr[512] = "SOCKET=;";
     for (int i = 0; i < VERSION_COUNT; ++i)
-      strncat(connstr, opts[i], sizeof(connstr));
+      strncat(connstr, opts[i], sizeof(connstr)-1);
     printf("Connection options: %s\n", connstr);
 
     is(FAIL == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
