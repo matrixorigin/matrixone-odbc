@@ -870,45 +870,56 @@ SQLRETURN my_pos_update_std( STMT *             pStmtCursor,
                          std::string        &query)
 {
     SQLRETURN   rc;
-    SQLHSTMT    hStmtTemp;
-    STMT        * pStmtTemp;
+    SQLHSTMT    hstmt_temp;
 
     rc = build_where_clause_std( pStmtCursor, query, nRow );
     if ( !SQL_SUCCEEDED( rc ) )
         return rc;
 
     /*
-      Prepare and check if parameters exists in set clause..
-      this happens with WHERE CURRENT OF statements ..
+      Prepare and check if parameters exists in set clause.
+      this happens with WHERE CURRENT OF statements.
+
+      NOTE: to make it work a full initialization is required
+            using my_SQLAllocStmt()/my_SQLFreeStmt()
+
+      TODO: this is a single scenario use. A proper RIIA class
+            needs to be added if the same scenario is repeated
+            in another place.
     */
-    if ( my_SQLAllocStmt( pStmt->dbc, &hStmtTemp ) != SQL_SUCCESS )
+    if (my_SQLAllocStmt(pStmt->dbc, &hstmt_temp) != SQL_SUCCESS)
     {
-        return pStmt->set_error("HY000", "my_SQLAllocStmt() failed.", 0 );
+      return pStmt->set_error("HY000", "my_SQLAllocStmt() failed.", 0 );
     }
 
-    pStmtTemp = (STMT *)hStmtTemp;
+    // Make sure STMT is deallocated in case of exit.
+    auto deleter = [](STMT* stmt)
+      { my_SQLFreeStmt((SQLHSTMT*)stmt, SQL_DROP); };
 
-    if (my_SQLPrepare(pStmtTemp, (SQLCHAR *)query.c_str(),
+    std::unique_ptr<STMT, decltype(deleter)>
+      stmt_temp((STMT*)hstmt_temp, deleter);
+
+    if (my_SQLPrepare(stmt_temp.get(), (SQLCHAR *)query.c_str(),
                       (SQLINTEGER)query.size(),
                       true, false) != SQL_SUCCESS)
     {
-        my_SQLFreeStmt( pStmtTemp, SQL_DROP );
         return pStmt->set_error("HY000", "my_SQLPrepare() failed.", 0 );
     }
-    if ( pStmtTemp->param_count )      /* SET clause has parameters */
+
+    if (stmt_temp->param_count)      /* SET clause has parameters */
     {
         if (!SQL_SUCCEEDED(rc= stmt_SQLCopyDesc(pStmt, pStmt->apd,
-                                                pStmtTemp->apd)))
+                                                stmt_temp->apd)))
           return rc;
         if (!SQL_SUCCEEDED(rc= stmt_SQLCopyDesc(pStmt, pStmt->ipd,
-                                                pStmtTemp->ipd)))
+                                                stmt_temp->ipd)))
           return rc;
     }
 
-    rc = my_SQLExecute( pStmtTemp );
+    rc = my_SQLExecute(stmt_temp.get());
     if ( SQL_SUCCEEDED( rc ) )
     {
-        pStmt->affected_rows = mysql_affected_rows( pStmtTemp->dbc->mysql );
+        pStmt->affected_rows = mysql_affected_rows(stmt_temp->dbc->mysql);
         rc = update_status( pStmt, SQL_ROW_UPDATED );
     }
     else if (rc == SQL_NEED_DATA)
@@ -924,8 +935,6 @@ SQLRETURN my_pos_update_std( STMT *             pStmtCursor,
         return SQL_ERROR;
       pStmt->dae_type= DAE_NORMAL;
     }
-
-    my_SQLFreeStmt( pStmtTemp, SQL_DROP );
 
     return rc;
 }
