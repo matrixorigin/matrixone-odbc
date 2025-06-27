@@ -71,6 +71,7 @@ using std::nullptr_t;
 #include "parse.h"
 #include <vector>
 #include <list>
+#include <deque>
 #include <mutex>
 
 #define LOCK_STMT(S) CHECK_HANDLE(S); \
@@ -464,8 +465,8 @@ struct DESC {
   desc_desc_type  desc_type = DESC_PARAM;
   desc_ref_type   ref_type = DESC_IMP;
 
-  std::vector<DESCREC> bookmark2;
-  std::vector<DESCREC> records2;
+  std::deque<DESCREC> bookmark2;
+  std::deque<DESCREC> records2;
 
   MYERROR error;
   STMT *stmt;
