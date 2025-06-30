@@ -7,8 +7,8 @@ usr/lib/*/mysql/libmyodbc@CONNECTOR_MAJOR@/plugin/*
 
 # Build info & legal
 
-ChangeLog            usr/share/doc/mysql-connector-odbc
-LICENSE.txt          usr/share/doc/mysql-connector-odbc
-README.txt           usr/share/doc/mysql-connector-odbc
-INFO_BIN             usr/share/doc/mysql-connector-odbc
-INFO_SRC             usr/share/doc/mysql-connector-odbc
+ChangeLog            usr/share/doc/mysql-connector-odbc@PRODUCT_SUFFIX@
+LICENSE.txt          usr/share/doc/mysql-connector-odbc@PRODUCT_SUFFIX@
+README.txt           usr/share/doc/mysql-connector-odbc@PRODUCT_SUFFIX@
+INFO_BIN             usr/share/doc/mysql-connector-odbc@PRODUCT_SUFFIX@
+INFO_SRC             usr/share/doc/mysql-connector-odbc@PRODUCT_SUFFIX@
