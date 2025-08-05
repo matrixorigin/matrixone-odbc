@@ -55,6 +55,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <wchar.h>
 
 #ifdef _WIN32
@@ -292,6 +293,60 @@ void mem_gc_init()
   gc_blk.counter= 0;
 }
 
+/*
+  Note: 77 is the magic return code that indicates to ctest that the test
+  is skipped. This is set as test property in the cmake lists file.
+*/
+
+#define DISABLE_TEST_MODULE  DISABLE_TEST_MODULE_(__FILE__)
+#define DISABLE_TEST_MODULE_(F)   if (!is_module_enabled(F))  exit(77);
+
+BOOL is_module_enabled(const char* file_path)
+{
+  if (!file_path || *file_path == '\0')
+    return FALSE;
+
+  // Extract base name without extension
+
+  const char *base = file_path;
+
+#ifdef _WIN32
+  const char *path_sep = strrchr(file_path, '\\');
+  if (!path_sep)
+    path_sep = strrchr(file_path, '/');
+#else
+  const char *path_sep = strrchr(file_path, '/');
+#endif
+
+  if (path_sep && path_sep > file_path)
+    base = path_sep + 1;
+
+  const char *dot = strrchr(base, '.');
+  size_t base_len = dot ? dot - base : strlen(base);
+
+  // Build environment variable name
+
+  char env_var_name[512] = "ENABLE_TEST_";
+  for (size_t i = 0; i < base_len; ++i, ++base)
+  {
+    const char c = *base;
+    env_var_name[12 + i] = isalnum(c) ? toupper(c) : c;
+    env_var_name[13 + i] = 0;
+  }
+
+  // Check if environment variable is set
+
+  if (getenv(env_var_name) != NULL)
+    return TRUE;
+
+  printf(
+    "Test module is disabled. To enable it, set the environment variable %s\n",
+    env_var_name
+  );
+  return FALSE;
+}
+
+
 #define SQL_IS_SUCCESS(R) ((R == SQL_SUCCESS) || (R == SQL_SUCCESS_WITH_INFO))
 
 #define DECLARE_BASIC_HANDLES(E, C, S) SQLHENV E= NULL; \
@@ -411,7 +466,7 @@ int main(int argc, char **argv) \
 #define RUN_TESTS \
   RUN_TESTS_ONCE \
   mem_gc_flush(); \
-  exit(failcnt); \
+  exit(failcnt > 0); \
 }
 
 

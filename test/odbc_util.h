@@ -34,6 +34,8 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <vector>
+#include <optional>
 
 #define X(s) odbc::xstring(s)
 
@@ -881,5 +883,233 @@ struct expire_user : public temp_user
 };
 
 }; // namespace odbc
+
+
+/*
+  Utility functions and templates for flexible, formatted printing.
+
+  Usage:
+  ```
+    // Prints: # my string 42 true "hello" <null>
+    print("my string", 42, true, qstring("hello"), std::optional<int>{});
+
+    // Custom output stream usage:
+    std::stringstream ss;
+    print(ss, "x", false, qstring("world"));
+    std::cout << ss.str(); // output: # x false "world"
+
+    // Printing optionals:
+    std::optional<int> opt = 5;
+    print(opt); // Prints: # 5
+    print(std::optional<int>{}); // Prints: # <null>
+  ```
+
+  Note: Following unit test convetnions the `print()` function appends `#`
+  at the beginning of each line.
+
+  The `printer<T>` template alows defining custom formatting for values of
+  type  T. Special handling for `bool`, a custom `qstring` (quotted string)
+  and `std::optional<T>` types is already included.
+*/
+
+namespace odbc
+{
+  /*
+    Note: By default `printer<>` template uses standard library `operator<<()`
+    (which must work for given type T).
+  */
+
+  template <typename T>
+  struct printer
+  {
+    using type = T;
+
+    static
+    void print(std::ostream &out, T&& msg)
+    {
+      out << std::forward<T>(msg);
+    }
+
+    static
+    void print(std::ostream &out, T const& msg)
+    {
+      out << msg;
+    }
+  };
+
+  template <typename T>
+  struct printer<T&> : printer<T> {};
+
+  template <typename T>
+  struct printer<T const&> : printer<T> {};
+
+  // Printing Boolean values
+
+  template <>
+  struct printer<bool>
+  {
+    using type = bool;
+
+    static
+    void print(std::ostream &out, bool msg)
+    {
+      out << (msg ? "true" : "false");
+    }
+  };
+
+  // Printing quotted strings
+
+  struct qstring : public std::string
+  {
+    qstring(std::string s) : std::string{s} {}
+    using std::string::string;
+  };
+
+  template <>
+  struct printer<qstring>
+  {
+    using type = qstring;
+
+    static
+    void print(std::ostream &out, qstring msg)
+    {
+      out << "\"" << msg << "\"";
+    }
+  };
+
+  // Printing optional values.
+
+  template <typename T>
+  struct printer<std::optional<T>>
+  {
+    using type = std::optional<T>;
+
+    static
+    void print(std::ostream &out, type const& val)
+    {
+      if (!val.has_value()) out << "<null>";
+      else printer<T>::print(out, *val);
+    }
+  };
+
+  namespace detail
+  {
+    template <typename T>
+    void do_print(std::ostream &out, T&& val)
+    {
+      printer<T>::print(out, std::forward<T>(val));
+    }
+
+    template <typename T, typename... TT>
+    void do_print(std::ostream &out, T&& first, TT&&... rest)
+    {
+      printer<T>::print(out, std::forward<T>(first));
+      out << " ";
+      do_print(out, std::forward<TT>(rest)...);
+    }
+  }
+
+  template <typename... TT>
+  void print(std::ostream &out, TT&&... args)
+  {
+    out << "# ";
+    detail::do_print(out, std::forward<TT>(args)...);
+    out << std::endl;
+  }
+
+  template <typename... TT>
+  void print(TT&&... args)
+  {
+    print(std::cout, std::forward<TT>(args)...);
+  }
+
+} // namespace odbc
+
+
+/*
+  Helpers for assertion-like runtime checks and diagnostics for testing or validation.
+
+  Usage:
+  ```
+    check_val(x, y, "Mismatch in values for foo()");
+    check_str(expected, actual, "Filename mismatch");
+    check_true(arr.size() > 0, "Array should not be empty");
+    check_false(error_flag, "Should not see an error here");
+  ```
+
+  Functions include:
+  - check_val(): Compares two values of the same type.
+  - check_num(): Convenience for uint64_t values.
+  - check_str(): Convenience for std::string with or without quoted diagnostics.
+  - check_true(): Checks that a bool condition is true.
+  - check_false(): Checks that a bool condition is false.
+
+  Functions return a boolean to indicate success or failure. On failure,
+  a customized message is printed.
+*/
+
+namespace odbc
+{
+  template <typename T, typename... UU>
+  bool check_val(T const &a, T const& b, UU&&... args)
+  {
+    if (a != b)
+    {
+      print("!", std::forward<UU>(args)...);
+      return false;
+    }
+    return true;
+  }
+
+  template <typename T, typename U>
+  bool check_val(T const &a, T const& b, U&& msg)
+  {
+    return check_val<T>(a, b, std::forward<U>(msg), ", expected:", a, ", got:", b);
+  }
+
+  template <typename... UU>
+  bool check_num(uint64_t a, uint64_t b, UU&&... args)
+  {
+    return check_val<uint64_t>(a, b, std::forward<UU>(args)...);
+  }
+
+  template <typename... UU>
+  bool check_str(std::string a, std::string b, UU&&... args)
+  {
+    return check_val<std::string>(a, b, std::forward<UU>(args)...);
+  }
+
+  template <typename U>
+  bool check_str(std::string a, std::string b, U&& msg)
+  {
+    return check_val<std::string>(
+      a, b, std::forward<U>(msg), ", expected:", qstring{a}, ", got:", qstring{b}
+    );
+  }
+
+  template <typename... UU>
+  bool check_true(bool a, UU&&... args)
+  {
+    if (!a)
+    {
+      print("!", std::forward<UU>(args)...);
+      return false;
+    }
+    return true;
+  }
+
+  template <typename... UU>
+  bool check_false(bool a, UU&&... args)
+  {
+    if (a)
+    {
+      print("!", std::forward<UU>(args)...);
+      return false;
+    }
+    return true;
+  }
+
+} // namespace odbc
+
 
 #endif // !ODBC_UTIL_H

@@ -137,6 +137,7 @@ FOREACH(FN my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
     TARGET_LINK_LIBRARIES(${T} ${ODBC_LINK_FLAGS} ${ODBCINSTLIB} myodbc-util)
   ENDIF(WIN32)
   ADD_TEST(${T} ${T})
+  set_property(TEST ${T} PROPERTY SKIP_RETURN_CODE 77)
 
   if(APPLE)
     set_property(TARGET ${T} PROPERTY BUILD_WITH_INSTALL_RPATH ON)
