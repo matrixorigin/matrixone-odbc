@@ -1,0 +1,6 @@
+let 
+MySQLDQInfo = [
+    Version = "@CONNECTOR_MAJOR@.@CONNECTOR_MINOR@"
+]
+in
+MySQLDQInfo
