@@ -1,5 +1,5 @@
 ﻿<!-- *****************************************************************************************
- Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+ Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License, version 2.0, as
@@ -122,7 +122,18 @@
         </StandardDirectory>
       <?endif?>
       </StandardDirectory>
-
+      <StandardDirectory Id="PersonalFolder">
+        <Directory Id="PowerBIDesktop" Name="Power BI Desktop">
+          <Directory Id="PBIEXINSTALLDIR" Name="Custom Connectors">
+            <Component Id='ComponentPBIExtension' Guid='F47AC10B-58CC-4372-a567-0E02B2C3D479'>
+              <!-- Create a generic version-independent key -->
+              <RegistryKey Id="MyODBCKey" Root="HKLM" Key="SOFTWARE\MySQL AB\Connector ODBC" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes" />
+              <RegistryValue Id="PBI_path" Root="HKLM" Key="SOFTWARE\MySQL AB\Connector ODBC" Name="PBI_path" Type="string" Value="[PBIEXINSTALLDIR]" />
+              <File Id="MySQLDQ.mez" Name="MySQLDQ.mez" DiskId="1" Source="pbi\MySQLDQ.mez" />
+            </Component>
+          </Directory>
+        </Directory>
+      </StandardDirectory>
 
     </Fragment>
 </Wix>

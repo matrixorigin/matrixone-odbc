@@ -78,42 +78,53 @@
     -->
 
     <Dialog Id="SetupCompleteSuccessDialog" Width="374" Height="266" Title="[ProductName] - Setup Wizard" NoMinimize="yes">
-      <Control Id="OK" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Cancel="yes" Text="&amp;Finish">
-<!--          
-<Publish Event="DoAction" Value="ConfigureServer">ConfigureServer And NOT Installed And ACTION="INSTALL" And $ServerInstanceConfig=3</Publish>
--->
+      <!--
+        If PBI Usage needs to be shown we have to hide controls on finish dialog.
+        There is no workaround for showing an interim dialog between Progress and Finish.
+        For this reason the Finish dialog will manipulate its controls.
+       -->
+      <Control HideCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" ShowCondition="SUMMARYPBI = &quot; &quot;" Id="OK" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Cancel="yes" Text="&amp;Finish">
         <Publish Event="EndDialog" Value="Exit" />
       </Control>
       <Control Id="Cancel" Type="PushButton" X="301" Y="243" Width="66" Height="17" Disabled="yes" Text="Cancel" />
-      <Control Id="Image" Type="Bitmap" X="0" Y="0" Width="374" Height="234" TabSkip="no" Text="AdminBackground" />
+      <Control HideCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" ShowCondition="SUMMARYPBI = &quot; &quot;" Id="Image" Type="Bitmap" X="0" Y="0" Width="374" Height="234" TabSkip="no" Text="AdminBackground" />
       <Control Id="Back" Type="PushButton" X="164" Y="243" Width="66" Height="17" Disabled="yes" Text="&lt; &amp;Back" />
 
-      <Control Id="TextLine3" Type="Text" X="135" Y="55" Width="228" Height="45" Hidden="yes" Transparent="yes" ShowCondition="ProgressType2=&quot;uninstalled&quot;">
+      <Control Id="TextLine3" Type="Text" X="135" Y="55" Width="228" Height="45" Hidden="yes" Transparent="yes" ShowCondition="ProgressType2=&quot;uninstalled&quot; AND SUMMARYPBI=&quot; &quot;">
         <Text Value="The Setup Wizard has successfully uninstalled [ProductName]. Click Finish to exit the wizard." />
-        
       </Control>
-      <Control Id="UpdateTextLine1" Type="Text" X="135" Y="30" Width="228" Height="45" Hidden="yes" Transparent="yes" ShowCondition="NOT Installed And ACTION=&quot;INSTALL&quot;">
+      <Control Id="UpdateTextLine1" Type="Text" X="135" Y="30" Width="228" Height="45" Hidden="yes" Transparent="yes" ShowCondition="NOT Installed And ACTION=&quot;INSTALL&quot; AND SUMMARYPBI=&quot; &quot;">
         <Text Value="Setup has finished installing [ProductName]. Click Finish to exit the wizard." />
-        
       </Control>
-<!--          
-      <Control Id="InstallServiceCBox" Type="CheckBox" X="135" Y="88" Width="11" Height="11" 
-        Property="ConfigureServer" Integer="yes" Hidden="yes">
-        <Condition Action="show">NOT Installed And ACTION="INSTALL" And $ServerInstanceConfig=3</Condition>
+      <!-- We cannot rely on ACTION property, have to use ProgressType0 -->
+      <Control Id="UpdateTextLine2" Type="Text" X="135" Y="30" Width="228" Height="45" Hidden="yes" Transparent="yes" ShowCondition="Installed And ProgressType0=&quot;Modify&quot; AND SUMMARYPBI=&quot; &quot;">
+        <Text Value="Setup has finished modifying [ProductName]. Click Finish to exit the wizard." />
       </Control>
-      <Control Id="InstallServiceLbl" Type="Text" X="148" Y="88" Width="208" Height="11" Hidden="yes" Transparent="yes">
-        <Text>{&amp;TahomaBold8}Configure the MySQL Server now</Text>
-        <Condition Action="show">NOT Installed And ACTION="INSTALL" And $ServerInstanceConfig=3</Condition>
-      </Control>
-      <Control Id="InstallServiceDescLbl" Type="Text" X="148" Y="100" Width="208" Height="48" Hidden="yes" Transparent="yes">
-        <Text>Use this option to generate an optimized MySQL config file, setup a Windows service running on a dedicated port and to set the password for the root account.</Text>
-        <Condition Action="show">NOT Installed And ACTION="INSTALL" And $ServerInstanceConfig=3</Condition>
-      </Control>
--->
-      <Control Id="DlgLine" Type="Line" X="0" Y="234" Width="378" Height="0" />
-      <Control Id="TextLine1" Type="Text" X="135" Y="8" Width="225" Height="45" Transparent="yes">
+      <Control HideCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" ShowCondition="SUMMARYPBI = &quot; &quot;" Id="DlgLine" Type="Line" X="0" Y="234" Width="378" Height="0" />
+      <Control HideCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" ShowCondition="SUMMARYPBI = &quot; &quot;" Id="TextLine1" Type="Text" X="135" Y="8" Width="225" Height="45" Transparent="yes">
         <Text Value="{&amp;TahomaBold10}Wizard Completed" />
       </Control>
+
+      <!--
+        Controls to show Information about enabling PowerBI extension inside PowerBI
+        called when the the user installed PowerBI extension
+      -->
+
+      <Control ShowCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" HideCondition="SUMMARYPBI = &quot; &quot;" Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;">
+        <!-- Reset the property to hide PBI note and show Finish note -->
+        <Publish Property="SUMMARYPBI" Value=" "/>
+      </Control>
+      <Control ShowCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" HideCondition="SUMMARYPBI = &quot; &quot;" Id="TextPBI1" Type="Text" X="55" Y="35" Width="280" Height="20">
+        <Text Value="{&amp;TahomaBold10}NOTE:" />
+      </Control>
+      <Control ShowCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" HideCondition="SUMMARYPBI = &quot; &quot;" Id="TextPBI2" Type="Text" X="55" Y="55" Width="280" Height="40">
+        <Text Value="{&amp;Tahoma10}The PowerBI data extension &quot;MySQL Database with DirectQuery Support&quot; has been installed.
+The following option needs to be set inside &quot;PowerBI Desktop&quot; before using the extension:" />
+      </Control>
+      <Control ShowCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" HideCondition="SUMMARYPBI = &quot; &quot;" Id="TextPBI3" Type="Text" X="55" Y="105" Width="280" Height="40">
+        <Text Value="{&amp;TahomaBlue10}Options and Settings -&gt; Options -&gt; Global -&gt; Security -&gt; Data Extensions -&gt; Allow any extension to load without validation or warning" />
+      </Control>
+      <Control ShowCondition="SUMMARYPBI &lt;&gt; &quot; &quot;" HideCondition="SUMMARYPBI = &quot; &quot;" Id="Icon" Type="Icon" X="20" Y="35" Width="24" Height="24" FixedSize="yes" IconSize="32" Text="NewBinary4" />
     </Dialog>
 
     <!-- *****************************************************************************************
@@ -253,24 +264,12 @@
 
     <Dialog Id="InstallWelcomeDialog" Width="374" Height="266" Title="[ProductName] - Setup Wizard" NoMinimize="yes">
       <Control Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;">
-        <!-- No longer making this differentiation as requested by David Madsen -->
-        <!--
-        <?if $(var.LICENSE_TYPE) = "commercial"?>
-          <Publish Event="NewDialog" Value="LicenseAgreementDialog">1</Publish> 
-        <?else?>
-          <Publish Event="NewDialog" Value="SetupTypeDialog">1</Publish>
-        <?endif?>
-        -->
         <Publish Event="NewDialog" Value="LicenseAgreementDlg" />
       </Control>
       <Control Id="Cancel" Type="PushButton" X="301" Y="243" Width="66" Height="17" Cancel="yes" Text="Cancel">
         <Publish Event="SpawnDialog" Value="CancelSetupDialog" />
       </Control>
       <Control Id="Back" Type="PushButton" X="164" Y="243" Width="66" Height="17" Disabled="yes" Text="&lt; &amp;Back" />
-      <!--Control Id="Copyright" Type="Text" X="135" Y="144" Width="228" Height="73" Transparent="yes"
-        TabSkip="no">
-        <Text>WARNING: This program is protected by copyright law.</Text>
-      </Control-->
       <Control Id="TextLine2" Type="Text" X="135" Y="55" Width="228" Height="45" Transparent="yes">
         <Text Value="The Setup Wizard will install [ProductName] release [ProductVersion] on your computer. To continue, click Next." />
       </Control>
@@ -464,26 +463,27 @@
     <Dialog Id="SetupTypeDialog" Width="374" Height="266" Title="[ProductName] - Setup Wizard" NoMinimize="yes">
       <Control Id="RadioGroup" Type="RadioButtonGroup" X="22" Y="62" Width="264" Height="166" Property="SetupType" FixedSize="yes" />
       <Control Id="Back" Type="PushButton" X="164" Y="243" Width="66" Height="17" Text="&lt; &amp;Back">
-          <!-- No longer making this differentiation as requested by David Madsen -->
-          <!--
-          <?if $(var.LICENSE_TYPE) = "commercial"?>
-            <Publish Event="NewDialog" Value="LicenseAgreementDialog">NOT Installed</Publish>
-          <?else?>
-            <Publish Event="NewDialog" Value="InstallWelcomeDialog">NOT Installed</Publish>
-          <?endif?>        
-          -->
           <Publish Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
       </Control>
       <Control Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;">
+        <Publish Property="PBI_WARNING" Value="0"/>
+        <Publish Event="DoAction" Value="FolderExists" Condition="SetupType = &quot;Complete&quot;"/>
+
+        <Publish Event="NewDialog" Value="PowerBINewDirDialog" Condition="SetupType = &quot;Complete&quot; AND PBI_WARNING=1" />
+        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="SetupType = &quot;Typical&quot; OR (SetupType = &quot;Complete&quot; AND PBI_WARNING=0)"/>
         <Publish Event="NewDialog" Value="CustomSetupDialog" Condition="SetupType = &quot;Custom&quot;" />
-        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="SetupType &lt;&gt; &quot;Custom&quot;" />
         <Publish Property="SelectedSetupType" Value="Typical" Condition="SetupType = &quot;Typical&quot;" />
         <Publish Property="SelectedSetupType" Value="Complete" Condition="SetupType = &quot;Complete&quot;" />
         <Publish Property="SelectedSetupType" Value="Custom" Condition="SetupType = &quot;Custom&quot;" />
         <Publish Event="SetInstallLevel" Value="1" Condition="SetupType=&quot;Typical&quot;" />
         <Publish Event="SetInstallLevel" Value="10" Condition="SetupType=&quot;Complete&quot;" />
-	<Publish Event="SetInstallLevel" Value="1" Condition="SetupType=&quot;Custom&quot;" />
-	<Publish Property="TargetPath1" Value="[INSTALLDIR] -&gt; [Connector_ODBC] -&gt; [TARGETDIR]" />
+        <Publish Event="SetInstallLevel" Value="1" Condition="SetupType=&quot;Custom&quot;" />
+        <Publish Property="TargetPath1" Value="[INSTALLDIR] -&gt; [Connector_ODBC] -&gt; [TARGETDIR]" />
+
+        <Publish Property="SUMMARYDRIVER" Value=" "/>
+        <Publish Property="SUMMARYPBI" Value=" "/>
+        <Publish Property="SUMMARYDRIVER" Value="&#x0a;[NAMEDRIVER] will be installed into:&#x0a;[INSTALLDIR]&#x0a;" Condition="&amp;ODBC = 3" />
+        <Publish Property="SUMMARYPBI" Value="&#x0a;[NAMEPBI] will be installed into: &#x0a;[PBIEXINSTALLDIR]&#x0a;" Condition="&amp;PBIExtension = 3"/>
       </Control>
       
       <Control Id="Cancel" Type="PushButton" X="301" Y="243" Width="66" Height="17" Cancel="yes" Text="Cancel">
@@ -541,11 +541,20 @@
       </Control>
       
       <Control Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;" Disabled="no">
+        <Publish Property="PBI_WARNING" Value="0"/>
+        <Publish Event="DoAction" Value="FolderExists" Condition="&amp;PBIExtension = 3"/>
+
         <Publish Event="NewDialog" Value="OutOfSpaceDialog" Condition="OutOfNoRbDiskSpace = 1" />
+        <Publish Event="NewDialog" Value="PowerBINewDirDialog" Condition="PBI_WARNING = 1" />
         <!-- in maintenance mode this dialog is called without the setuptypedialog -->
-	<Publish Property="SetupType" Value="Custom" />
+	      <Publish Property="SetupType" Value="Custom" />
         <!-- for 32bit only installer we don't need those properties here. All required is set in setup type dialog -->
-        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="&amp;ODBC&gt; 0 AND &amp;ODBC &lt;&gt; !ODBC" />
+        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="PBI_WARNING = 0"/>
+        <Publish Property="SUMMARYDRIVER" Value=" "/>
+        <Publish Property="SUMMARYPBI" Value=" "/>
+        <Publish Property="SUMMARYDRIVER" Value="&#x0a;[NAMEDRIVER] will be installed into:&#x0a;[INSTALLDIR]&#x0a;" Condition="&amp;ODBC = 3" />
+        <Publish Property="SUMMARYPBI" Value="&#x0a;[NAMEPBI] will be installed into: &#x0a;[PBIEXINSTALLDIR]&#x0a;" Condition="&amp;PBIExtension = 3"/>
+
       </Control>
       
       <Control Id="Cancel" Type="PushButton" X="301" Y="243" Width="66" Height="17" Cancel="yes" Text="Cancel">
@@ -611,6 +620,32 @@
     </Dialog>
 
     <!-- *****************************************************************************************
+      Dialog for Information about creating new directory for PowerBI extension
+    -->
+    <!-- called when the the user specified a non-existing derictory for PowerBI extension -->
+
+    <Dialog Id="PowerBINewDirDialog" Width="374" Height="266" Title="[ProductName] - Setup Wizard" NoMinimize="yes">
+
+      <Control Id="Back" Type="PushButton" X="164" Y="243" Width="66" Height="17" Text="&lt; &amp;Back">
+        <Publish Event="NewDialog" Value="CustomSetupDialog" Condition="SetupType=&quot;Custom&quot;" />
+        <Publish Event="NewDialog" Value="SetupTypeDialog" Condition="SetupType=&quot;Complete&quot;" />
+      </Control>
+      <Control Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;">
+        <Publish Event="NewDialog" Value="ReadyToInstallDialog"/>
+      </Control>
+      <Control Id="Cancel" Type="PushButton" X="301" Y="243" Width="66" Height="17" Cancel="yes" Text="Cancel">
+        <Publish Event="SpawnDialog" Value="CancelSetupDialog" />
+      </Control>
+
+      <Control Id="Text" Type="Text" X="55" Y="35" Width="280" Height="80">
+        <Text Value="{&amp;Tahoma10}The destination directory [PBIEXINSTALLDIR] for [NAMEPBI] does not exist. Click Next button to proceed with creating the directory or Back button to change the directory path." />
+      </Control>
+      
+      <Control Id="Icon" Type="Icon" X="20" Y="35" Width="24" Height="24" FixedSize="yes" IconSize="32" Text="NewBinary4" />
+        
+    </Dialog>  
+
+    <!-- *****************************************************************************************
       Ready To Install Dialog
     -->
 
@@ -632,8 +667,8 @@
       <Control Id="GroupBox1" Type="Text" X="19" Y="92" Width="330" Height="133" Disabled="yes" Sunken="yes" Transparent="yes" TabSkip="no" />
       <Control Id="SetupTypeText1" Type="Text" X="23" Y="97" Width="306" Height="13" TabSkip="no" Text="Setup Type:" />
       <Control Id="SetupTypeText2" Type="Text" X="37" Y="114" Width="306" Height="14" TabSkip="no" Text="[SelectedSetupType]" />
-      <Control Id="TargetFolderText1" Type="Text" X="24" Y="136" Width="306" Height="11" TabSkip="no" Text="Destination Folder:" />
-      <Control Id="TargetFolderText2" Type="Text" X="37" Y="151" Width="306" Height="13" TabSkip="no" Text="[INSTALLDIR]" />                          
+
+      <Control Id="TargetFolderText1" Type="Text" X="24" Y="136" Width="306" Height="90" TabSkip="no" Text="[INSTALLSUMMARY][SUMMARYDRIVER][SUMMARYPBI]"/>
       <Control Id="CurrentSettingsText" Type="Text" X="19" Y="80" Width="81" Height="10" TabSkip="no" Text="Current Settings:" />
       <Control Id="DlgDesc" Type="Text" X="21" Y="23" Width="292" Height="25" Transparent="yes">
         <Text Value="The wizard is ready to begin installation." />
@@ -1028,6 +1063,7 @@
     <TextStyle Id="Tahoma10" FaceName="Tahoma" Size="10" />
     <TextStyle Id="Tahoma9" FaceName="Tahoma" Size="9" />
     <TextStyle Id="TahomaBold10" FaceName="Tahoma" Size="10" Bold="yes" />
+    <TextStyle Id="TahomaBlue10" FaceName="Tahoma" Size="10" Red="0" Green="0" Blue="255" />
     <TextStyle Id="TahomaBold8" FaceName="Tahoma" Size="8" Bold="yes" />
     <TextStyle Id="Times8" FaceName="Times New Roman" Size="8" />
     <TextStyle Id="Times9" FaceName="Times New Roman" Size="9" />
