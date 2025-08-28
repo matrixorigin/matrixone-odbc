@@ -1,4 +1,4 @@
-﻿/*
+/*
  Copyright (c) 2025, Oracle and/or its affiliates.
 
  This program is free software; you can redistribute it and/or modify
@@ -282,7 +282,7 @@ let
   server_db = if List.Count(tokens) > 1 then tokens{1} else null,
 
   /*
-    To process the connection string properly we use a trick to convert 
+    To process the connection string properly we use a trick to convert
     it to URI and then use the standard parts for validation.
   */
 
