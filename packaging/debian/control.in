@@ -6,7 +6,7 @@ Standards-Version: 3.9.2
 Build-Depends: dpkg-dev,
                cmake (>= 3.15.0),
                debhelper (>= 8.9.4),
-               libgdk-pixbuf2.0-dev (>= 2.26),
+               libgdk-pixbuf-xlib-2.0-dev (>= 2.26),
                libglib2.0-dev (>= 2.30), chrpath
 Homepage: http://dev.mysql.com/downloads/connector/odbc/
 Vcs-Bzr: nosmart+http://bzr.debian.org/bzr/users/vorlon/myodbc/trunk/
