@@ -963,7 +963,7 @@ sql_varbinary[6], sql_time[6], sql_date[6], sql_binary[6],
 sql_longvarbinary[6], sql_datetime[6], sql_wchar[6], sql_wvarchar[6],
 sql_wlongvarchar[6];
 
-char *SQL_GET_TYPE_INFO_values[][19] =
+const char *SQL_GET_TYPE_INFO_values[][19] =
 {
   /* SQL_BIT= -7 */
   { "bit",sql_bit,"1","'","'",NULL,sql_nullable,"0",sql_searchable,NULL,"0",NULL,"bit",NULL,NULL,sql_bit,NULL,NULL,NULL },
@@ -1093,7 +1093,6 @@ Return information about data types supported by the server.
 SQLRETURN SQL_API MySQLGetTypeInfo(SQLHSTMT hstmt, SQLSMALLINT fSqlType)
 {
   STMT *stmt = (STMT *)hstmt;
-  uint i;
   unsigned long row_count = 0;
 
   my_SQLFreeStmt(hstmt, FREE_STMT_RESET);

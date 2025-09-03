@@ -1,4 +1,4 @@
-// Copyright (c) 2000, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2000, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -668,8 +668,7 @@ ODBC_CATALOG::ODBC_CATALOG(STMT *s, size_t ccnt,
   SQLCHAR *schema, unsigned long schema_len,
   SQLCHAR *table, unsigned long table_len,
   SQLCHAR *column, unsigned long column_len) :
-    stmt(s), temp(1024), col_count(ccnt),
-    from(from_i_s),
+    stmt(s), temp(1024), from(from_i_s), col_count(ccnt),
     m_catalog(catalog), m_catalog_len(catalog_len),
     m_schema(schema), m_schema_len(schema_len),
     m_table(table), m_table_len(table_len),
@@ -1377,7 +1376,7 @@ special_columns_i_s(SQLHSTMT hstmt, SQLUSMALLINT fColType,
     if(colType == SQL_BEST_ROWID)
     {
       // Determine if primary key info is present in the resultset.
-      while(mysql_row = ocat.fetch_row())
+      while((mysql_row = ocat.fetch_row()))
       {
         if (mysql_row[6][0] == '1')
           pk_found = true;
@@ -1387,7 +1386,7 @@ special_columns_i_s(SQLHSTMT hstmt, SQLUSMALLINT fColType,
     // Reset the seek position to the beginning of resultset.
     ocat.data_seek(0);
 
-    while(mysql_row = ocat.fetch_row())
+    while((mysql_row = ocat.fetch_row()))
     {
       // Lengths are stored internally as well, they will be needed
       // to check for NULL values.
@@ -1617,7 +1616,7 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
   /*
      With 5.1, we can use REFERENTIAL_CONSTRAINTS to get even more info.
   */
-  if (is_minimum_version(stmt->dbc->mysql->server_version, "5.1"))
+  if (is_minimum_version(mysql->server_version, "5.1"))
   {
     update_rule= "CASE"
                  " WHEN R.UPDATE_RULE = 'CASCADE' THEN 0"
@@ -1741,6 +1740,8 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
 
   return my_SQLExecute((STMT*)hstmt);
 }
+
+
 /**
   Retrieve either a list of foreign keys in a specified table, or the list
   of foreign keys in other tables that refer to the primary key in the

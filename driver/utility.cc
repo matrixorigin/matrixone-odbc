@@ -148,7 +148,6 @@ void fix_result_types(STMT *stmt)
   MYSQL_RES *result= stmt->result;
   DESCREC *irrec;
   MYSQL_FIELD *field;
-  int capint32= stmt->dbc->ds.opt_COLUMN_SIZE_S32 ? 1 : 0;
 
   stmt->state= ST_EXECUTED;  /* Mark set found */
 
@@ -346,7 +345,7 @@ void fix_result_types(STMT *stmt)
 char *fix_str(char *to, const char *from, int length)
 {
     if ( !from )
-        return "";
+        return (char*)"";
     if ( length == SQL_NTS )
         return (char *)from;
     myodbc::strmake(to,from,length);
@@ -1151,6 +1150,9 @@ SQLSMALLINT get_sql_data_type(STMT *stmt, MYSQL_FIELD *field, char *buff)
     if (buff)
       (void)myodbc_stpmov(buff, "vector");
     return SQL_VARBINARY;
+
+  default:
+    break;
   }
 
   if (buff)
@@ -1171,14 +1173,14 @@ SQLLEN fill_display_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 {
   /* See comment for fill_transfer_oct_len_buff()*/
   SQLLEN size= get_display_size(stmt, field);
-  sprintf(buff,size == SQL_NO_TOTAL ? "%d" : (sizeof(SQLLEN) == 4 ? "%lu" : "%lld"), size);
+  sprintf(buff, "%lld", (long long)size);
 
   return size;
 }
 
 
 /**
-  Fill the transfer octet length buffer accordingly to size of SQLLEN
+  Fill the transfer octet length buffer
   @param[in,out]  buff
   @param[in]      stmt
   @param[in]      field
@@ -1187,21 +1189,16 @@ SQLLEN fill_display_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 */
 SQLLEN fill_transfer_oct_len_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 {
-  /* The only possible negative value get_transfer_octet_length can return is SQL_NO_TOTAL
-     But it can return value which is greater that biggest signed integer(%ld).
-     Thus for other values we use %lu. %lld should fit
-     all (currently) possible in mysql values.
-  */
   SQLLEN len= get_transfer_octet_length(stmt, field);
 
-  sprintf(buff, len == SQL_NO_TOTAL ? "%d" : (sizeof(SQLLEN) == 4 ? "%lu" : "%lld"), len );
+  sprintf(buff, "%lld", (long long)len);
 
   return len;
 }
 
 
 /**
-  Fill the column size buffer accordingly to size of SQLULEN
+  Fill the column size buffer
   @param[in,out]  buff
   @param[in]      stmt
   @param[in]      field
@@ -1211,8 +1208,7 @@ SQLLEN fill_transfer_oct_len_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 SQLULEN fill_column_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 {
   SQLULEN size= get_column_size(stmt, field);
-  sprintf(buff, (size== SQL_NO_TOTAL ? "%d" :
-      (sizeof(SQLULEN) == 4 ? "%lu" : "%llu")), size);
+  sprintf(buff, "%llu", (unsigned long long)size);
   return size;
 }
 
@@ -1335,6 +1331,8 @@ SQLULEN get_column_size(STMT *stmt, MYSQL_FIELD *field)
     return UINT32_MAX / 4; // Because JSON is always UTF8MB4
   case MYSQL_TYPE_VECTOR:
     return length / 4; // Length should be the number of elements in VECTOR
+  default:
+    break;
   }
 
   return SQL_NO_TOTAL;
@@ -1491,6 +1489,8 @@ SQLLEN get_transfer_octet_length(STMT *stmt, MYSQL_FIELD *field)
   case MYSQL_TYPE_VECTOR:
     return length;
     }
+  default:
+    break;
   }
 
   return SQL_NO_TOTAL;
@@ -1595,6 +1595,8 @@ SQLLEN get_display_size(STMT *stmt __attribute__((unused)),MYSQL_FIELD *field)
     return UINT_MAX32 / 4; // 4 is the character size in UTF8MB4
   case MYSQL_TYPE_VECTOR:
     return 15 * (field->length / 4) + 1;
+  default:
+    break;
   }
 
   return SQL_NO_TOTAL;
@@ -2431,13 +2433,13 @@ my_bool is_minimum_version(const char *server_version,const char *version)
   sscanf(server_version, "%u.%u.%u", &major1, &minor1, &build1);
   sscanf(version, "%u.%u.%u", &major2, &minor2, &build2);
 
-  if ( major1 > major2 ||
-      major1 == major2 && (minor1 > minor2 ||
-                          minor1 ==  minor2 && build1 >= build2))
-  {
-    return TRUE;
-  }
-  return FALSE;
+  if (major1 != major2)
+    return (major1 > major2);
+
+  if (minor1 != minor2)
+    return (minor1 > minor2);
+
+  return (build1 >= build2);
 }
 
 
@@ -3035,8 +3037,12 @@ SQLRETURN set_sql_select_limit(DBC *dbc, SQLULEN lim_value, my_bool req_lock)
   SQLRETURN rc;
 
   /* Both 0 and max(SQLULEN) value mean no limit and sql_select_limit to DEFAULT */
-  if (lim_value == dbc->sql_select_limit
-   || lim_value == sql_select_unlimited && dbc->sql_select_limit == 0)
+  if (
+    lim_value == dbc->sql_select_limit
+    || (
+      lim_value == sql_select_unlimited && dbc->sql_select_limit == 0
+    )
+  )
     return SQL_SUCCESS;
 
   if (lim_value > 0 && lim_value < sql_select_unlimited)
@@ -3144,8 +3150,8 @@ char* proc_get_param_dbtype(char *proc, int len, char *ptype)
     *(ptype++)= *(proc++);
 
   /* remove the character set definition */
-  if (trim_str= strstr( myodbc_strlwr(start_pos, (size_t)-1),
-                        " charset "))
+  if ((trim_str= strstr( myodbc_strlwr(start_pos, (size_t)-1),
+                        " charset ")))
   {
     ptype= trim_str;
     (*ptype)= 0;

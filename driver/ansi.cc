@@ -90,7 +90,6 @@ SQLColAttributeImpl(SQLHSTMT hstmt, SQLUSMALLINT column,
 
   if (value)
   {
-    SQLCHAR *old_value= value;
     len = (SQLINTEGER)strlen((char *)value);
 
     /* We set the error only when the result is intented to be returned */
@@ -117,11 +116,7 @@ SQLColumnPrivileges(SQLHSTMT hstmt,
                     SQLCHAR *column, SQLSMALLINT column_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLColumnPrivileges(hstmt, catalog, catalog_len, schema, schema_len,
                             table, table_len, column, column_len);
@@ -137,11 +132,7 @@ SQLColumns(SQLHSTMT hstmt, SQLCHAR *catalog, SQLSMALLINT catalog_len,
            SQLCHAR *column, SQLSMALLINT column_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLColumns(hstmt, catalog, catalog_len, schema, schema_len,
                    table, table_len, column, column_len);
@@ -206,7 +197,6 @@ SQLDescribeCol(SQLHSTMT hstmt, SQLUSMALLINT column,
 
   if (value)
   {
-    SQLCHAR *old_value= value;
     len = (SQLINTEGER)strlen((char *)value);
 
     /* We set the error only when the result is intented to be returned */
@@ -320,11 +310,7 @@ SQLForeignKeys(SQLHSTMT hstmt,
                SQLCHAR *fk_table, SQLSMALLINT fk_table_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLForeignKeys(hstmt, pk_catalog, pk_catalog_len,
                        pk_schema, pk_schema_len, pk_table, pk_table_len,
@@ -650,8 +636,6 @@ SQLRETURN SQL_API
 SQLPrepareImpl(SQLHSTMT hstmt, SQLCHAR *str, SQLINTEGER str_len,
                bool force_prepare)
 {
-  STMT *stmt= (STMT *)hstmt;
-
   /*
     If the ANSI character set is the same as the connection character set,
     we can pass it straight through. Otherwise it needs to be converted to
@@ -668,11 +652,7 @@ SQLPrimaryKeys(SQLHSTMT hstmt,
                SQLCHAR *table, SQLSMALLINT table_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLPrimaryKeys(hstmt, catalog, catalog_len, schema, schema_len,
                        table, table_len);
@@ -689,11 +669,7 @@ SQLProcedureColumns(SQLHSTMT hstmt,
                     SQLCHAR *column, SQLSMALLINT column_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLProcedureColumns(hstmt, catalog, catalog_len,
                             schema, schema_len, proc, proc_len,
@@ -710,11 +686,7 @@ SQLProcedures(SQLHSTMT hstmt,
               SQLCHAR *proc, SQLSMALLINT proc_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLProcedures(hstmt, catalog, catalog_len, schema, schema_len,
                       proc, proc_len);
@@ -740,7 +712,6 @@ SQLSetConnectAttrImpl(SQLHDBC hdbc, SQLINTEGER attribute,
                       SQLPOINTER value, SQLINTEGER value_len)
 {
   SQLRETURN rc;
-  DBC *dbc= (DBC *)hdbc;
   rc= MySQLSetConnectAttr(hdbc, attribute, value, value_len);
   return rc;
 }
@@ -749,10 +720,6 @@ SQLSetConnectAttrImpl(SQLHDBC hdbc, SQLINTEGER attribute,
 SQLRETURN SQL_API
 SQLSetCursorName(SQLHSTMT hstmt, SQLCHAR *name, SQLSMALLINT name_len)
 {
-  STMT *stmt= (STMT *)hstmt;
-  SQLINTEGER len= name_len;
-  uint errors= 0;
-
   LOCK_STMT(hstmt);
   return MySQLSetCursorName(hstmt, name, name_len);
 }
@@ -777,11 +744,7 @@ SQLSpecialColumns(SQLHSTMT hstmt, SQLUSMALLINT type,
                   SQLUSMALLINT scope, SQLUSMALLINT nullable)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLSpecialColumns(hstmt, type, catalog, catalog_len, schema, schema_len,
                           table, table_len, scope, nullable);
@@ -798,11 +761,8 @@ SQLStatistics(SQLHSTMT hstmt,
               SQLUSMALLINT unique, SQLUSMALLINT accuracy)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
 
-  dbc= ((STMT *)hstmt)->dbc;
   rc= MySQLStatistics(hstmt, catalog, catalog_len, schema, schema_len,
                       table, table_len, unique, accuracy);
   return rc;
@@ -816,11 +776,7 @@ SQLTablePrivileges(SQLHSTMT hstmt,
                    SQLCHAR *table, SQLSMALLINT table_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLTablePrivileges(hstmt, catalog, catalog_len, schema, schema_len,
                            table, table_len);
@@ -837,11 +793,7 @@ SQLTables(SQLHSTMT hstmt,
           SQLCHAR *type, SQLSMALLINT type_len)
 {
   SQLRETURN rc;
-  DBC *dbc;
-
   LOCK_STMT(hstmt);
-
-  dbc= ((STMT *)hstmt)->dbc;
 
   rc= MySQLTables(hstmt, catalog, catalog_len, schema, schema_len,
                   table, table_len, type, type_len);

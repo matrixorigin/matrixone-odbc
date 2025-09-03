@@ -105,7 +105,7 @@ class plugin_option_setter
 {
   std::unique_lock<std::mutex> setter_lock{pool_mtx, std::defer_lock};
   plugin_pool *pool;
-  MYSQL *m_mysql;
+  // MYSQL *m_mysql;  Note: compiler warns about unused field
 
   void lock()
   {
@@ -122,7 +122,7 @@ class plugin_option_setter
   public:
 
   plugin_option_setter(plugin_pool *p, MYSQL *mysql) :
-    pool(p), m_mysql(mysql)
+    pool(p) //, m_mysql(mysql)
   {
     assert(pool);
   }
@@ -348,15 +348,6 @@ catch (const MYERROR& e)
   return e.retcode;
 }
 
-/*
-  Retrieve DNS+SRV list.
-
-  @param[in]  hostname  Full DNS+SRV address (ex: _mysql._tcp.example.com)
-  @param[out]  total_weight   Retrieve sum of total weight.
-
-  @return multimap containing list of SRV records
-*/
-
 
 struct Prio
 {
@@ -477,12 +468,9 @@ SQLRETURN DBC::connect(DataSource *dsrc)
 {
   SQLRETURN rc = SQL_SUCCESS;
   unsigned long flags;
-  /* Use 'int' and fill all bits to avoid alignment Bug#25920 */
-  unsigned int opt_ssl_verify_server_cert = ~0;
   const my_bool on = 1;
   unsigned int on_int = 1;
   unsigned long max_long = ~0L;
-  bool initstmt_executed = false;
 
   dbc_guard guard(this);
 
@@ -714,9 +702,14 @@ SQLRETURN DBC::connect(DataSource *dsrc)
   SSL_OPTIONS_LIST(SSL_SET);
 
 #if MYSQL_VERSION_ID < 80003
-  if (dsrc->SSLVERIFY)
-    mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT,
-                  (const char *)&opt_ssl_verify_server_cert);
+  {
+    /* Use 'int' and fill all bits to avoid alignment Bug#25920 */
+    unsigned int opt_ssl_verify_server_cert = ~0;
+
+    if (dsrc->SSLVERIFY)
+      mysql_options(mysql, MYSQL_OPT_SSL_VERIFY_SERVER_CERT,
+                    (const char *)&opt_ssl_verify_server_cert);
+  }
 #endif
 
 #if MYSQL_VERSION_ID >= 50660
@@ -858,8 +851,6 @@ SQLRETURN DBC::connect(DataSource *dsrc)
       mysql_options(mysql, MYSQL_OPT_SSL_MODE, &mode);
   }
 #endif
-
-  uint16_t total_weight = 0;
 
   std::vector<Srv_host_detail> hosts;
   try {

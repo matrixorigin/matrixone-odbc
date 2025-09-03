@@ -529,7 +529,7 @@ allocate_buffer_for_field(const MYSQL_FIELD * const field, BOOL outparams)
     case MYSQL_TYPE_GEOMETRY:
     default:
       /* Error? */
-      1;
+      break;
   }
 
   if (result.size > 0)
@@ -1213,7 +1213,9 @@ char * ssps_get_string(STMT *stmt, ulong column_number, char *value, ulong *leng
 
       if (t->second_part > 0)
       {
+        NO_FORMAT_WARNINGS_PUSH
         myodbc_snprintf(buffer+*length, 8, ".%06lu", t->second_part);
+        NO_FORMAT_WARNINGS_POP
         *length= 26;
       }
 
@@ -1244,7 +1246,9 @@ char * ssps_get_string(STMT *stmt, ulong column_number, char *value, ulong *leng
 
       if (t->second_part > 0)
       {
+        NO_FORMAT_WARNINGS_PUSH
         myodbc_snprintf(buffer+*length, 8, ".%06lu", t->second_part);
+        NO_FORMAT_WARNINGS_POP
         *length+= 7;
       }
       return buffer;
@@ -1371,6 +1375,8 @@ double ssps_get_double(STMT *stmt, ulong column_number, char *value, ulong lengt
     }
 
     /* TODO : Geometry? default ? */
+    default:
+      break;
   }
 
   /* Basically should be prevented by earlied tests of

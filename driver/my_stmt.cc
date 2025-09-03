@@ -487,8 +487,11 @@ SQLRETURN prepare(STMT *stmt, char * query, SQLINTEGER query_length,
     uint i;
     for (i= 0; i < stmt->param_count; ++i)
     {
-      DESCREC *aprec= desc_get_rec(stmt->apd, i, TRUE);
-      DESCREC *iprec= desc_get_rec(stmt->ipd, i, TRUE);
+      /*
+        Note: The side effect of these desc_get_rec() calls is adding missing records to the descriptor.
+      */
+      (void) desc_get_rec(stmt->apd, i, TRUE);
+      (void) desc_get_rec(stmt->ipd, i, TRUE);
     }
   }
 
@@ -649,13 +652,21 @@ SQLRETURN scroller_prefetch(STMT * stmt)
     /* (stmt->scroller.next_offset - stmt->scroller.row_count) - current offset,
        0 minimum. scroller initialization makes impossible row_count to be >
        stmt's max_rows */
-     long long count= stmt->scroller.total_rows -
+    long long count= stmt->scroller.total_rows -
       (stmt->scroller.next_offset - stmt->scroller.row_count - stmt->scroller.start_offset);
+
+    /*
+      Note: We assume the number has at most MAX32_BUFF_SIZE-1 digits,
+      i.e less than 10.
+    */
+    assert(count < 100000000000);
 
     if (count > 0)
     {
-      myodbc_snprintf(stmt->scroller.offset_pos + MAX64_BUFF_SIZE, MAX32_BUFF_SIZE,
-              "%*u", MAX32_BUFF_SIZE - 1, (unsigned long)count);
+      myodbc_snprintf(
+        stmt->scroller.offset_pos + MAX64_BUFF_SIZE, MAX32_BUFF_SIZE,
+        "%*" PRIu32, MAX32_BUFF_SIZE - 1, (uint32_t)count
+      );
       stmt->scroller.offset_pos[MAX64_BUFF_SIZE + MAX32_BUFF_SIZE - 1] = ' ';
     }
     else
@@ -689,7 +700,7 @@ bool scrollable(STMT * stmt, const char * query, const char * query_end)
   /* FOR UPDATE*/
   {
     const char *before_token= query_end;
-    const char *last= mystr_get_prev_token(stmt->dbc->cxn_charset_info,
+    (void) mystr_get_prev_token(stmt->dbc->cxn_charset_info,
                                                 &before_token,
                                                 query);
     const char *prev= mystr_get_prev_token(stmt->dbc->cxn_charset_info,

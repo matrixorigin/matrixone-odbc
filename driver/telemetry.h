@@ -31,14 +31,17 @@
 #define _MYSQL_TELEMETRY_H_
 
 #include <installer.h>  // ODBC_OTEL_MODE() macro
+#include <compiler.h>  // ODBC_OTEL_MODE() macro
 
 #ifdef TELEMETRY
 #include <string>
+NO_WARNINGS_PUSH
 #include <opentelemetry/trace/provider.h>
+NO_WARNINGS_POP
 #endif
 
-class STMT;
-class DBC;
+struct STMT;
+struct DBC;
 
 #define OTEL_ENUM_CONSTANT(N,V)  OTEL_##N = V,
 

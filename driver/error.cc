@@ -182,7 +182,7 @@ MYERROR::MYERROR(const char* state, const char* msg, SQLINTEGER errcode,
 */
 
 SQLRETURN set_desc_error(DESC *        desc,
-                         char *        state,
+                         const char *  state,
                          const char *  message,
                          uint          errcode)
 {
@@ -531,7 +531,7 @@ MySQLGetDiagField(SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT record,
 
   case SQL_DIAG_CONNECTION_NAME:
   {
-    DataSource *ds;
+    DataSource *ds = nullptr;
     if (record <= 0)
       return SQL_ERROR;
 
@@ -567,7 +567,7 @@ MySQLGetDiagField(SQLSMALLINT handle_type, SQLHANDLE handle, SQLSMALLINT record,
 
   case SQL_DIAG_SERVER_NAME:
   {
-    DataSource *ds;
+    DataSource *ds = nullptr;
     if (record <= 0)
       return SQL_ERROR;
     if (handle_type == SQL_HANDLE_DESC)

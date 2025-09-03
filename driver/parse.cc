@@ -356,7 +356,7 @@ const char * find_token(myodbc::CHARSET_INFO *charset, const char * begin,
 const char * find_first_token(myodbc::CHARSET_INFO *charset, const char * begin,
                         const char * end, const char * target)
 {
-  const char * token, *before= end;
+  const char * token;
 
   while ((token= mystr_get_next_token(charset, &begin, end)) != end)
   {
@@ -728,7 +728,6 @@ BOOL tokenize(MY_PARSER *parser)
     if (parser->quote)
     {
       parser->query->last_char= find_closing_quote(parser);
-      /*assert(parser->last_char!=NULL); /* no closing quote? */
 
       CLOSE_QUOTE(parser);
       /* find_closing_quote puts cursor after the closing quote

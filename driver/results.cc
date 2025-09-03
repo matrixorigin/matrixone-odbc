@@ -131,6 +131,8 @@ my_bool odbc_supported_conversion(SQLSMALLINT sqlType, SQLSMALLINT cType)
          return TRUE;
        }
      }
+   default:
+     break;
    }
 
    return FALSE;
@@ -683,7 +685,7 @@ sql_get_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
     case SQL_C_INTERVAL_HOUR_TO_SECOND:
     case SQL_C_INTERVAL_HOUR_TO_MINUTE:
       {
-        if (field->type= MYSQL_TYPE_TIME)
+        if ((field->type = MYSQL_TYPE_TIME))
         {
           SQL_TIME_STRUCT ts;
           char *tmp= get_string(stmt,
@@ -1034,8 +1036,17 @@ SQLRETURN SQL_API SQLNumResultCols(SQLHSTMT  hstmt, SQLSMALLINT *pccol)
 
   if (!ssps_used(stmt))
   {
-    if (stmt->param_count > 0 && stmt->dummy_state == ST_DUMMY_UNKNOWN &&
-      (stmt->state != ST_PRE_EXECUTED || stmt->state != ST_EXECUTED))
+    /*
+      FIXME: The original third part of conjunction was
+
+        (stmt->state != ST_PRE_EXECUTED || stmt->state != ST_EXECUTED)
+
+      which is always true (stmt->state is always either different from
+      ST_PRE_EXECUTED or from ST_EXECUTED). Probably this is a bug that needs
+      to be investigated and fixed. Possibly && was meant, instead of ||.
+    */
+
+    if (stmt->param_count > 0 && stmt->dummy_state == ST_DUMMY_UNKNOWN && true)
     {
       if ( do_dummy_parambind(hstmt) != SQL_SUCCESS )
       {
@@ -1081,8 +1092,17 @@ MySQLDescribeCol(SQLHSTMT hstmt, SQLUSMALLINT column,
      all parameters have been bound */
   if (!ssps_used(stmt))
   {
-    if ( stmt->param_count > 0 && stmt->dummy_state == ST_DUMMY_UNKNOWN &&
-      (stmt->state != ST_PRE_EXECUTED || stmt->state != ST_EXECUTED) )
+    /*
+      FIXME: The original third part of conjunction was
+
+        (stmt->state != ST_PRE_EXECUTED || stmt->state != ST_EXECUTED)
+
+      which is always true (stmt->state is always either different from
+      ST_PRE_EXECUTED or from ST_EXECUTED). Probably this is a bug that needs
+      to be investigated and fixed. Possibly && was meant, instead of ||.
+    */
+
+    if ( stmt->param_count > 0 && stmt->dummy_state == ST_DUMMY_UNKNOWN && true)
     {
       if ( do_dummy_parambind(hstmt) != SQL_SUCCESS )
         return SQL_ERROR;
@@ -1164,8 +1184,18 @@ MySQLColAttribute(SQLHSTMT hstmt, SQLUSMALLINT column,
   {
     /* MySQLColAttribute can be called before SQLExecute. Thus we need make sure that
     all parameters have been bound */
-    if ( stmt->param_count > 0 && stmt->dummy_state == ST_DUMMY_UNKNOWN &&
-      (stmt->state != ST_PRE_EXECUTED || stmt->state != ST_EXECUTED) )
+
+    /*
+      FIXME: The original third part of conjunction was
+
+        (stmt->state != ST_PRE_EXECUTED || stmt->state != ST_EXECUTED)
+
+      which is always true (stmt->state is always either different from
+      ST_PRE_EXECUTED or from ST_EXECUTED). Probably this is a bug that needs
+      to be investigated and fixed. Possibly && was meant, instead of ||.
+    */
+
+    if (stmt->param_count > 0 && stmt->dummy_state == ST_DUMMY_UNKNOWN && true)
     {
       if ( do_dummy_parambind(hstmt) != SQL_SUCCESS )
         return SQL_ERROR;
@@ -1825,7 +1855,6 @@ fill_fetch_bookmark_buffers(STMT *stmt, ulong value, uint rownum)
   {
     SQLLEN *pcbValue= NULL;
     SQLPOINTER TargetValuePtr= NULL;
-    ulong copy_bytes= 0;
 
     stmt->reset_getdata_position();
 
@@ -2296,7 +2325,6 @@ SQLRETURN SQL_API my_SQLExtendedFetch( SQLHSTMT             hstmt,
   MYSQL_ROW_OFFSET  save_position= 0;
   SQLULEN           dummy_pcrow;
   BOOL              disconnected= FALSE;
-  long              brow= 0;
 
   auto span_stop_if_no_data = [](STMT *stmt) {
     if (!mysql_more_results(stmt->dbc->mysql))

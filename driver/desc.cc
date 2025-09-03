@@ -41,6 +41,16 @@
 #include "driver.h"
 #include <algorithm>
 
+/*
+  TODO: remove the use of offsetof() because it triggers compiler
+        warnings for non-standard layout classes.
+*/
+
+#if defined(__GNUC__)
+  DISABLE_WARNING(-Winvalid-offsetof)
+#endif
+
+
 /* Utility macros for defining descriptor fields */
 #define HDR_FLD(field, perm, type) \
   static desc_field HDR_##field= \
@@ -381,7 +391,7 @@ apply_desc_val(void *dest, SQLSMALLINT dest_type, void *src, SQLINTEGER buflen)
 /*
  * Get a descriptor field based on the constant.
  */
-static desc_field *
+desc_field *
 getfield(SQLSMALLINT fldid)
 {
   /* all field descriptions are immutable */
@@ -548,11 +558,13 @@ MySQLGetDescField(SQLHDESC hdesc, SQLSMALLINT recnum, SQLSMALLINT fldid,
               "Associated statement is not prepared",
               MYERR_S1007);
 
-  if ((fld == NULL) ||
-      /* header permissions check */
-      (fld->loc == DESC_HDR &&
-         (desc->ref_type == DESC_APP && (~fld->perms & P_RA)) ||
-         (desc->ref_type == DESC_IMP && (~fld->perms & P_RI))))
+  bool hdr_permissions_check
+  = (
+    (desc->ref_type == DESC_APP && (~fld->perms & P_RA))
+    || (desc->ref_type == DESC_IMP && (~fld->perms & P_RI))
+  );
+
+  if ((fld == NULL) || (fld->loc == DESC_HDR && hdr_permissions_check))
   {
     return set_desc_error(desc, "HY091",
               "Invalid descriptor field identifier",
@@ -715,7 +727,7 @@ MySQLGetDescField(SQLHDESC hdesc, SQLSMALLINT recnum, SQLSMALLINT fldid,
 }
 
 
-SQLRETURN DESC::set_error(char *state, const char *message, uint errcode)
+SQLRETURN DESC::set_error(const char *state, const char *message, uint errcode)
 {
   error.sqlstate = state ? state : "";
   error.message = std::string(stmt->dbc->st_error_prefix) + message;

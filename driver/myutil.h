@@ -182,7 +182,7 @@ SQLRETURN copy_wchar_result(STMT *stmt,
                             SQLLEN *pcbValue, MYSQL_FIELD *field, char *src,
                             long src_length);
 
-SQLRETURN set_desc_error  (DESC *desc, char *state,
+SQLRETURN set_desc_error  (DESC *desc, const char *state,
                           const char *message, uint errcode);
 SQLRETURN handle_connection_error (STMT *stmt);
 my_bool   is_connection_lost      (uint errcode);

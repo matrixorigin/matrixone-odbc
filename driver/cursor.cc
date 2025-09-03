@@ -740,7 +740,6 @@ static SQLRETURN build_set_clause_std(STMT *stmt, SQLULEN irow,
     for ( ncol= 0; ncol < stmt->result->field_count; ++ncol )
     {
         SQLLEN *pcbValue;
-        SQLCHAR *to = (SQLCHAR*)stmt->buf();
 
         field= mysql_fetch_field_direct(result,ncol);
         arrec= desc_get_rec(stmt->ard, ncol, FALSE);
@@ -870,56 +869,45 @@ SQLRETURN my_pos_update_std( STMT *             pStmtCursor,
                          std::string        &query)
 {
     SQLRETURN   rc;
-    SQLHSTMT    hstmt_temp;
+    SQLHSTMT    hStmtTemp;
+    STMT        * pStmtTemp;
 
     rc = build_where_clause_std( pStmtCursor, query, nRow );
     if ( !SQL_SUCCEEDED( rc ) )
         return rc;
 
     /*
-      Prepare and check if parameters exists in set clause.
-      this happens with WHERE CURRENT OF statements.
-
-      NOTE: to make it work a full initialization is required
-            using my_SQLAllocStmt()/my_SQLFreeStmt()
-
-      TODO: this is a single scenario use. A proper RIIA class
-            needs to be added if the same scenario is repeated
-            in another place.
+      Prepare and check if parameters exists in set clause..
+      this happens with WHERE CURRENT OF statements ..
     */
-    if (my_SQLAllocStmt(pStmt->dbc, &hstmt_temp) != SQL_SUCCESS)
+    if ( my_SQLAllocStmt( pStmt->dbc, &hStmtTemp ) != SQL_SUCCESS )
     {
-      return pStmt->set_error("HY000", "my_SQLAllocStmt() failed.", 0 );
+        return pStmt->set_error("HY000", "my_SQLAllocStmt() failed.", 0 );
     }
 
-    // Make sure STMT is deallocated in case of exit.
-    auto deleter = [](STMT* stmt)
-      { my_SQLFreeStmt((SQLHSTMT*)stmt, SQL_DROP); };
+    pStmtTemp = (STMT *)hStmtTemp;
 
-    std::unique_ptr<STMT, decltype(deleter)>
-      stmt_temp((STMT*)hstmt_temp, deleter);
-
-    if (my_SQLPrepare(stmt_temp.get(), (SQLCHAR *)query.c_str(),
+    if (my_SQLPrepare(pStmtTemp, (SQLCHAR *)query.c_str(),
                       (SQLINTEGER)query.size(),
                       true, false) != SQL_SUCCESS)
     {
+        my_SQLFreeStmt( pStmtTemp, SQL_DROP );
         return pStmt->set_error("HY000", "my_SQLPrepare() failed.", 0 );
     }
-
-    if (stmt_temp->param_count)      /* SET clause has parameters */
+    if ( pStmtTemp->param_count )      /* SET clause has parameters */
     {
         if (!SQL_SUCCEEDED(rc= stmt_SQLCopyDesc(pStmt, pStmt->apd,
-                                                stmt_temp->apd)))
+                                                pStmtTemp->apd)))
           return rc;
         if (!SQL_SUCCEEDED(rc= stmt_SQLCopyDesc(pStmt, pStmt->ipd,
-                                                stmt_temp->ipd)))
+                                                pStmtTemp->ipd)))
           return rc;
     }
 
-    rc = my_SQLExecute(stmt_temp.get());
+    rc = my_SQLExecute( pStmtTemp );
     if ( SQL_SUCCEEDED( rc ) )
     {
-        pStmt->affected_rows = mysql_affected_rows(stmt_temp->dbc->mysql);
+        pStmt->affected_rows = mysql_affected_rows( pStmtTemp->dbc->mysql );
         rc = update_status( pStmt, SQL_ROW_UPDATED );
     }
     else if (rc == SQL_NEED_DATA)
@@ -935,6 +923,8 @@ SQLRETURN my_pos_update_std( STMT *             pStmtCursor,
         return SQL_ERROR;
       pStmt->dae_type= DAE_NORMAL;
     }
+
+    my_SQLFreeStmt( pStmtTemp, SQL_DROP );
 
     return rc;
 }
@@ -1504,7 +1494,6 @@ static SQLRETURN batch_insert_std( STMT *stmt, SQLULEN irow, std::string &query 
 
     if (stmt->stmt_options.bookmarks == SQL_UB_VARIABLE)
     {
-      ulong copy_bytes= 0;
       DESCREC *arrec;
       long max_row;
 
@@ -1602,7 +1591,7 @@ static SQLRETURN setpos_dae_check_and_init(STMT *stmt, SQLSETPOSIROW irow,
     if (!stmt->setpos_apd)
       return stmt->set_error("S1001", "Not enough memory",
                             4001);
-    if(rc= stmt_SQLCopyDesc(stmt, stmt->ard, stmt->setpos_apd.get()))
+    if((rc= stmt_SQLCopyDesc(stmt, stmt->ard, stmt->setpos_apd.get())))
       return rc;
 
     stmt->current_param= dae_rec;
@@ -1751,8 +1740,8 @@ SQLRETURN SQL_API my_SQLSetPos(SQLHSTMT hstmt, SQLSETPOSIROW irow,
                     set_dynamic_result(stmt))
                   return stmt->set_error(MYERR_S1000, alloc_error, 0);
 
-                if (ret = setpos_dae_check_and_init(stmt, irow, fLock,
-                                                  DAE_SETPOS_UPDATE))
+                if ((ret = setpos_dae_check_and_init(stmt, irow, fLock,
+                                                  DAE_SETPOS_UPDATE)))
                   return ret;
 
                 std::string upd_query("UPDATE ");
@@ -1775,8 +1764,8 @@ SQLRETURN SQL_API my_SQLSetPos(SQLHSTMT hstmt, SQLSETPOSIROW irow,
                 if ( !(table_name= find_used_table(stmt)) )
                     return SQL_ERROR;
 
-                if (ret = setpos_dae_check_and_init(stmt, irow, fLock,
-                                                  DAE_SETPOS_INSERT))
+                if ((ret = setpos_dae_check_and_init(stmt, irow, fLock,
+                                                  DAE_SETPOS_INSERT)))
                   return ret;
 
                 std::string ins_query("INSERT INTO ");
@@ -1947,8 +1936,8 @@ SQLRETURN SQL_API SQLBulkOperations(SQLHSTMT  Handle, SQLSMALLINT Operation)
         return stmt->set_error(MYERR_S1000, alloc_error, 0);
       }
 
-      if (rc= setpos_dae_check_and_init(stmt, irow, SQL_LOCK_NO_CHANGE,
-                                        DAE_SETPOS_UPDATE))
+      if ((rc= setpos_dae_check_and_init(stmt, irow, SQL_LOCK_NO_CHANGE,
+                                         DAE_SETPOS_UPDATE)))
       {
         return rc;
       }

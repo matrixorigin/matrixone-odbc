@@ -38,7 +38,7 @@
 
 typedef struct my_string
 {
-  char *str;
+  const char *str;
   uint chars; /* probably it is not needed and is useless */
   uint bytes;
 } MY_STRING;

@@ -37,8 +37,8 @@
 #include "../MYODBC_MYSQL.h"
 #include "../MYODBC_CONF.h"
 #include "../MYODBC_ODBC.h"
-#include "telemetry.h"
 #include "installer.h"
+#include "telemetry.h"
 
 /* Disable _attribute__ on non-gcc compilers. */
 #if !defined(__attribute__) && !defined(__GNUC__) && !defined(__clang__)
@@ -71,7 +71,6 @@ using std::nullptr_t;
 #include "parse.h"
 #include <vector>
 #include <list>
-#include <deque>
 #include <mutex>
 
 #define LOCK_STMT(S) CHECK_HANDLE(S); \
@@ -216,7 +215,7 @@ extern std::mutex global_fido_mutex;
 #define SQL_IS_LEN (-10)
 
 /* check if ARD record is a bound column */
-#define ARD_IS_BOUND(d) (d)&&((d)->data_ptr || (d)->octet_length_ptr)
+#define ARD_IS_BOUND(d) ((d) && ((d)->data_ptr || (d)->octet_length_ptr))
 
 /* get the dbc from a descriptor */
 #define DESC_GET_DBC(X) (((X)->alloc_type == SQL_DESC_ALLOC_USER) ? \
@@ -465,8 +464,8 @@ struct DESC {
   desc_desc_type  desc_type = DESC_PARAM;
   desc_ref_type   ref_type = DESC_IMP;
 
-  std::deque<DESCREC> bookmark2;
-  std::deque<DESCREC> records2;
+  std::vector<DESCREC> bookmark2;
+  std::vector<DESCREC> records2;
 
   MYERROR error;
   STMT *stmt;
@@ -528,7 +527,7 @@ struct DESC {
     return desc_type == DESC_ROW && ref_type == DESC_IMP;
   }
 
-  SQLRETURN set_error(char *state, const char *message, uint errcode);
+  SQLRETURN set_error(const char *state, const char *message, uint errcode);
 
 };
 
@@ -611,8 +610,8 @@ struct DBC
   void free_connection_stmts();
   void add_desc(DESC* desc);
   void remove_desc(DESC *desc);
-  SQLRETURN set_error(char *state, const char *message, uint errcode);
-  SQLRETURN set_error(char *state);
+  SQLRETURN set_error(const char *state, const char *message, uint errcode);
+  SQLRETURN set_error(const char *state);
   SQLRETURN connect(DataSource *ds);
   void execute_prep_stmt(MYSQL_STMT *pstmt, std::string &query,
     std::vector<MYSQL_BIND> &param_bind, MYSQL_BIND *result_bind);
@@ -792,8 +791,14 @@ struct xstring : public std::string
   xstring(std::nullptr_t) : m_is_null(true)
   {}
 
-  xstring(char* s) : m_is_null(s == nullptr),
-                  Base(s == nullptr ? "" : std::forward<char*>(s))
+  xstring(char* s)
+  : Base(s == nullptr ? "" : std::forward<char*>(s))
+  , m_is_null(s == nullptr)
+  {}
+
+  xstring(const char* s)
+  : Base(s == nullptr ? "" : std::forward<const char*>(s))
+  , m_is_null(s == nullptr)
   {}
 
   template <class T>

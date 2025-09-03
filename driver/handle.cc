@@ -64,9 +64,10 @@ bool ENV::has_connections()
   return conn_list.size() > 0;
 }
 
-DBC::DBC(ENV *p_env)  : env(p_env), mysql(nullptr),
-                        txn_isolation(DEFAULT_TXN_ISOLATION),
-                        last_query_time((time_t) time((time_t*) 0))
+DBC::DBC(ENV *p_env)
+: env(p_env), mysql(nullptr)
+, last_query_time((time_t) time((time_t*) 0))
+, txn_isolation(DEFAULT_TXN_ISOLATION)
 {
   //mysql->net.vio = nullptr;
   myodbc_ov_init(env->odbc_ver);
@@ -112,7 +113,7 @@ DBC::~DBC()
 }
 
 
-SQLRETURN DBC::set_error(char * state, const char * message, uint errcode)
+SQLRETURN DBC::set_error(const char * state, const char * message, uint errcode)
 {
   error.sqlstate = state ? state : "";
   error.message = std::string(MYODBC_ERROR_PREFIX) + message;
@@ -121,7 +122,7 @@ SQLRETURN DBC::set_error(char * state, const char * message, uint errcode)
 }
 
 
-SQLRETURN DBC::set_error(char * state)
+SQLRETURN DBC::set_error(const char * state)
 {
   return set_error(state, mysql_error(mysql), mysql_errno(mysql));
 }

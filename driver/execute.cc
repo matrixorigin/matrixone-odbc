@@ -376,6 +376,9 @@ BOOL allocate_param_buffer(MYSQL_BIND *bind, unsigned long length)
 }
 
 
+#if 0
+// Compiler reports this function is not used
+
 /* Buffer has to be allocated - no checks */
 static
 unsigned long add2param_value(MYSQL_BIND *bind, unsigned long pos,
@@ -386,6 +389,8 @@ unsigned long add2param_value(MYSQL_BIND *bind, unsigned long pos,
   bind->length_value= pos + length;
   return pos + length;
 }
+#endif
+
 
 bool bind_param(MYSQL_BIND *bind, const char *value, unsigned long length,
                 enum enum_field_types buffer_type)
@@ -427,8 +432,10 @@ BOOL put_param_value(STMT *stmt, MYSQL_BIND *bind,
 
 SQLRETURN check_c2sql_conversion_supported(STMT *stmt, DESCREC *aprec, DESCREC *iprec)
 {
-  if (aprec->type == SQL_DATETIME && iprec->type == SQL_INTERVAL
-   || aprec->type == SQL_INTERVAL && iprec->type == SQL_DATETIME)
+  if (
+    (aprec->type == SQL_DATETIME && iprec->type == SQL_INTERVAL)
+    || (aprec->type == SQL_INTERVAL && iprec->type == SQL_DATETIME)
+  )
   {
     return stmt->set_error("07006", "Conversion is not supported", 0);
   }
@@ -623,7 +630,7 @@ SQLRETURN convert_c_type2str(STMT *stmt, SQLSMALLINT ctype, DESCREC *iprec,
           int tmp_pos= 9;
 
           myodbc_snprintf(tmp_buf, buff_max - *length,
-                          ".%09d", time->fraction);
+                          ".%09lu", (long unsigned)time->fraction);
 
           /*
             ODBC specification defines nanoseconds granularity for
@@ -678,32 +685,40 @@ SQLRETURN convert_c_type2str(STMT *stmt, SQLSMALLINT ctype, DESCREC *iprec,
           /* Dirty-hackish */
           if (ssps_used(stmt))
           {
-            *length = myodbc_snprintf(buff, buff_max, "%d:%02d:00",
-                                      interval->intval.day_second.hour,
-                                      interval->intval.day_second.minute);
+            *length = myodbc_snprintf(
+              buff, buff_max, "%lu:%02lu:00",
+              (long unsigned)interval->intval.day_second.hour,
+              (long unsigned)interval->intval.day_second.minute
+            );
           }
           else
           {
-            *length = myodbc_snprintf(buff, buff_max, "'%d:%02d:00'",
-                                      interval->intval.day_second.hour,
-                                      interval->intval.day_second.minute);
+            *length = myodbc_snprintf(
+              buff, buff_max, "'%lu:%02lu:00'",
+              (long unsigned)interval->intval.day_second.hour,
+              (long unsigned)interval->intval.day_second.minute
+            );
           }
         }
         else
         {
           if (ssps_used(stmt))
           {
-            *length = myodbc_snprintf(buff, buff_max, "%d:%02d:%02d",
-                                      interval->intval.day_second.hour,
-                                      interval->intval.day_second.minute,
-                                      interval->intval.day_second.second);
+            *length = myodbc_snprintf(
+              buff, buff_max, "%lu:%02lu:%02lu",
+              (long unsigned)interval->intval.day_second.hour,
+              (long unsigned)interval->intval.day_second.minute,
+              (long unsigned)interval->intval.day_second.second
+            );
           }
           else
           {
-            *length = myodbc_snprintf(buff, buff_max, "'%d:%02d:%02d'",
-                                      interval->intval.day_second.hour,
-                                      interval->intval.day_second.minute,
-                                      interval->intval.day_second.second);
+            *length = myodbc_snprintf(
+              buff, buff_max, "'%lu:%02lu:%02lu'",
+              (long unsigned)interval->intval.day_second.hour,
+              (long unsigned)interval->intval.day_second.minute,
+              (long unsigned)interval->intval.day_second.second
+            );
           }
         }
 
@@ -735,7 +750,7 @@ inline bool is_ts_char(char c)
 const char *get_date_time_substr(const char *data, long &len)
 {
   const char* d_start = data;
-  long idx = 0;
+
   while(len && !is_ts_char(*d_start))
   {
     --len;
@@ -1305,6 +1320,19 @@ BOOL map_error_to_param_status( SQLUSMALLINT *param_status_ptr, SQLRETURN rc)
 
 
 /*
+  Clang 16 compiler reports this warning incorrectly:
+
+  execute.cc(1325,20): error : variable 'length' set but not used [-Werror,-Wunused-but-set-variable]
+
+  The variable is used at line 1518.
+*/
+
+#if defined(__clang__)
+  DISABLE_WARNING(-Wunused-but-set-variable)
+#endif
+
+
+/*
   @type    : myodbc3 internal
   @purpose : executes a prepared statement, using the current values
   of the parameter marker variables if any parameter markers
@@ -1500,7 +1528,7 @@ SQLRETURN my_SQLExecute( STMT *pStmt )
             const size_t binderLength= strlen(stmtsBinder);
 
             pStmt->add_to_buffer(stmtsBinder, binderLength);
-            length+= binderLength;
+            length += binderLength;
           }
         }
       }

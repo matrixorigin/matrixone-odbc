@@ -1,4 +1,4 @@
-// Copyright (c) 2000, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2000, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -35,6 +35,17 @@
 
 #include "driver.h"
 #include "catalog.h"
+
+/*
+  This file defines a couple of unused functions/variables which compiler warns about.
+
+  TODO: Review/remove these.
+*/
+
+#if defined(__clang__)
+  DISABLE_WARNING(-Wunused-function)
+  DISABLE_WARNING(-Wunused-const-variable)
+#endif
 
 
 /*
@@ -294,9 +305,9 @@ static MYSQL_RES *column_privs_raw_data(STMT *      stmt,
 }
 
 
-char *SQLCOLUMNS_priv_values[]=
+const char *SQLCOLUMNS_priv_values[] =
 {
-  NULL,"",NULL,NULL,NULL,NULL,NULL,NULL
+  NULL, "", NULL, NULL, NULL, NULL, NULL, NULL
 };
 
 MYSQL_FIELD SQLCOLUMNS_priv_fields[]=
@@ -336,7 +347,6 @@ MYSQL_RES *server_show_create_table(STMT        *stmt,
 {
   MYSQL *mysql= stmt->dbc->mysql;
   std::string query;
-  size_t cnt = 0;
 
   query.reserve(1024);
 
@@ -411,10 +421,10 @@ typedef struct SQL_FOREIGN_KEY_FIELD
   int  DEFERRABILITY;
 } MY_FOREIGN_KEY_FIELD;
 
-char *SQLFORE_KEYS_values[]= {
-    NULL,"",NULL,NULL,
-    NULL,"",NULL,NULL,
-    0,0,0,NULL,NULL,0
+const char *SQLFORE_KEYS_values[] = {
+  NULL, "", NULL, NULL,
+  NULL, "", NULL, NULL,
+  0, 0, 0, NULL, NULL, 0
 };
 
 
@@ -457,8 +467,8 @@ const uint SQLPRIM_KEYS_FIELDS = (uint)array_elements(SQLPRIM_KEYS_fields);
 
 const long SQLPRIM_LENGTHS[]= {0, 0, 1, 5, 4, -7};
 
-char *SQLPRIM_KEYS_values[]= {
-    NULL,"",NULL,NULL,0,NULL
+const  char *SQLPRIM_KEYS_values[] = {
+  NULL, "", NULL, NULL, 0, NULL
 };
 
 /*
@@ -541,11 +551,11 @@ SQLProcedure Columns
 ****************************************************************************
 */
 
-char *SQLPROCEDURECOLUMNS_values[]= {
-       "", "", NullS, NullS, "", "", "",
-       "", "", "", "10", "",
-       "MySQL column", "", "", NullS, "",
-       NullS, ""
+const char *SQLPROCEDURECOLUMNS_values[] = {
+  "", "", NullS, NullS, "", "", "",
+  "", "", "", "10", "",
+  "MySQL column", "", "", NullS, "",
+  NullS, ""
 };
 
 /* TODO make LONGLONG fields just LONG if SQLLEN is 4 bytes */
@@ -594,7 +604,7 @@ static MYSQL_RES *server_list_proc_params(STMT *stmt,
   std::string qbuff;
   qbuff.reserve(2048);
 
-  auto append_escaped_string = [&mysql, &tmpbuf, &stmt](std::string &outstr,
+  auto append_escaped_string = [&tmpbuf, &stmt](std::string &outstr,
                                         SQLCHAR* str,
                                         SQLSMALLINT len)
   {
@@ -849,11 +859,12 @@ procedure_columns_no_i_s(SQLHSTMT hstmt,
     {
       case EXCEPTION_TYPE::EMPTY_SET:
         nReturn = create_empty_fake_resultset(
-            (STMT*)hstmt, SQLPROCEDURECOLUMNS_values,
+            (STMT*)hstmt, (MYSQL_ROW)SQLPROCEDURECOLUMNS_values,
             SQLPROCEDURECOLUMNS_fields,
             SQLPROCEDURECOLUMNS_FIELDS);
         break;
       case EXCEPTION_TYPE::GENERAL:
+      default:
         break;
     }
   }
@@ -870,7 +881,10 @@ SQLStatistics
 */
 
 char SS_type[10];
-char *SQLSTAT_values[]={NullS,NullS,"","",NullS,"",SS_type,"","","","",NullS,NullS};
+const char *SQLSTAT_values[] = {
+  NullS, NullS, "", "", NullS, "", SS_type,
+  "", "", "", "", NullS, NullS
+};
 
 MYSQL_FIELD SQLSTAT_fields[]=
 {
@@ -908,9 +922,6 @@ statistics_no_i_s(SQLHSTMT hstmt,
   STMT *stmt= (STMT *)hstmt;
   assert(stmt);
 
-  MYSQL *mysql= stmt->dbc->mysql;
-  DBC *dbc= stmt->dbc;
-  char *db_val = nullptr;
   std::string db;
   MYSQL_ROW mysql_row;
 
@@ -994,7 +1005,7 @@ statistics_no_i_s(SQLHSTMT hstmt,
       return SQL_SUCCESS;
     }
   }
-  return create_empty_fake_resultset(stmt, SQLSTAT_values,
+  return create_empty_fake_resultset(stmt, (MYSQL_ROW)SQLSTAT_values,
                                      SQLSTAT_fields, SQLSTAT_FIELDS);
 }
 
@@ -1042,7 +1053,6 @@ tables_no_i_s(SQLHSTMT hstmt,
 
     my_ulonglong row_count= 0;
     MYSQL_ROW db_row = nullptr;
-    unsigned long count= 0;
     SQLRETURN rc = SQL_SUCCESS;
 
     try
@@ -1236,6 +1246,9 @@ tables_no_i_s(SQLHSTMT hstmt,
         case EXCEPTION_TYPE::EMPTY_SET:
           return create_empty_fake_resultset(stmt, (MYSQL_ROW)SQLTABLES_values,
                                              SQLTABLES_fields, SQLTABLES_FIELDS);
+        case EXCEPTION_TYPE::CONN_ERR:
+        default:
+          return handle_connection_error(stmt);
       }
     }
 
