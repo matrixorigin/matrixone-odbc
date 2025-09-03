@@ -39,6 +39,15 @@ IF(EXPOSE_TOFIX_TESTS)
 ENDIF(EXPOSE_TOFIX_TESTS)
 
 
+if(GCC OR CLANG)
+  # Note: We have tests for deprecated ODBC APIs such as `SQLSetStmtOption()`
+  add_compile_options(-Wno-deprecated-declarations)
+  # Note: Warnings could be fixed but that has low priority at the moment
+  # (in tests)
+  add_compile_options(-Wno-format)
+endif()
+
+
 # Note: Some unit tests use std::filesystem part of the standard C++ library
 # and for some versions of the standard library its implementation is in
 # additional library stdc++fs.

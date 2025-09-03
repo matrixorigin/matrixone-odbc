@@ -1,4 +1,4 @@
-// Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -33,7 +33,7 @@
 
 DECLARE_TEST(my_ts)
 {
-  SQLCHAR          szTs[50];
+  char             szTs[50];
   TIMESTAMP_STRUCT ts;
   SQLLEN           len;
   int is_fraction_capable = mysql_min_version(hdbc, "5.6.", 4);
@@ -50,7 +50,7 @@ DECLARE_TEST(my_ts)
   }
 
   /* insert using SQL_C_CHAR to SQL_TIMESTAMP */
-  strcpy((char *)szTs, "2002-01-07 10:20:49.06");
+  strcpy(szTs, "2002-01-07 10:20:49.06");
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT,
                                   SQL_C_CHAR, SQL_TIMESTAMP,
                                   0, 0, szTs, sizeof(szTs), NULL));
@@ -104,7 +104,7 @@ DECLARE_TEST(my_ts)
   is_num(ts.second,49);
   is_num(ts.fraction, is_fraction_capable ? 60000000 : 0);
 
-  printf("# row1 using SQL_C_TIMESTAMP: %d-%d-%d %d:%d:%d.%d (%ld)\n",
+  printf("# row1 using SQL_C_TIMESTAMP: %d-%d-%d %d:%d:%d.%lu (%ld)\n",
          ts.year, ts.month,ts.day, ts.hour, ts.minute, ts.second, ts.fraction,
          (long)len);
 
@@ -126,7 +126,7 @@ DECLARE_TEST(my_ts)
   is_num(ts.second,59);
   is_num(ts.fraction, is_fraction_capable ? 123456000 : 0);
 
-  printf("# row2 using SQL_C_TIMESTAMP: %d-%d-%d %d:%d:%d.%d (%ld)\n",
+  printf("# row2 using SQL_C_TIMESTAMP: %d-%d-%d %d:%d:%d.%lu (%ld)\n",
          ts.year, ts.month,ts.day, ts.hour, ts.minute, ts.second, ts.fraction,
          (long)len);
 
@@ -196,7 +196,7 @@ DECLARE_TEST(t_tstotime)
   ok_stmt(hstmt, SQLFreeStmt(hstmt,SQL_CLOSE));
 
   /* TIMESTAMP TO DATE, TIME and TS CONVERSION */
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"insert into t_tstotime(col1,col2,col3) values(?,?,?)",SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("insert into t_tstotime(col1,col2,col3) values(?,?,?)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt,1,SQL_PARAM_INPUT,SQL_C_TIMESTAMP,
                                   SQL_DATE,0,0,&ts2,sizeof(ts2),NULL));
@@ -232,7 +232,7 @@ DECLARE_TEST(t_tstotime)
 
 DECLARE_TEST(t_tstotime1)
 {
-  SQLCHAR ts[40]= "2001-08-02 18:20:45.05";
+  char ts[40]= "2001-08-02 18:20:45.05";
 
   ok_sql(hstmt,"DROP TABLE IF EXISTS t_tstotime1");
 
@@ -243,8 +243,7 @@ DECLARE_TEST(t_tstotime1)
 
   /* TIMESTAMP TO DATE, TIME and TS CONVERSION */
   ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"INSERT INTO t_tstotime1 VALUES (?,?,?)",
-                            SQL_NTS));
+    SC_NTS("INSERT INTO t_tstotime1 VALUES (?,?,?)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                                   SQL_DATE, 0, 0, &ts, sizeof(ts), NULL));
@@ -340,7 +339,7 @@ DECLARE_TEST(t_time)
 {
   SQLRETURN       rc;
   SQL_TIME_STRUCT tm;
-  SQLCHAR         str[20];
+  char            str[20];
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_time");
   rc = tmysql_exec(hstmt,"create table t_time(tm time, ts timestamp)");
@@ -351,9 +350,7 @@ DECLARE_TEST(t_time)
 
   ok_con(hdbc, SQLTransact(NULL,hdbc,SQL_COMMIT));
 
-  ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"insert into t_time values (?,?)",
-                            SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("insert into t_time values (?,?)")));
 
   ok_stmt(hstmt, SQLBindParameter( hstmt, 1, SQL_PARAM_INPUT, SQL_C_TIME,
                          SQL_TIME, 0, 0, &tm, 0, NULL ));
@@ -397,242 +394,241 @@ DECLARE_TEST(t_time1)
 {
   SQLRETURN       rc;
   SQL_TIME_STRUCT tt;
-  SQLCHAR         data[30];
+  char            data[30];
   SQLLEN          length;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_time");
   ok_sql(hstmt, "create table t_time(t time, t1 timestamp, t2 datetime, t3 date)");
 
   ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"insert into t_time(t) values(?)",
-                            SQL_NTS));
+    SC_NTS("insert into t_time(t) values(?)")));
 
-    rc = SQLBindParameter(hstmt,1,SQL_PARAM_INPUT,SQL_C_TYPE_TIME,
-                          SQL_TIME,0,0,&tt,0,NULL);
+  rc = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_TYPE_TIME,
+    SQL_TIME, 0, 0, &tt, 0, NULL);
 
 
-    tt.hour= 00;
-    tt.minute= 00;
-    tt.second= 03;
+  tt.hour = 00;
+  tt.minute = 00;
+  tt.second = 03;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 01;
-    tt.minute= 00;
-    tt.second= 00;
+  tt.hour = 01;
+  tt.minute = 00;
+  tt.second = 00;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 19;
-    tt.minute= 00;
-    tt.second= 00;
+  tt.hour = 19;
+  tt.minute = 00;
+  tt.second = 00;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 01;
-    tt.minute= 01;
-    tt.second= 00;
+  tt.hour = 01;
+  tt.minute = 01;
+  tt.second = 00;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 01;
-    tt.minute= 00;
-    tt.second= 01;
+  tt.hour = 01;
+  tt.minute = 00;
+  tt.second = 01;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 00;
-    tt.minute= 01;
-    tt.second= 00;
+  tt.hour = 00;
+  tt.minute = 01;
+  tt.second = 00;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 00;
-    tt.minute= 11;
-    tt.second= 12;
+  tt.hour = 00;
+  tt.minute = 11;
+  tt.second = 12;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 01;
-    tt.minute= 01;
-    tt.second= 01;
+  tt.hour = 01;
+  tt.minute = 01;
+  tt.second = 01;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 00;
-    tt.minute= 00;
-    tt.second= 00;
+  tt.hour = 00;
+  tt.minute = 00;
+  tt.second = 00;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    tt.hour= 10;
-    tt.minute= 11;
-    tt.second= 12;
+  tt.hour = 10;
+  tt.minute = 11;
+  tt.second = 12;
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt, rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    SQLFreeStmt(hstmt, SQL_RESET_PARAMS);
-    SQLFreeStmt(hstmt, SQL_CLOSE);
+  SQLFreeStmt(hstmt, SQL_RESET_PARAMS);
+  SQLFreeStmt(hstmt, SQL_CLOSE);
 
-    ok_sql(hstmt, "select t from t_time");
+  ok_sql(hstmt, "select t from t_time");
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "00:00:03", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "00:00:03", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "01:00:00", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "01:00:00", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "19:00:00", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "19:00:00", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "01:01:00", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "01:01:00", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "01:00:01", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "01:00:01", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "00:01:00", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "00:01:00", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "00:11:12", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "00:11:12", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "01:01:01", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "01:01:01", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "00:00:00", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "00:00:00", 9);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
-    mystmt(hstmt,rc);
-    is_num(length, 8);
-    is_str(data, "10:11:12", 9);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, data, sizeof(data), &length);
+  mystmt(hstmt, rc);
+  is_num(length, 8);
+  is_str(data, "10:11:12", 9);
 
-    rc = SQLFetch(hstmt);
-    myassert(rc == SQL_NO_DATA);
+  rc = SQLFetch(hstmt);
+  myassert(rc == SQL_NO_DATA);
 
-    SQLFreeStmt(hstmt, SQL_UNBIND);
-    SQLFreeStmt(hstmt, SQL_CLOSE);
+  SQLFreeStmt(hstmt, SQL_UNBIND);
+  SQLFreeStmt(hstmt, SQL_CLOSE);
 
-    ok_sql(hstmt,"delete from t_time");
+  ok_sql(hstmt, "delete from t_time");
 
-    ok_sql(hstmt, "insert into t_time(t1) values('2003-05-12 10:11:12')");
+  ok_sql(hstmt, "insert into t_time(t1) values('2003-05-12 10:11:12')");
 
-    ok_sql(hstmt, "select t1 from t_time");
+  ok_sql(hstmt, "select t1 from t_time");
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_TIME, &tt, sizeof(tt), &length);
-    mystmt(hstmt,rc);
-    is_num(tt.hour, 10);
-    is_num(tt.minute, 11);
-    is_num(tt.second, 12);
-    is_num(length, sizeof(SQL_TIME_STRUCT));
+  rc = SQLGetData(hstmt, 1, SQL_C_TIME, &tt, sizeof(tt), &length);
+  mystmt(hstmt, rc);
+  is_num(tt.hour, 10);
+  is_num(tt.minute, 11);
+  is_num(tt.second, 12);
+  is_num(length, sizeof(SQL_TIME_STRUCT));
 
-    rc = SQLFetch(hstmt);
-    myassert(rc == SQL_NO_DATA);
+  rc = SQLFetch(hstmt);
+  myassert(rc == SQL_NO_DATA);
 
-    SQLFreeStmt(hstmt, SQL_UNBIND);
-    SQLFreeStmt(hstmt, SQL_CLOSE);
+  SQLFreeStmt(hstmt, SQL_UNBIND);
+  SQLFreeStmt(hstmt, SQL_CLOSE);
 
-    ok_sql(hstmt,"delete from t_time");
-    ok_sql(hstmt,"insert into t_time(t2) values('03-12-28 05:59:59')");
-    ok_sql(hstmt,"select t2 from t_time");
+  ok_sql(hstmt, "delete from t_time");
+  ok_sql(hstmt, "insert into t_time(t2) values('03-12-28 05:59:59')");
+  ok_sql(hstmt, "select t2 from t_time");
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_TIME, &tt, sizeof(tt), &length);
-    mystmt(hstmt,rc);
-    is_num(tt.hour, 05);
-    is_num(tt.minute, 59);
-    is_num(tt.second, 59);
-    is_num(length, sizeof(SQL_TIME_STRUCT));
+  rc = SQLGetData(hstmt, 1, SQL_C_TIME, &tt, sizeof(tt), &length);
+  mystmt(hstmt, rc);
+  is_num(tt.hour, 05);
+  is_num(tt.minute, 59);
+  is_num(tt.second, 59);
+  is_num(length, sizeof(SQL_TIME_STRUCT));
 
-    rc = SQLFetch(hstmt);
-    is_num(rc, SQL_NO_DATA);
+  rc = SQLFetch(hstmt);
+  is_num(rc, SQL_NO_DATA);
 
-    SQLFreeStmt(hstmt, SQL_UNBIND);
-    SQLFreeStmt(hstmt, SQL_CLOSE);
+  SQLFreeStmt(hstmt, SQL_UNBIND);
+  SQLFreeStmt(hstmt, SQL_CLOSE);
 
-    ok_sql(hstmt,"delete from t_time");
+  ok_sql(hstmt, "delete from t_time");
 
-    ok_sql(hstmt,"insert into t_time(t3) values('2003-05-12 10:11:12')");
+  ok_sql(hstmt, "insert into t_time(t3) values('2003-05-12 10:11:12')");
 
-    ok_sql(hstmt,"select t3 from t_time");
+  ok_sql(hstmt, "select t3 from t_time");
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt, 1, SQL_C_TIME, &tt, sizeof(tt), &length);
-    mystmt(hstmt,rc);
-    is(tt.hour == 00 || tt.minute == 00 || tt.second == 00);
-    is_num(length, sizeof(SQL_TIME_STRUCT));
+  rc = SQLGetData(hstmt, 1, SQL_C_TIME, &tt, sizeof(tt), &length);
+  mystmt(hstmt, rc);
+  is(tt.hour == 00 || tt.minute == 00 || tt.second == 00);
+  is_num(length, sizeof(SQL_TIME_STRUCT));
 
-    rc = SQLFetch(hstmt);
-    myassert(rc == SQL_NO_DATA);
+  rc = SQLFetch(hstmt);
+  myassert(rc == SQL_NO_DATA);
 
-    SQLFreeStmt(hstmt, SQL_UNBIND);
-    SQLFreeStmt(hstmt, SQL_CLOSE);
+  SQLFreeStmt(hstmt, SQL_UNBIND);
+  SQLFreeStmt(hstmt, SQL_CLOSE);
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_time");
 
@@ -648,7 +644,7 @@ DECLARE_TEST(t_bug12520)
 {
   SQL_TIMESTAMP_STRUCT my_time_ts;
   SQLLEN len, my_time_cb;
-  SQLCHAR datetime[50];
+  char datetime[50];
 
   // Disable the strict SQL mode and zero date values
   ok_sql(hstmt, "set session sql_mode='' ");
@@ -701,8 +697,8 @@ DECLARE_TEST(t_bug15773)
   ok_sql(hstmt, "INSERT INTO t_bug15773 VALUES ('b', '2004-01-01 00:00:00', '2005-01-01 00:00:00')");
   ok_sql(hstmt, "INSERT INTO t_bug15773 VALUES ('c', '2004-12-12 00:00:00', '2005-12-12 00:00:00')");
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"SELECT * FROM t_bug15773"
-                           " WHERE (?) BETWEEN b AND c", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("SELECT * FROM t_bug15773"
+                           " WHERE (?) BETWEEN b AND c")));
 
   d.day= 15;
   d.month= 12;
@@ -732,7 +728,7 @@ DECLARE_TEST(t_bug15773)
 */
 DECLARE_TEST(t_bug9927)
 {
-  SQLCHAR col[10];
+  char col[10];
 
   // Disable the strict SQL mode and zero date values
   ok_sql(hstmt, "set session sql_mode='' ");
@@ -743,7 +739,7 @@ DECLARE_TEST(t_bug9927)
         "b TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
 
   ok_stmt(hstmt, SQLSpecialColumns(hstmt,SQL_ROWVER,  NULL, 0,
-                                   NULL, 0, (SQLCHAR *)"t_bug9927", SQL_NTS,
+                                   NULL, 0, SC_NTS("t_bug9927"),
                                    0, SQL_NO_NULLS));
 
   ok_stmt(hstmt, SQLFetch(hstmt));
@@ -778,7 +774,7 @@ DECLARE_TEST(t_bug30081)
         "b TIMESTAMP DEFAULT CURRENT_TIMESTAMP)");
 
   ok_stmt(hstmt, SQLSpecialColumns(hstmt,SQL_ROWVER,  NULL, 0,
-                                   NULL, 0, (SQLCHAR *)"t_bug30081", SQL_NTS,
+                                   NULL, 0, SC_NTS("t_bug30081"),
                                    0, SQL_NO_NULLS));
 
   expect_stmt(hstmt, SQLFetch(hstmt), SQL_NO_DATA_FOUND);
@@ -797,7 +793,7 @@ DECLARE_TEST(t_bug30081)
 */
 DECLARE_TEST(t_datecolumns)
 {
-  SQLCHAR col[10];
+  char col[10];
   SQLLEN type;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_datecolumns");
@@ -805,7 +801,7 @@ DECLARE_TEST(t_datecolumns)
          "CREATE TABLE t_datecolumns(a TIMESTAMP, b DATETIME, c DATE, d TIME)");
 
   ok_stmt(hstmt, SQLColumns(hstmt, NULL, 0, NULL, 0,
-                            (SQLCHAR *)"t_datecolumns", SQL_NTS, NULL, 0));
+    SC_NTS("t_datecolumns"), NULL, 0));
 
   ok_stmt(hstmt, SQLFetch(hstmt));
 
@@ -866,7 +862,7 @@ DECLARE_TEST(t_datecolumns)
 */
 DECLARE_TEST(t_bug14414)
 {
-  SQLCHAR col[10];
+  char col[10];
   SQLSMALLINT nullable;
 
   if (!mysql_min_version(hdbc, "8.0.0", 5))
@@ -877,7 +873,7 @@ DECLARE_TEST(t_bug14414)
         "c TIMESTAMP NULL)");
 
   ok_stmt(hstmt, SQLColumns(hstmt, NULL, 0, NULL, 0,
-                            (SQLCHAR *)"t_bug14414", SQL_NTS, NULL, 0));
+    SC_NTS("t_bug14414"), NULL, 0));
 
   ok_stmt(hstmt, SQLFetch(hstmt));
   is_str(my_fetch_str(hstmt, col, 4), "a", 1);
@@ -904,16 +900,19 @@ DECLARE_TEST(t_bug14414)
   */
   ok_sql(hstmt, "SELECT * FROM t_bug14414");
 
-  ok_stmt(hstmt, SQLDescribeCol(hstmt, 1, col, sizeof(col), NULL, NULL, NULL,
-                                NULL, &nullable));
+  ok_stmt(hstmt, SQLDescribeCol(
+    hstmt, 1, SC_SIZE(col), NULL, NULL, NULL, NULL, &nullable
+  ));
   is_num(nullable, SQL_NULLABLE);
 
-  ok_stmt(hstmt, SQLDescribeCol(hstmt, 2, col, sizeof(col), NULL, NULL, NULL,
-                                NULL, &nullable));
+  ok_stmt(hstmt, SQLDescribeCol(
+    hstmt, 2, SC_SIZE(col), NULL, NULL, NULL, NULL, &nullable
+  ));
   is_num(nullable, SQL_NULLABLE);
 
-  ok_stmt(hstmt, SQLDescribeCol(hstmt, 3, col, sizeof(col), NULL, NULL, NULL,
-                                NULL, &nullable));
+  ok_stmt(hstmt, SQLDescribeCol(
+    hstmt, 3, SC_SIZE(col), NULL, NULL, NULL, NULL, &nullable
+  ));
   is_num(nullable, SQL_NULLABLE);
 
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
@@ -946,7 +945,7 @@ DECLARE_TEST(t_bug30939)
 */
 DECLARE_TEST(t_bug31009)
 {
-  SQLCHAR data[20];
+  char data[20];
   SQLSMALLINT len;
   SQLLEN dlen;
 
@@ -979,14 +978,14 @@ DECLARE_TEST(t_bug31009)
 */
 DECLARE_TEST(t_bug37342)
 {
-  SQLCHAR *date= (SQLCHAR *)"{dt '2007-01-13'}";
-  SQLCHAR *time= (SQLCHAR *)"194759";
-  SQLCHAR out[30];
+  const char* date = "{dt '2007-01-13'}";
+  const char* time = "194759";
+  char out[30];
   TIMESTAMP_STRUCT ts;
   SQLLEN len= SQL_NTS;
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                  SQL_TIMESTAMP, 0, 0, date, 0, &len));
+                                  SQL_TIMESTAMP, 0, 0, SC(date), 0, &len));
 
   ok_sql(hstmt, "SELECT ? AS foo");
 
@@ -999,7 +998,7 @@ DECLARE_TEST(t_bug37342)
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
-                                  SQL_TYPE_TIME, 0, 0, time, 0, &len));
+                                  SQL_TYPE_TIME, 0, 0, SC(time), 0, &len));
 
   ok_sql(hstmt, "SELECT ? AS foo");
 
@@ -1042,7 +1041,7 @@ DECLARE_TEST(t_bug37342)
 */
 DECLARE_TEST(t_bug60646)
 {
-  SQLCHAR buff[128];
+  char buff[128];
   TIMESTAMP_STRUCT ts;
   SQLLEN len;
   const char *expected= "2012-01-01 01:01:01.000001";
@@ -1058,7 +1057,7 @@ DECLARE_TEST(t_bug60646)
   ok_stmt(hstmt, SQLFetch(hstmt));
 
   /* Fields 1-4 checking conversions from date as a string
-  /* 1) just to be sure that everything is fine with string */
+     1) just to be sure that everything is fine with string */
   is_str(my_fetch_str(hstmt, buff, 1), expected, sizeof(expected));
 
   /* 2) testing if fractional part is converted to nanoseconds correctly */
@@ -1150,7 +1149,7 @@ DECLARE_TEST(t_bug60648)
   param.minute=   2;
   param.second=   3;
   param.fraction= 1000;
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"select ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_TYPE_TIMESTAMP,
     SQL_TYPE_DATE, 0, 0, &param, 0, NULL));
@@ -1188,14 +1187,14 @@ DECLARE_TEST(t_b13975271)
   }
   else
   {
-    SQLCHAR ts[27];
+    char ts[27];
     SQLLEN len;
 
     ok_sql(hstmt, "DROP TABLE IF EXISTS t_b13975271");
     ok_sql(hstmt, "CREATE TABLE t_b13975271 (ts TIMESTAMP(6), dt DATETIME(6),\
                     t TIME(6))");
 
-    strcpy((char *)ts, "2012-04-25 10:20:49.0194");
+    strcpy(ts, "2012-04-25 10:20:49.0194");
 
     ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                                     SQL_TIMESTAMP,0, 0, ts, sizeof(ts), NULL));
@@ -1203,9 +1202,8 @@ DECLARE_TEST(t_b13975271)
                                     SQL_CHAR,0, 0, ts, sizeof(ts), NULL));
     ok_stmt(hstmt, SQLBindParameter(hstmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR,
                                     SQL_CHAR,0, 0, ts, sizeof(ts), NULL));
-    ok_stmt(hstmt, SQLPrepare(hstmt, "INSERT INTO t_b13975271(ts,dt,t) \
-                                      VALUES (?,?,?)",
-                              SQL_NTS));
+    ok_stmt(hstmt, SQLPrepare(hstmt,
+      SC_NTS("INSERT INTO t_b13975271(ts,dt,t) VALUES (?,?,?)")));
     ok_stmt(hstmt, SQLExecute(hstmt));
 
     ok_stmt(hstmt, SQLFreeStmt(hstmt,SQL_CLOSE));
@@ -1249,8 +1247,8 @@ DECLARE_TEST(t_17613161)
 
   ok_stmt(hstmt, SQLFreeStmt(hstmt,SQL_CLOSE));
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"INSERT INTO t_17613161 "
-                            "(col1) VALUES (?)",SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("INSERT INTO t_17613161 "
+    "(col1) VALUES (?)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_TIME,
                                   SQL_TIME, 0, 0, &ts, sizeof(ts), NULL));
@@ -1303,7 +1301,7 @@ DECLARE_TEST(t_17613161)
 
 DECLARE_TEST(t_17613161_bookmark)
 {
-  SQLCHAR bData[2][10];
+  char bData[2][10];
   SQL_TIME_STRUCT tm[2]= {0};
   SQL_INTERVAL_STRUCT h2s[2];
 
@@ -1401,7 +1399,7 @@ DECLARE_TEST(t_date_overflow)
   ok_sql(hstmt, "CREATE TABLE t_date_overflow (a DATE)");
 
   /* By default the INSERT should end with the error */
-  ok_stmt(hstmt, SQLPrepare(hstmt, query_prep, SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(query_prep)));
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_TIMESTAMP,
                                   SQL_DATE, 0, 0, &ts, sizeof(ts), NULL));
 
@@ -1413,7 +1411,7 @@ DECLARE_TEST(t_date_overflow)
   is_num(my_print_non_format_result(hstmt), 0);
 
   /* The INSERT with NO_DATE_OVERFLOW=1 should be successful */
-  ok_stmt(hstmt1, SQLPrepare(hstmt1, query_prep, SQL_NTS));
+  ok_stmt(hstmt1, SQLPrepare(hstmt1, SC_NTS(query_prep)));
   ok_stmt(hstmt1, SQLBindParameter(hstmt1, 1, SQL_PARAM_INPUT, SQL_C_TIMESTAMP,
                                   SQL_DATE, 0, 0, &ts, sizeof(ts), NULL));
 

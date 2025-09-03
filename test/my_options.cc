@@ -1,4 +1,4 @@
-// Copyright (c) 2020, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2020, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -50,7 +50,7 @@
 DECLARE_TEST(t_wl13883)
 {
 
-  if (strcmp((const char*)myserver, "localhost"))
+  if (strcmp(myserver, "localhost"))
     return OK;
 
   struct dataObject
@@ -75,7 +75,9 @@ DECLARE_TEST(t_wl13883)
 #endif
       std::cout << "CLEANING-UP..." << std::endl
         << "EXECUTING SYSTEM COMMAND: " << cmd.str() << std::endl;
-      std::system(cmd.str().c_str());
+      // Note: Ignoring potential errors in cleanup code
+      int ret = std::system(cmd.str().c_str());
+      (void)ret;
     }
 
     dataDir(std::string path, bool is_hidden = false) : dataObject(path)
@@ -175,12 +177,12 @@ struct connLocal
   connLocal(const char* opts)
   {
     alloc_basic_handles_with_opt(&m_henv, &m_hdbc, &m_hstmt, nullptr,
-                                 nullptr, nullptr, nullptr, (SQLCHAR*)opts);
+                                 nullptr, nullptr, nullptr, opts);
   }
 
   int execute(const char* query)
   {
-    ok_stmt(m_hstmt, SQLExecDirect(m_hstmt, (SQLCHAR*)query, SQL_NTS));
+    ok_stmt(m_hstmt, SQLExecDirect(m_hstmt, SC_NTS(query)));
     return OK;
   }
 
@@ -342,7 +344,7 @@ do { \
       try
       {
         connLocal conn(opts.c_str());
-        SQLCHAR buf[512];
+        char buf[512];
 
         std::stringstream sstr;
         sstr << "LOAD DATA LOCAL INFILE '" << file_path_query <<
@@ -532,7 +534,7 @@ DECLARE_TEST(t_wl14362)
 
   const int con_num = 30;
   std::string opts("ENABLE_DNS_SRV=1;SERVER=");
-  opts.append((char*)mydns_srv);
+  opts.append(mydns_srv);
   std::map<int, int> con_map;
 
   for (int i = 0; i < con_num; ++i)
@@ -540,11 +542,10 @@ DECLARE_TEST(t_wl14362)
     DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
     is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
-       (SQLCHAR*)USE_DRIVER, myuid, mypwd, mydb, (SQLCHAR*)opts.c_str()));
+       USE_DRIVER, myuid, mypwd, mydb, opts.c_str()));
 
     ok_sql(hstmt1, "SHOW VARIABLES LIKE 'server_id'");
 
-    //my_fetch_str(hstmt1, (SQLCHAR*)buf, 2);
     while(SQLFetch(hstmt1) == SQL_SUCCESS)
     {
       SQLINTEGER server_id = my_fetch_int(hstmt1, 2);
@@ -576,7 +577,7 @@ int run_func_tests(test_params &par)
 {
 
   SQLRETURN rc = SQL_SUCCESS;
-  SQLCHAR buf[4096];
+  char buf[4096];
 
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
@@ -647,65 +648,65 @@ int run_func_tests(test_params &par)
 
     alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
                                  nullptr, nullptr, nullptr, nullptr,
-                                 (SQLCHAR*)connstr.c_str());
+                                 connstr.c_str());
 
-    rc = SQLTables(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                           (SQLCHAR*)par.schema_name, SQL_NTS,
-                           (SQLCHAR*)"t_wl14490a", SQL_NTS,
-                           (SQLCHAR*)"TABLE", SQL_NTS);
+    rc = SQLTables(hstmt1, SC_NTS(par.catalog_name),
+                           SC_NTS(par.schema_name),
+                           SC_NTS("t_wl14490a"),
+                           SC_NTS("TABLE"));
     is_num(OK, check_results(rc, "SQLTables"));
 
-    rc = SQLColumns(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                            (SQLCHAR*)par.schema_name, SQL_NTS,
-                            (SQLCHAR*)"t_wl14490a", SQL_NTS,
-                            (SQLCHAR*)"a", SQL_NTS);
+    rc = SQLColumns(hstmt1, SC_NTS(par.catalog_name),
+                            SC_NTS(par.schema_name),
+                            SC_NTS("t_wl14490a"),
+                            SC_NTS("a"));
     is_num(OK, check_results(rc, "SQLColumns"));
 
-    rc = SQLStatistics(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                               (SQLCHAR*)par.schema_name, SQL_NTS,
-                               (SQLCHAR*)"t_wl14490a", SQL_NTS,
+    rc = SQLStatistics(hstmt1, SC_NTS(par.catalog_name),
+                               SC_NTS(par.schema_name),
+                               SC_NTS("t_wl14490a"),
                                SQL_INDEX_ALL,SQL_QUICK);
     is_num(OK, check_results(rc, "SQLStatistics"));
 
     rc = SQLSpecialColumns(hstmt1, SQL_ROWVER,
-                           (SQLCHAR*)par.catalog_name, SQL_NTS,
-                           (SQLCHAR*)par.schema_name, SQL_NTS,
-                           (SQLCHAR*)"t_wl14490a", SQL_NTS,
+                           SC_NTS(par.catalog_name),
+                           SC_NTS(par.schema_name),
+                           SC_NTS("t_wl14490a"),
                            SQL_SCOPE_SESSION, SQL_NULLABLE);
     is_num(OK, check_results(rc, "SQLSpecialColumns", nullptr, "b_ts"));
 
-    rc = SQLPrimaryKeys(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                        (SQLCHAR*)par.schema_name, SQL_NTS,
-                        (SQLCHAR*)"t_wl14490a", SQL_NTS);
+    rc = SQLPrimaryKeys(hstmt1, SC_NTS(par.catalog_name),
+                        SC_NTS(par.schema_name),
+                        SC_NTS("t_wl14490a"));
     is_num(OK, check_results(rc, "SQLPrimaryKeys"));
 
-    rc = SQLForeignKeys(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                                (SQLCHAR*)par.schema_name, SQL_NTS,
+    rc = SQLForeignKeys(hstmt1, SC_NTS(par.catalog_name),
+                                SC_NTS(par.schema_name),
                                 NULL, 0, // All tables referenced by t_wl14490c
-                                (SQLCHAR*)par.catalog_name, SQL_NTS,
-                                (SQLCHAR*)par.schema_name, SQL_NTS,
-                                (SQLCHAR *)"t_wl14490c", SQL_NTS);
+                                SC_NTS(par.catalog_name),
+                                SC_NTS(par.schema_name),
+                                SC_NTS("t_wl14490c"));
     is_num(OK, check_results(rc, "SQLForeignKeys"));
 
-    rc = SQLTablePrivileges(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                            (SQLCHAR*)par.schema_name, SQL_NTS,
-                            (SQLCHAR*)"t_wl14490a", SQL_NTS);
+    rc = SQLTablePrivileges(hstmt1, SC_NTS(par.catalog_name),
+                            SC_NTS(par.schema_name),
+                            SC_NTS("t_wl14490a"));
     is_num(OK, check_results(rc, "SQLTablePrivileges"));
 
-    rc = SQLColumnPrivileges(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                            (SQLCHAR*)par.schema_name, SQL_NTS,
-                            (SQLCHAR*)"t_wl14490a", SQL_NTS,
-                            (SQLCHAR*)"a", SQL_NTS);
+    rc = SQLColumnPrivileges(hstmt1, SC_NTS(par.catalog_name),
+                            SC_NTS(par.schema_name),
+                            SC_NTS("t_wl14490a"),
+                            SC_NTS("a"));
     is_num(OK, check_results(rc, "SQLColumnPrivileges"));
 
-    rc = SQLProcedures(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                            (SQLCHAR*)par.schema_name, SQL_NTS,
-                            (SQLCHAR*)"procwl14490", SQL_NTS);
+    rc = SQLProcedures(hstmt1, SC_NTS(par.catalog_name),
+                            SC_NTS(par.schema_name),
+                            SC_NTS("procwl14490"));
     is_num(OK, check_results(rc, "SQLProcedures"));
 
-    rc = SQLProcedureColumns(hstmt1, (SQLCHAR*)par.catalog_name, SQL_NTS,
-                            (SQLCHAR*)par.schema_name, SQL_NTS,
-                            (SQLCHAR*)"procwl14490", SQL_NTS,
+    rc = SQLProcedureColumns(hstmt1, SC_NTS(par.catalog_name),
+                            SC_NTS(par.schema_name),
+                            SC_NTS("procwl14490"),
                             nullptr, 0);
     is_num(OK, check_results(rc, "SQLProcedureColumns"));
 
@@ -792,7 +793,7 @@ DECLARE_TEST(t_wl14490)
                 ") ENGINE=InnoDB");
   ok_sql(hstmt, "SELECT CURRENT_USER()");
   ok_stmt(hstmt, SQLFetch(hstmt));
-  my_fetch_str(hstmt, (SQLCHAR*)buf, 1);
+  my_fetch_str(hstmt, buf, 1);
 
   //escape %
   std::string user;
@@ -806,26 +807,26 @@ DECLARE_TEST(t_wl14490)
   SQLFreeStmt(hstmt, SQL_CLOSE);
 
   std::string query = "GRANT ALL ON ";
-  query.append((char *)mydb).append(".").append("t_wl14490a to ").append(user);
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)query.c_str(), (SQLINTEGER)query.length()));
+  query.append(mydb).append(".").append("t_wl14490a to ").append(user);
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC(query.c_str()), (SQLINTEGER)query.length()));
 
   query = "GRANT INSERT (a), SELECT (a), REFERENCES (a), UPDATE (a) ON ";
-  query.append((char *)mydb).append(".").append("t_wl14490a to ").append(user);
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)query.c_str(), (SQLINTEGER)query.length()));
+  query.append(mydb).append(".").append("t_wl14490a to ").append(user);
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC(query.c_str()), (SQLINTEGER)query.length()));
 
   ok_sql(hstmt, "DROP PROCEDURE IF EXISTS procwl14490");
   ok_sql(hstmt, "CREATE PROCEDURE procwl14490(IN p1 INT, IN p2 INT) begin end;");
 
   test_params params[] = {
-    {0, 0, (const char*)mydb, nullptr, SQL_SUCCESS},
-    {0, 0, nullptr, (const char*)mydb, SQL_SUCCESS},
-    {0, 0, (const char*)mydb, (const char*)mydb, SQL_ERROR},
-    {1, 0, (const char*)mydb, nullptr, SQL_ERROR},
-    {1, 0, nullptr, (const char*)mydb, SQL_SUCCESS},
-    {0, 1, (const char*)mydb, nullptr, SQL_SUCCESS},
-    {0, 1, nullptr, (const char*)mydb, SQL_ERROR},
-    {1, 1, nullptr, (const char*)mydb, SQL_ERROR},
-    {1, 1, (const char*)mydb, nullptr, SQL_ERROR},
+    {0, 0, mydb, nullptr, SQL_SUCCESS},
+    {0, 0, nullptr, mydb, SQL_SUCCESS},
+    {0, 0, mydb, mydb, SQL_ERROR},
+    {1, 0, mydb, nullptr, SQL_ERROR},
+    {1, 0, nullptr, mydb, SQL_SUCCESS},
+    {0, 1, mydb, nullptr, SQL_SUCCESS},
+    {0, 1, nullptr, mydb, SQL_ERROR},
+    {1, 1, nullptr, mydb, SQL_ERROR},
+    {1, 1, mydb, nullptr, SQL_ERROR},
     {1, 1, nullptr, nullptr, SQL_SUCCESS},
   };
 
@@ -868,7 +869,7 @@ try{
     const char *data = buf.data();
     std::string query = "SHOW SESSION STATUS LIKE '" + var + "'";
 
-    ok_stmt(stmt, SQLExecDirect(stmt, (SQLCHAR*)query.c_str(), SQL_NTS));
+    ok_stmt(stmt, SQLExecDirect(stmt, SC_NTS(query.c_str())));
     ok_stmt(stmt, SQLFetch(stmt));
     ok_stmt(stmt, SQLGetData(stmt, 2, SQL_C_CHAR, (SQLPOINTER)data, bufsize, NULL));
     is(SQL_NO_DATA == SQLFetch(stmt));
@@ -1049,12 +1050,12 @@ DECLARE_TEST(t_collation_set)
         // to SQLWCHAR, which is incorrect.
         // Therefore, verify that the initial data is returned
         // (0xf09f988a)
-        SQLCHAR buff[8] = { 0 };
+        char buff[8] = { 0 };
         ok_stmt(hstmt, SQLGetData(hstmt, 1, SQL_CHAR, buff, sizeof(buff), &len));
-        is_num(0xf0, buff[0]);
-        is_num(0x9f, buff[1]);
-        is_num(0x98, buff[2]);
-        is_num(0x8a, buff[3]);
+        is_num((char)0xf0, buff[0]);
+        is_num((char)0x9f, buff[1]);
+        is_num((char)0x98, buff[2]);
+        is_num((char)0x8a, buff[3]);
       }
 
       expect_stmt(hstmt, SQLFetch(hstmt), SQL_NO_DATA_FOUND);

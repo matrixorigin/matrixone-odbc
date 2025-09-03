@@ -36,9 +36,9 @@ DECLARE_TEST(t_bug66548)
 {
   /* TODO: remove #ifdef _WIN32 when Linux and MacOS setup is released */
 #ifdef _WIN32
-  SQLCHAR attrs[8192];
-  SQLCHAR drv[128];
-  SQLCHAR conn_out[512];
+  char attrs[8192];
+  char drv[128];
+  char conn_out[512];
   SQLSMALLINT conn_out_len;
   int i, len;
   HDBC hdbc1;
@@ -48,8 +48,9 @@ DECLARE_TEST(t_bug66548)
     The last attribute in the list must end with ';'
   */
 
-  sprintf((char*)attrs, "DSN=bug66548dsn;SERVER=%s;USER=%s;PASSWORD=%s;"
-    "PORT=%d;DATABASE=%s;\0", myserver, myuid, mypwd, myport, mydb);
+  len = sprintf(attrs, "DSN=bug66548dsn;SERVER=%s;USER=%s;PASSWORD=%s;"
+    "PORT=%d;DATABASE=%s;", myserver, myuid, mypwd, myport, mydb);
+  attrs[len] = '\0';
 
   len = (int)strlen(attrs);
 
@@ -68,12 +69,12 @@ DECLARE_TEST(t_bug66548)
   if (mydriver[0] == '{')
   {
     /* We need to remove {} in the driver name or it will not register */
-    memcpy(drv, mydriver+1, sizeof(SQLCHAR)*(len-2));
+    memcpy(drv, mydriver+1, sizeof(char)*(len-2));
     drv[len-2]= '\0';
   }
   else
   {
-    memcpy(drv, mydriver, sizeof(SQLCHAR)*len);
+    memcpy(drv, mydriver, sizeof(char)*len);
 	drv[len]= '\0';
   }
 
@@ -89,9 +90,10 @@ DECLARE_TEST(t_bug66548)
   ok_env(henv, SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1));
 
   /* Try connecting using the newly created DSN */
-  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, "DSN=bug66548dsn", SQL_NTS, conn_out,
-                                 sizeof(conn_out), &conn_out_len,
-                                 SQL_DRIVER_NOPROMPT));
+  ok_con(hdbc1, SQLDriverConnect(
+    hdbc1, NULL, SC_NTS("DSN=bug66548dsn"),
+    SC_SIZE(conn_out), &conn_out_len, SQL_DRIVER_NOPROMPT
+  ));
   ok_con(hdbc1, SQLDisconnect(hdbc1));
   ok_con(hdbc1, SQLFreeHandle(SQL_HANDLE_DBC, hdbc1));
 
@@ -107,10 +109,10 @@ DECLARE_TEST(t_bug66548)
 */
 DECLARE_TEST(t_bug24581)
 {
-  SQLCHAR grant_query[128];
-  SQLCHAR conn_in[512], conn_out[512], socket_path[512] = {0};
-  SQLCHAR conn_fdsn[255];
-  SQLCHAR fdsn_path[255];
+  char grant_query[128];
+  char conn_in[2048], conn_out[2048], socket_path[512] = {0};
+  char conn_fdsn[512];
+  char fdsn_path[255];
   SQLSMALLINT conn_out_len;
   HDBC hdbc1;
   HSTMT hstmt1;
@@ -119,7 +121,7 @@ DECLARE_TEST(t_bug24581)
   sprintf(grant_query, "grant usage on %s.* to 'user24851'@'%s'"\
           " identified by 'pass24851'", mydb, myserver);
 
-  ok_stmt(hstmt, SQLExecDirect(hstmt, grant_query, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(grant_query)));
 
   ok_env(henv, SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1));
 
@@ -139,16 +141,20 @@ DECLARE_TEST(t_bug24581)
           mydriver, myserver, mydb, myport, fdsn_path, socket_path);
 
   /* Create a .dsn file in the TEMP directory, we will remove it later */
-  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, (SQLCHAR*)conn_in, SQL_NTS,
-                          conn_out, 512, &conn_out_len, SQL_DRIVER_NOPROMPT));
+  ok_con(hdbc1, SQLDriverConnect(
+    hdbc1, NULL, SC_NTS(conn_in),
+    SC(conn_out), 512, &conn_out_len, SQL_DRIVER_NOPROMPT
+  ));
   /* Not necessary, but keep the driver manager happy */
   ok_con(hdbc1, SQLDisconnect(hdbc1));
 
   sprintf(conn_fdsn, "FileDSN=%s;PASSWORD=pass24851", fdsn_path);
 
   /* Connect using the new file DSN */
-  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, (SQLCHAR*)conn_fdsn, SQL_NTS,
-                          conn_out, 512, &conn_out_len, SQL_DRIVER_NOPROMPT));
+  ok_con(hdbc1, SQLDriverConnect(
+    hdbc1, NULL, SC_NTS(conn_fdsn),
+    SC(conn_out), 512, &conn_out_len, SQL_DRIVER_NOPROMPT
+  ));
 
   ok_con(hdbc1, SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1));
 
@@ -176,8 +182,8 @@ DECLARE_TEST(t_bug17508006)
 {
   /* TODO: remove #ifdef _WIN32 when Linux and MacOS setup is released */
 #ifdef _WIN32
-  SQLCHAR conn_in[512], conn_out[512];
-  SQLCHAR fdsn_path[255];
+  char conn_in[512], conn_out[512];
+  char fdsn_path[255];
   SQLSMALLINT conn_out_len;
   HDBC hdbc1;
 
@@ -189,9 +195,10 @@ DECLARE_TEST(t_bug17508006)
                    mydriver, myserver, mydb, fdsn_path);
 
   /* This should result in an error */
-  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, (SQLCHAR*)conn_in, SQL_NTS,
-                          conn_out, 512, &conn_out_len, SQL_DRIVER_NOPROMPT),
-						  SQL_ERROR);
+  expect_dbc(hdbc1, SQLDriverConnect(
+    hdbc1, NULL, SC_NTS(conn_in),
+    SC(conn_out), 512, &conn_out_len, SQL_DRIVER_NOPROMPT
+  ), SQL_ERROR);
 
   ok_con(hdbc1, SQLFreeHandle(SQL_HANDLE_DBC, hdbc1));
 

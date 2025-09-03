@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -33,11 +33,11 @@
 
 DECLARE_TEST(t_bulk_insert)
 {
-  SQLINTEGER i, id[MAX_INSERT_COUNT+1];
-  SQLCHAR    name[MAX_INSERT_COUNT][40],
+  int        i, id[MAX_INSERT_COUNT+1];
+  char       name[MAX_INSERT_COUNT][40],
              txt[MAX_INSERT_COUNT][60],
              ltxt[MAX_INSERT_COUNT][70];
-  SQLDOUBLE  dt, dbl[MAX_INSERT_COUNT];
+  double     dt, dbl[MAX_INSERT_COUNT];
   SQLLEN     name_len[MAX_INSERT_COUNT],
              txt_len[MAX_INSERT_COUNT],
              ltxt_len[MAX_INSERT_COUNT];
@@ -72,9 +72,9 @@ DECLARE_TEST(t_bulk_insert)
   {
     id[i]= i;
     dbl[i]= i + dt;
-    sprintf((char *)name[i], "Varchar%d", i);
-    sprintf((char *)txt[i],  "Text%d", i);
-    sprintf((char *)ltxt[i], "LongText, id row:%d", i);
+    sprintf(name[i], "Varchar%d", i);
+    sprintf(txt[i],  "Text%d", i);
+    sprintf(ltxt[i], "LongText, id row:%d", i);
     name_len[i] = strlen(name[i]);
     txt_len[i] = strlen(txt[i]);
     ltxt_len[i] = strlen(ltxt[i]);
@@ -114,7 +114,7 @@ DECLARE_TEST(t_mul_pkdel)
 
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  ok_stmt(hstmt, SQLSetCursorName(hstmt, (SQLCHAR *)"venu", SQL_NTS));
+  ok_stmt(hstmt, SQLSetCursorName(hstmt, SC_NTS("venu")));
 
   ok_sql(hstmt, "SELECT a, c FROM t_mul_pkdel");
 
@@ -307,11 +307,11 @@ DECLARE_TEST(t_bulk_insert_rows)
 
 DECLARE_TEST(t_bulk_insert_bookmark)
 {
-  SQLINTEGER i, id[MAX_BM_INS_COUNT + 1];
-  SQLCHAR    name[MAX_BM_INS_COUNT][40],
+  int        i, id[MAX_BM_INS_COUNT + 1];
+  char       name[MAX_BM_INS_COUNT][40],
              buff[100];
-  SQLCHAR bData[MAX_BM_INS_COUNT][10];
-  SQLSMALLINT length;
+  char       bData[MAX_BM_INS_COUNT][10];
+  int        length;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bulk_insert");
   ok_sql(hstmt, "CREATE TABLE t_bulk_insert (id INT, v VARCHAR(100))");
@@ -349,7 +349,7 @@ DECLARE_TEST(t_bulk_insert_bookmark)
     memset(bData[i], 0, 10);
     id[i]= i + 5;
     memset(name[i], 0, 40);
-    sprintf((char *)name[i], "Varchar%d", i + 5);
+    sprintf(name[i], "Varchar%d", i + 5);
   }
 
   /*
@@ -376,12 +376,12 @@ DECLARE_TEST(t_bulk_insert_bookmark)
     is_num(id[i], i + 1);
     if (i < 4)
     {
-      length= sprintf((char *)buff, "test%d", i + 1);
+      length= sprintf(buff, "test%d", i + 1);
       is_str(name[i], buff, length);
     }
     else
     {
-      length= sprintf((char *)buff, "Varchar%d", i + 1);
+      length= sprintf(buff, "Varchar%d", i + 1);
       is_str(name[i], buff, length);
     }
   }
@@ -403,8 +403,8 @@ DECLARE_TEST(t_bookmark_update)
   SQLUSMALLINT rowStatus[4];
   SQLULEN numRowsFetched;
   SQLINTEGER nData[4], i;
-  SQLCHAR szData[4][16];
-  SQLCHAR bData[4][10];
+  char szData[4][16];
+  char bData[4][10];
   SQLLEN nRowCount;
 
   ok_sql(hstmt, "drop table if exists t_bookmark");
@@ -489,8 +489,8 @@ DECLARE_TEST(t_bookmark_delete)
   SQLUSMALLINT rowStatus[4];
   SQLULEN numRowsFetched;
   SQLINTEGER nData[4];
-  SQLCHAR szData[4][16];
-  SQLCHAR bData[4][10];
+  char szData[4][16];
+  char bData[4][10];
   SQLLEN nRowCount;
 
   ok_sql(hstmt, "drop table if exists t_bookmark");
@@ -578,7 +578,7 @@ DECLARE_TEST(t_bug17714290)
 {
 
   SQLINTEGER nData[4] = {1, 2, 3, 4};
-  SQLCHAR szData[4][16] = {{"xxxxxxxx"},{"xxxxxxxx"},{"xxxxxxxx"},{"xxxxxxxx"}};
+  char szData[4][16] = {{"xxxxxxxx"},{"xxxxxxxx"},{"xxxxxxxx"},{"xxxxxxxx"}};
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS bug17714290");
   ok_sql(hstmt, "CREATE TABLE bug17714290 ("\

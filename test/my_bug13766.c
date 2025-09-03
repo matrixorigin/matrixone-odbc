@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -45,7 +45,7 @@ DECLARE_TEST(bug13766_result)
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
   alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL,
-                               NULL, "FLAG_ZERO_DATE_TO_MIN=1");
+    NULL, "FLAG_ZERO_DATE_TO_MIN=1");
   SQL_DATE_STRUCT xdate[EL_NUM];
   SQL_TIMESTAMP_STRUCT xts[EL_NUM];
   SQLLEN isNull[12];
@@ -164,11 +164,11 @@ DECLARE_TEST(bug13766_query)
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
   alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL,
-                               NULL, "FLAG_MIN_DATE_TO_ZERO=1");
+    NULL, "FLAG_MIN_DATE_TO_ZERO=1");
 
   ok_sql(hstmt1, "SET @@SESSION.SQL_MODE=''");
 
-  ok_stmt(hstmt1, SQLPrepare(hstmt1, (SQLCHAR *)"select ?", SQL_NTS));
+  ok_stmt(hstmt1, SQLPrepare(hstmt1, SC_NTS("select ?")));
   ok_stmt(hstmt1, SQLBindParameter(hstmt1, 1, SQL_PARAM_INPUT, SQL_C_TYPE_DATE,
                                   SQL_TYPE_DATE, 0, 0, &xdate, 0, NULL));
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -101,8 +101,8 @@ DECLARE_TEST(t_desc_paramset)
 
   ok_sql(hstmt, "drop table if exists t_paramset");
   ok_sql(hstmt, "create table t_paramset(x int, y int)");
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"insert into t_paramset "
-                            "values (?, ?)", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("insert into t_paramset "
+                            "values (?, ?)")));
 
   ok_stmt(hstmt,
           SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_INTEGER, SQL_C_LONG,
@@ -174,7 +174,7 @@ DECLARE_TEST(t_sqlbindcol_count_reset)
 {
   SQLHANDLE ard;
   SQLINTEGER count;
-  SQLCHAR *buf[10];
+  char *buf[10];
 
   ok_stmt(hstmt, SQLGetStmtAttr(hstmt, SQL_ATTR_APP_ROW_DESC,
                                 &ard, SQL_IS_POINTER, NULL));
@@ -237,7 +237,7 @@ DECLARE_TEST(t_desc_default_type)
   SQLHANDLE ard, apd;
   SQLINTEGER inval= 20, outval= 0;
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"select ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?")));
   ok_stmt(hstmt, SQLGetStmtAttr(hstmt, SQL_ATTR_APP_PARAM_DESC,
                                 &apd, 0, NULL));
   ok_stmt(hstmt, SQLGetStmtAttr(hstmt, SQL_ATTR_APP_ROW_DESC,
@@ -270,7 +270,7 @@ DECLARE_TEST(t_basic_explicit)
   SQLINTEGER impparam= 2;
   SQLINTEGER expparam= 999;
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *) "select ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?")));
   ok_stmt(hstmt, SQLBindCol(hstmt, 1, SQL_C_LONG, &result, 0, NULL));
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
                                   SQL_INTEGER, 0, 0, &impparam, 0, NULL));
@@ -435,7 +435,7 @@ DECLARE_TEST(t_mult_stmt_free)
   for (i= 0; i < mult_count; ++i)
   {
     exp_param= 200 + i;
-    ok_stmt(stmt[i], SQLExecDirect(stmt[i], (SQLCHAR *)"select ?", SQL_NTS));
+    ok_stmt(stmt[i], SQLExecDirect(stmt[i], SC_NTS("select ?")));
     ok_stmt(stmt[i], SQLFetch(stmt[i]));
     is_num(exp_result, exp_param);
     ok_stmt(stmt[i], SQLFreeStmt(stmt[i], SQL_CLOSE));
@@ -459,7 +459,7 @@ DECLARE_TEST(t_mult_stmt_free)
   /* check that the original values worked */
   for (i= 0; i < mult_count; ++i)
   {
-    ok_stmt(stmt[i], SQLExecDirect(stmt[i], (SQLCHAR *)"select ?", SQL_NTS));
+    ok_stmt(stmt[i], SQLExecDirect(stmt[i], SC_NTS("select ?")));
     ok_stmt(stmt[i], SQLFetch(stmt[i]));
     ok_stmt(stmt[i], SQLFreeStmt(stmt[i], SQL_CLOSE));
   }
@@ -613,11 +613,11 @@ DECLARE_TEST(t_bug44576)
 DECLARE_TEST(t_desc_curcatalog)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR conn_in[512];
+  char conn_in[512];
   SQLHANDLE ird;
 
-  is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, USE_DRIVER,
-                                        NULL, NULL, "", NULL));
+  is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
+    USE_DRIVER, NULL, NULL, "", NULL));
 
   ok_sql(hstmt1, "select 10 AS no_catalog_column");
 

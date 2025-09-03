@@ -1,4 +1,4 @@
-// Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -70,9 +70,7 @@ DECLARE_TEST(t_longlong1)
   ok_stmt(hstmt, SQLSetStmtAttr(hstmt, SQL_ATTR_CONCURRENCY,
                                 (SQLPOINTER)SQL_CURSOR_STATIC, 0));
 
-  ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"INSERT INTO t_longlong VALUES (?,?)",
-                            SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("INSERT INTO t_longlong VALUES (?,?)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_UBIGINT,
                                   SQL_BIGINT, 20, 0, &session_id, 20, NULL));
@@ -104,91 +102,91 @@ DECLARE_TEST(t_longlong1)
 
 DECLARE_TEST(t_decimal)
 {
-  SQLCHAR         str[20],s_data[]="189.4567";
+  char            str[20], s_data[] = "189.4567";
   SQLDOUBLE       d_data=189.4567;
   SQLINTEGER      i_data=189, l_data=-23;
   SQLRETURN       rc;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_decimal");
-    rc = tmysql_exec(hstmt,"create table t_decimal(d1 decimal(10,6))");
-    mystmt(hstmt,rc);
+  rc = tmysql_exec(hstmt, "create table t_decimal(d1 decimal(10,6))");
+  mystmt(hstmt, rc);
 
-    rc = SQLTransact(NULL,hdbc,SQL_COMMIT);
-    mycon(hdbc,rc);
+  rc = SQLTransact(NULL, hdbc, SQL_COMMIT);
+  mycon(hdbc, rc);
 
-    rc = SQLPrepare(hstmt, (SQLCHAR *)"insert into t_decimal values (?),(?),(?),(?)",SQL_NTS);
-    mystmt(hstmt,rc);
+  rc = SQLPrepare(hstmt, SC_NTS("insert into t_decimal values (?),(?),(?),(?)"));
+  mystmt(hstmt, rc);
 
-    rc = SQLBindParameter( hstmt, 1, SQL_PARAM_INPUT, SQL_C_DOUBLE,
-                           SQL_DECIMAL, 10, 4, &d_data, 0, NULL );
-    mystmt(hstmt,rc);
+  rc = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_DOUBLE,
+    SQL_DECIMAL, 10, 4, &d_data, 0, NULL);
+  mystmt(hstmt, rc);
 
-    rc = SQLBindParameter( hstmt, 2, SQL_PARAM_INPUT, SQL_C_LONG,
-                           SQL_DECIMAL, 10, 4, &i_data, 0, NULL );
-    mystmt(hstmt,rc);
+  rc = SQLBindParameter(hstmt, 2, SQL_PARAM_INPUT, SQL_C_LONG,
+    SQL_DECIMAL, 10, 4, &i_data, 0, NULL);
+  mystmt(hstmt, rc);
 
-    rc = SQLBindParameter( hstmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR,
-                           SQL_DECIMAL, 10, 4, &s_data, 9, NULL );
-    mystmt(hstmt,rc);
+  rc = SQLBindParameter(hstmt, 3, SQL_PARAM_INPUT, SQL_C_CHAR,
+    SQL_DECIMAL, 10, 4, &s_data, 9, NULL);
+  mystmt(hstmt, rc);
 
-    rc = SQLBindParameter( hstmt, 4, SQL_PARAM_INPUT, SQL_C_LONG,
-                           SQL_DECIMAL, 10, 4, &l_data, 0, NULL );
-    mystmt(hstmt,rc);
+  rc = SQLBindParameter(hstmt, 4, SQL_PARAM_INPUT, SQL_C_LONG,
+    SQL_DECIMAL, 10, 4, &l_data, 0, NULL);
+  mystmt(hstmt, rc);
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_RESET_PARAMS);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_RESET_PARAMS);
+  mystmt(hstmt, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_CLOSE);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_CLOSE);
+  mystmt(hstmt, rc);
 
-    rc = SQLTransact(NULL,hdbc,SQL_COMMIT);
-    mycon(hdbc,rc);
+  rc = SQLTransact(NULL, hdbc, SQL_COMMIT);
+  mycon(hdbc, rc);
 
-    ok_sql(hstmt, "select d1 from t_decimal");
+  ok_sql(hstmt, "select d1 from t_decimal");
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt,1,SQL_C_CHAR,&str,19,NULL);
-    mystmt(hstmt,rc);
-    fprintf(stdout,"decimal(SQL_C_DOUBLE) : %s\n",str);
-    is_str(str, "189.456700", 11);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, &str, 19, NULL);
+  mystmt(hstmt, rc);
+  fprintf(stdout, "decimal(SQL_C_DOUBLE) : %s\n", str);
+  is_str(str, "189.456700", 11);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt,1,SQL_C_CHAR,&str,19,NULL);
-    mystmt(hstmt,rc);
-    fprintf(stdout,"decimal(SQL_C_INTEGER): %s\n",str);
-    is_str(str,"189.000000",11);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, &str, 19, NULL);
+  mystmt(hstmt, rc);
+  fprintf(stdout, "decimal(SQL_C_INTEGER): %s\n", str);
+  is_str(str, "189.000000", 11);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt,1,SQL_C_CHAR,&str,19,NULL);
-    mystmt(hstmt,rc);
-    fprintf(stdout,"decimal(SQL_C_CHAR)   : %s\n",str);
-    is_str(str,"189.456700",11);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, &str, 19, NULL);
+  mystmt(hstmt, rc);
+  fprintf(stdout, "decimal(SQL_C_CHAR)   : %s\n", str);
+  is_str(str, "189.456700", 11);
 
-    rc = SQLFetch(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLFetch(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLGetData(hstmt,1,SQL_C_CHAR,&str,19,NULL);
-    mystmt(hstmt,rc);
-    fprintf(stdout,"decimal(SQL_C_LONG)   : %s\n",str);
-    is_str(str, "-23.000000", 11);
+  rc = SQLGetData(hstmt, 1, SQL_C_CHAR, &str, 19, NULL);
+  mystmt(hstmt, rc);
+  fprintf(stdout, "decimal(SQL_C_LONG)   : %s\n", str);
+  is_str(str, "-23.000000", 11);
 
-    rc = SQLFetch(hstmt);
-    my_assert(rc == SQL_NO_DATA_FOUND);
+  rc = SQLFetch(hstmt);
+  my_assert(rc == SQL_NO_DATA_FOUND);
 
-    rc = SQLFreeStmt(hstmt,SQL_UNBIND);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_UNBIND);
+  mystmt(hstmt, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_CLOSE);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_CLOSE);
+  mystmt(hstmt, rc);
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_decimal");
 
@@ -202,7 +200,7 @@ DECLARE_TEST(t_bigint)
     SQLRETURN rc;
     SQLLEN nlen = 4;
     union {                    /* An union to get 4 byte alignment */
-      SQLCHAR buf[20];
+      char buf[20];
       SQLINTEGER dummy;
     } id = {"99998888"};       /* Just to get a binary pattern for some 64 bit big int */
 
@@ -249,8 +247,8 @@ DECLARE_TEST(t_bigint)
     rc = SQLTransact(NULL,hdbc,SQL_COMMIT);
     mycon(hdbc,rc);
 
-    rc = SQLSpecialColumns(hstmt,SQL_ROWVER,NULL,SQL_NTS,NULL,SQL_NTS,
-                           "t_bigint",SQL_NTS,SQL_SCOPE_TRANSACTION,SQL_NULLABLE);
+    rc = SQLSpecialColumns(hstmt, SQL_ROWVER, SC_NTS(NULL), SC_NTS(NULL),
+      SC_NTS("t_bigint"), SQL_SCOPE_TRANSACTION, SQL_NULLABLE);
 
     mycon(hdbc,rc);
 
@@ -259,7 +257,8 @@ DECLARE_TEST(t_bigint)
     rc = SQLFreeStmt(hstmt,SQL_CLOSE);
     mystmt(hstmt,rc);
 
-    rc = SQLColumns(hstmt,NULL,SQL_NTS,NULL,SQL_NTS,"t_bigint",SQL_NTS,NULL,SQL_NTS);
+    rc = SQLColumns(hstmt, SC_NTS(NULL), SC_NTS(NULL),
+      SC_NTS("t_bigint"), SC_NTS(NULL));
 
     mycon(hdbc,rc);
 
@@ -268,7 +267,8 @@ DECLARE_TEST(t_bigint)
     rc = SQLFreeStmt(hstmt,SQL_CLOSE);
     mystmt(hstmt,rc);
 
-    rc = SQLStatistics(hstmt,NULL,SQL_NTS,NULL,SQL_NTS,"t_bigint",SQL_NTS,SQL_INDEX_ALL,SQL_QUICK);
+    rc = SQLStatistics(hstmt, SC_NTS(NULL), SC_NTS(NULL),
+      SC_NTS("t_bigint"), SQL_INDEX_ALL, SQL_QUICK);
 
     mycon(hdbc,rc);
 
@@ -320,60 +320,60 @@ DECLARE_TEST(t_bigint)
 
 DECLARE_TEST(t_enumset)
 {
-    SQLRETURN rc;
-    SQLCHAR szEnum[40]="MYSQL_E1";
-    SQLCHAR szSet[40]="THREE,ONE,TWO";
+  SQLRETURN rc;
+  char szEnum[40] = "MYSQL_E1";
+  char szSet[40] = "THREE,ONE,TWO";
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_enumset");
 
-    rc = SQLTransact(NULL,hdbc,SQL_COMMIT);
-    mycon(hdbc,rc);
+  rc = SQLTransact(NULL, hdbc, SQL_COMMIT);
+  mycon(hdbc, rc);
 
-    rc = tmysql_exec(hstmt,"create table t_enumset(col1 enum('MYSQL_E1','MYSQL_E2'),col2 set('ONE','TWO','THREE'))");
-    mystmt(hstmt,rc);
+  rc = tmysql_exec(hstmt, "create table t_enumset(col1 enum('MYSQL_E1','MYSQL_E2'),col2 set('ONE','TWO','THREE'))");
+  mystmt(hstmt, rc);
 
-    rc = SQLTransact(NULL,hdbc,SQL_COMMIT);
-    mycon(hdbc,rc);
+  rc = SQLTransact(NULL, hdbc, SQL_COMMIT);
+  mycon(hdbc, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_CLOSE);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_CLOSE);
+  mystmt(hstmt, rc);
 
-    ok_sql(hstmt, "insert into t_enumset values('MYSQL_E2','TWO,THREE')");
+  ok_sql(hstmt, "insert into t_enumset values('MYSQL_E2','TWO,THREE')");
 
-    rc = SQLFreeStmt(hstmt,SQL_CLOSE);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_CLOSE);
+  mystmt(hstmt, rc);
 
-    ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)
-                              "insert into t_enumset values(?,?)", SQL_NTS));
+  ok_stmt(hstmt,
+    SQLPrepare(hstmt, SC_NTS("insert into t_enumset values(?,?)")));
 
-    rc = SQLBindParameter(hstmt,1,SQL_PARAM_INPUT,SQL_C_CHAR,SQL_CHAR,0,0,&szEnum,sizeof(szEnum),NULL);
-    mystmt(hstmt,rc);
+  rc = SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, 0, 0, &szEnum, sizeof(szEnum), NULL);
+  mystmt(hstmt, rc);
 
-    rc = SQLBindParameter(hstmt,2,SQL_PARAM_INPUT,SQL_C_CHAR,SQL_CHAR,0,0,&szSet,sizeof(szSet),NULL);
-    mystmt(hstmt,rc);
+  rc = SQLBindParameter(hstmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR, SQL_CHAR, 0, 0, &szSet, sizeof(szSet), NULL);
+  mystmt(hstmt, rc);
 
-    rc = SQLExecute(hstmt);
-    mystmt(hstmt,rc);
+  rc = SQLExecute(hstmt);
+  mystmt(hstmt, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_RESET_PARAMS);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_RESET_PARAMS);
+  mystmt(hstmt, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_CLOSE);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_CLOSE);
+  mystmt(hstmt, rc);
 
-    rc = SQLTransact(NULL,hdbc,SQL_COMMIT);
-    mycon(hdbc,rc);
+  rc = SQLTransact(NULL, hdbc, SQL_COMMIT);
+  mycon(hdbc, rc);
 
-    rc = tmysql_exec(hstmt,"select * from t_enumset");
-    mystmt(hstmt,rc);
+  rc = tmysql_exec(hstmt, "select * from t_enumset");
+  mystmt(hstmt, rc);
 
-    my_assert( 2 == myresult(hstmt));
+  my_assert(2 == myresult(hstmt));
 
-    rc = SQLFreeStmt(hstmt,SQL_UNBIND);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_UNBIND);
+  mystmt(hstmt, rc);
 
-    rc = SQLFreeStmt(hstmt,SQL_CLOSE);
-    mystmt(hstmt,rc);
+  rc = SQLFreeStmt(hstmt, SQL_CLOSE);
+  mystmt(hstmt, rc);
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_enumset");
 
@@ -386,7 +386,7 @@ DECLARE_TEST(t_enumset)
 */
 DECLARE_TEST(t_bug16917)
 {
-  SQLCHAR buff[255];
+  char    buff[255];
   SQLLEN  len;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug16917");
@@ -425,16 +425,16 @@ DECLARE_TEST(t_bug16917)
 */
 DECLARE_TEST(t_bug16235)
 {
-  SQLCHAR varchar[]= "a'b", text[]= "c'd", buff[10];
-  SQLLEN varchar_len= SQL_NTS, text_len= SQL_NTS;
+  char varchar[] = "a'b", text[] = "c'd", buff[10];
+  SQLLEN varchar_len = SQL_NTS, text_len = SQL_NTS;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug16235");
   ok_sql(hstmt, "CREATE TABLE t_bug16235 (a NVARCHAR(20), b TEXT)");
 
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)
-                            "INSERT INTO t_bug16235 VALUES (?,?)", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt,SC_NTS(
+    "INSERT INTO t_bug16235 VALUES (?,?)")));
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                                   SQL_WVARCHAR, 0, 0, varchar, sizeof(varchar),
                                   &varchar_len));
@@ -566,7 +566,7 @@ DECLARE_TEST(decimal_scale)
 */
 DECLARE_TEST(binary_suffix)
 {
-  SQLCHAR suffix[10];
+  char suffix[10];
   SQLSMALLINT len;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_binarysuffix");
@@ -625,14 +625,14 @@ DECLARE_TEST(float_scale)
 */
 DECLARE_TEST(bit)
 {
-  SQLCHAR col[10];
+  char col[10];
   SQLLEN type, len;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bit");
   ok_sql(hstmt, "CREATE TABLE t_bit (a BIT(1), b BIT(17))");
 
   ok_stmt(hstmt, SQLColumns(hstmt, NULL, 0, NULL, 0,
-                            (SQLCHAR *)"t_bit", SQL_NTS, NULL, 0));
+                            SC_NTS("t_bit"), NULL, 0));
 
   ok_stmt(hstmt, SQLFetch(hstmt));
 
@@ -678,13 +678,13 @@ DECLARE_TEST(bit)
 DECLARE_TEST(t_bug32171)
 {
   SQLUINTEGER in= 4255080020UL, out;
-  SQLCHAR buff[128];
+  char buff[128];
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug32171");
   ok_sql(hstmt, "CREATE TABLE t_bug32171 (a INT UNSIGNED)");
 
-  sprintf((char *)buff, "INSERT INTO t_bug32171 VALUES ('%u')", in);
-  ok_stmt(hstmt, SQLExecDirect(hstmt, buff, SQL_NTS));
+  sprintf(buff, "INSERT INTO t_bug32171 VALUES ('%lu')", in);
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
   ok_sql(hstmt, "SELECT * FROM t_bug32171");
 
@@ -708,9 +708,9 @@ DECLARE_TEST(t_bug32171)
 */
 DECLARE_TEST(t_bug91904)
 {
-  SQLCHAR char_true[4] = {'z','z','z','z'};
+  char char_true[4] = {'z','z','z','z'};
   SQLLEN char_true_length;
-  SQLCHAR text[4] = {'z','z','z','z'};
+  char text[4] = {'z','z','z','z'};
   SQLLEN text_length;
   SQLWCHAR wchar_true[4] = {'z','z','z','z'};
   SQLLEN wchar_true_length;
@@ -727,7 +727,8 @@ DECLARE_TEST(t_bug91904)
                    ) ENGINE=InnoDB AUTO_INCREMENT=6");
 
 
-  ok_stmt(hstmt, SQLExecDirect(hstmt, "INSERT INTO t_bug91904 VALUES (1, 1, \"1\")", SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt,
+    SC_NTS("INSERT INTO t_bug91904 VALUES (1, 1, \"1\")")));
 
   ok_sql(hstmt, "SELECT * FROM t_bug91904");
 
@@ -740,8 +741,8 @@ DECLARE_TEST(t_bug91904)
   //Should not touch the rest of the buffer
   is_num('z', char_true[2]);
   is_num('z', text[2]);
-  is_num(sizeof(SQLCHAR), char_true_length);
-  is_num(sizeof(SQLCHAR), text_length);
+  is_num(sizeof(char), char_true_length);
+  is_num(sizeof(char), text_length);
 
   expect_stmt(hstmt, SQLFetch(hstmt), SQL_NO_DATA);
 
@@ -773,15 +774,15 @@ DECLARE_TEST(t_bug91904)
 DECLARE_TEST(sqlwchar)
 {
   /* Note: this is an SQLCHAR, so it is 'ANSI' data. */
-  SQLCHAR data[]= "S\xe3o Paolo", buff[30];
+  char data[]= "S\xe3o Paolo", buff[30];
   SQLWCHAR wbuff[30]= {0};
   wchar_t wcdata[]= L"S\x00e3o Paolo";
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_sqlwchar");
   ok_sql(hstmt, "CREATE TABLE t_sqlwchar (a VARCHAR(30)) DEFAULT CHARSET utf8");
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)
-                            "INSERT INTO t_sqlwchar VALUES (?)", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(
+                            "INSERT INTO t_sqlwchar VALUES (?)")));
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                                   SQL_WVARCHAR, 0, 0, data, sizeof(data),
                                   NULL));
@@ -843,10 +844,10 @@ DECLARE_TEST(t_sqlnum_msdn)
 {
   SQLHANDLE ard;
   SQL_NUMERIC_STRUCT *sqlnum= malloc(sizeof(SQL_NUMERIC_STRUCT));
-  SQLCHAR exp_data[SQL_MAX_NUMERIC_LEN]=
-          {0x7c, 0x62, 0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  char exp_data[SQL_MAX_NUMERIC_LEN] =
+  { 0x7c, 0x62, 0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
 
-  sqlnum->sign= sqlnum->precision= sqlnum->scale= 128;
+  sqlnum->sign = sqlnum->precision = sqlnum->scale = (SQLSCHAR)128;
 
   ok_sql(hstmt, "select 25.212");
   ok_stmt(hstmt, SQLGetStmtAttr(hstmt, SQL_ATTR_APP_ROW_DESC, &ard, 0, NULL));
@@ -888,18 +889,18 @@ DECLARE_TEST(t_sqlnum_msdn)
 */
 
 int sqlnum_test_from_str(SQLHANDLE hstmt,
-  const char *numstr, SQLCHAR prec, SQLSCHAR scale,
-  SQLCHAR sign, SQLCHAR *expdata, int expnum,
+  const char *numstr, char prec, char scale,
+  char sign, char *expdata, int expnum,
   int overflow)
 {
   SQL_NUMERIC_STRUCT *sqlnum = malloc(sizeof(SQL_NUMERIC_STRUCT));
-  SQLCHAR buf[512];
+  char buf[512];
   SQLHANDLE ard;
   unsigned long numval;
 
-  sprintf((char *)buf, "select %s", numstr);
+  sprintf(buf, "select %s", numstr);
   /* ok_sql(hstmt, buf); */
-  ok_stmt(hstmt, SQLExecDirect(hstmt, buf, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buf)));
 
   ok_stmt(hstmt, SQLGetStmtAttr(hstmt, SQL_ATTR_APP_ROW_DESC, &ard, 0, NULL));
 
@@ -924,9 +925,9 @@ int sqlnum_test_from_str(SQLHANDLE hstmt,
   else
     ok_stmt(hstmt, SQLFetch(hstmt));
 
-  is_num(sqlnum->precision, prec);
-  is_num(sqlnum->scale, scale);
-  is_num(sqlnum->sign, sign);
+  is_num((char)sqlnum->precision, prec);
+  is_num((char)sqlnum->scale, scale);
+  is_num((char)sqlnum->sign, sign);
   if (expdata)
   {
     is(!memcmp(sqlnum->val, expdata, SQL_MAX_NUMERIC_LEN));
@@ -968,7 +969,7 @@ DECLARE_TEST(t_sqlnum_from_str)
   is(sqlnum_test_from_str(hstmt, num1, 2, -1, 1, NULL, 0, 1) == OK);
 
   /* more comprehensive testing of scale and precision */
-  {SQLCHAR expdata[] = { 0x2a, 0x15, 0x57, 0x3c, 0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[] = { 0x2a, 0x15, 0x57, 0x3c, 0,0,0,0,0,0,0,0,0,0,0,0 };
   is(sqlnum_test_from_str(hstmt, num2, 10, 4, 0, expdata, 0, 0) == OK); }
   is(sqlnum_test_from_str(hstmt, num2, 10, 4, 0, NULL, 1012340010, 0) == OK);
   is(sqlnum_test_from_str(hstmt, num2, 9, 3, 0, NULL, 101234001, 0) == OK);
@@ -985,30 +986,30 @@ DECLARE_TEST(t_sqlnum_from_str)
   is(sqlnum_test_from_str(hstmt, "1234567.00", 9, 2, 1, NULL, 123456700, 0) == OK);
 
   /* some larger numbers */
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "1234456789", 10, 0, 1, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0x7c, 0x62, 0,0, 0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0x7c, 0x62, 0,0, 0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "25.212", 5, 3, 1, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0xaa, 0x86, 0x1, 0, 0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0xaa, 0x86, 0x1, 0, 0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "10.0010", 6, 4, 1, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0x2a, 0x15, 0x57, 0x3c, 0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0x2a, 0x15, 0x57, 0x3c, 0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "-101234.0010", 10, 4, 0, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0x72, 0x8b, 0x1, 0, 0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0x72, 0x8b, 0x1, 0, 0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "101234", 6, 0, 1, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0x97, 0x03, 0x7C, 0xE3, 0x76, 0x5E, 0xF0, 0x00, 0x24, 0x1A, 0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0x97, 0x03, 0x7C, 0xE3, 0x76, 0x5E, 0xF0, 0x00, 0x24, 0x1A, 0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "123445678999123445678999", 24, 0, 1, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0x95, 0xFA, 0x0B, 0xF1, 0xED, 0x3C, 0x7C, 0xE4, 0x1B, 0x5F, 0x80, 0x1A, 0x16, 0x06, 0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0x95, 0xFA, 0x0B, 0xF1, 0xED, 0x3C, 0x7C, 0xE4, 0x1B, 0x5F, 0x80, 0x1A, 0x16, 0x06, 0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "123445678999123445678999543216789", 33, 0, 1, expdata, 0, 0)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "12344567899912344567899954321678909876543212", 44, 0, 1, expdata, 0, 1)); }
   /* overflow with dec pt after the overflow */
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "1234456789991234456789995432167890987654321.2", 44, 1, 1, expdata, 0, 1)); }
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff };
   is(OK == sqlnum_test_from_str(hstmt, "340282366920938463463374607431768211455", 39, 0, 1, expdata, 0, 0)); /* MAX */}
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "340282366920938463463374607431768211456", 39, 0, 1, expdata, 0, 1)); /* MAX+1 */}
-  {SQLCHAR expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+  {char expdata[SQL_MAX_NUMERIC_LEN] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
   is(OK == sqlnum_test_from_str(hstmt, "0", 1, 0, 1, expdata, 0, 0)); }
 
   return OK;
@@ -1022,14 +1023,14 @@ DECLARE_TEST(t_sqlnum_from_str)
 DECLARE_TEST(t_bindsqlnum_basic)
 {
   SQL_NUMERIC_STRUCT *sqlnum= malloc(sizeof(SQL_NUMERIC_STRUCT));
-  SQLCHAR outstr[20];
+  char outstr[20];
   memset(sqlnum, 0, sizeof(SQL_NUMERIC_STRUCT));
 
   sqlnum->sign= 1;
   sqlnum->val[0]= 0x7c;
   sqlnum->val[1]= 0x62;
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"select ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_NUMERIC,
                                   SQL_DECIMAL, 5, 3,
@@ -1061,12 +1062,12 @@ DECLARE_TEST(t_bindsqlnum_basic)
   @param[in]  exptrunc    Expected truncation failure
   @return OK/FAIL just like a test.
 */
-int sqlnum_test_to_str(SQLHANDLE hstmt, SQLCHAR *numdata, SQLCHAR prec,
-                       SQLSCHAR scale, SQLCHAR sign, char *outstr,
+int sqlnum_test_to_str(SQLHANDLE hstmt, char *numdata, char prec,
+                       char scale, char sign, char *outstr,
                        char *exptrunc)
 {
   SQL_NUMERIC_STRUCT *sqlnum= malloc(sizeof(SQL_NUMERIC_STRUCT));
-  SQLCHAR obuf[30];
+  char obuf[30];
   SQLRETURN exprc= SQL_SUCCESS;
 
   /* TODO until sqlnum errors are supported */
@@ -1088,15 +1089,15 @@ int sqlnum_test_to_str(SQLHANDLE hstmt, SQLCHAR *numdata, SQLCHAR prec,
   expect_stmt(hstmt, SQLFetch(hstmt), exprc);
   if (exprc != SQL_SUCCESS)
   {
-    is(check_sqlstate(hstmt, (char *)exptrunc) == OK);
+    is(check_sqlstate(hstmt, exptrunc) == OK);
   }
   if (exprc == SQL_ERROR)
     return OK;
-  is_num(sqlnum->precision, prec);
-  is_num(sqlnum->scale, scale);
-  is_num(sqlnum->sign, sign);
+  is_num((char)sqlnum->precision, prec);
+  is_num((char)sqlnum->scale, scale);
+  is_num((char)sqlnum->sign, sign);
   ok_stmt(hstmt, SQLGetData(hstmt, 1, SQL_C_CHAR, obuf, sizeof(obuf), NULL));
-  is_str(obuf, outstr, strlen((char *)outstr));
+  is_str(obuf, outstr, strlen(outstr));
   is(!memcmp(sqlnum->val, numdata, SQL_MAX_NUMERIC_LEN));
 
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
@@ -1111,33 +1112,33 @@ int sqlnum_test_to_str(SQLHANDLE hstmt, SQLCHAR *numdata, SQLCHAR prec,
 */
 DECLARE_TEST(t_sqlnum_to_str)
 {
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 10, 4, 1, "123445.6789", ""));}
 
   /* fractional truncation */
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 9, 2, 1, "12344567.8", "01S07"));}
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 8, 2, 1, "12344567", "01S07"));}
 
   /* whole number truncation - error */
   /* TODO need err handling for this test
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 7, 2, 1, "1234456", "22003"));}
   */
 
   /* negative scale */
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 10, -2, 1, "123445678900", ""));}
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 10, -2, 0, "-123445678900", ""));}
 
   /* scale > prec */
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 10, 11, 1, "0.01234456789", ""));}
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 10, 11, 0, "-0.01234456789", ""));}
-  {SQLCHAR numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
+  {char numdata[]= {0xD5, 0x50, 0x94, 0x49, 0,0,0,0,0,0,0,0,0,0,0,0};
    is(OK == sqlnum_test_to_str(hstmt, numdata, 10, 20, 1, "0.00000000001234456789", ""));}
 
   return OK;
@@ -1173,25 +1174,26 @@ DECLARE_TEST(t_bug31220)
 DECLARE_TEST(t_bug29402)
 {
   SQLSMALLINT name_length, data_type, decimal_digits, nullable;
-  SQLCHAR column_name[SQL_MAX_COLUMN_NAME_LEN];
+  char column_name[SQL_MAX_COLUMN_NAME_LEN];
   SQLULEN column_size;
-  SQLCHAR buf[80]= {0};
+  char buf[80]= {0};
   SQLLEN buflen= 0;
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
   // UNICODE Driver will return the string in UTF8MB4.
   // ANSI Driver will return the result in CP1250
-  const SQLCHAR *expected = unicode_driver ? "\xE2\x82\xAC""100" : "\x80""100";
+  const char *expected =
+    unicode_driver ? "\xE2\x82\xAC""100" : "\x80""100";
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                        NULL, NULL, NULL,
-                                        "NO_BINARY_RESULT=1;CHARSET=CP1250"));
+      NULL, NULL, NULL, "NO_BINARY_RESULT=1;CHARSET=CP1250"));
 
-  ok_stmt(hstmt1, SQLExecDirect(hstmt1, "SELECT CONCAT(_cp1250 0x80, 100) concated", SQL_NTS));
+  ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS("SELECT CONCAT(_cp1250 0x80, 100) concated")));
 
-  ok_stmt(hstmt1, SQLDescribeCol(hstmt1, 1, column_name, sizeof(column_name),
-                                &name_length, &data_type, &column_size,
-                                &decimal_digits, &nullable));
+  ok_stmt(hstmt1, SQLDescribeCol(
+    hstmt1, 1, SC_SIZE(column_name), &name_length,
+    &data_type, &column_size, &decimal_digits, &nullable
+  ));
 
   is(data_type == SQL_VARCHAR || data_type == SQL_WVARCHAR);
 
@@ -1216,9 +1218,10 @@ DECLARE_TEST(t_bug29402)
   /* Check without FLAG_NO_BINARY_RESULT */
   ok_sql(hstmt, "SELECT CONCAT('\x80', 100) concated");
 
-  ok_stmt(hstmt, SQLDescribeCol(hstmt, 1, column_name, sizeof(column_name),
-                                &name_length, &data_type, &column_size,
-                                &decimal_digits, &nullable));
+  ok_stmt(hstmt, SQLDescribeCol(
+    hstmt, 1, SC_SIZE(column_name), &name_length,
+    &data_type, &column_size, &decimal_digits, &nullable
+  ));
 
   /* Fixed in 5.5(tested in 5.5.9), result's type is SQL_VARCHAR */
   if (mysql_min_version(hdbc, "5.5", 3))
@@ -1333,8 +1336,9 @@ DECLARE_TEST(t_bug32135124)
   ok_sql(hstmt, "INSERT INTO t_bug32135124 (id, fnumber) "\
                 "VALUES (5, 1.79e+308)");
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, "SELECT fnumber FROM t_bug32135124 "\
-                                   "WHERE id = ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt,
+    SC_NTS("SELECT fnumber FROM t_bug32135124 "\
+    "WHERE id = ?")));
 
   ok_stmt(hstmt, SQLBindParameter( hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
                  SQL_INTEGER, 1, 0, &id, 0, NULL));
@@ -1368,7 +1372,7 @@ DECLARE_TEST(t_bug32135124)
 */
 DECLARE_TEST(t_bug32537000)
 {
-  SQLCHAR buf[80]= {0};
+  char buf[80]= {0};
   SQLLEN buflen= 0;
   SQLINTEGER rowcnt= 3;
   SQLINTEGER row_offset1= 5;
@@ -1376,15 +1380,15 @@ DECLARE_TEST(t_bug32537000)
   SQLHSTMT hstmt2;
 
   struct t_row{
-    SQLINTEGER id;
-    SQLCHAR enum_val[64];
+    int id;
+    char enum_val[64];
     SQLLEN enum_len;
-    SQLCHAR char_val[64];
+    char char_val[64];
     SQLLEN char_len;
   };
 
   struct t_row_w{
-    SQLINTEGER id;
+    int id;
     SQLWCHAR wenum_val[64];
     SQLLEN wenum_len;
     SQLWCHAR wchar_val[64];
@@ -1488,8 +1492,9 @@ DECLARE_TEST(t_bug32537000)
     wchar_t wenum_val[3][6] = { L"red  ", L"green", L"blue " };
     wchar_t wchar_val[3][11] = { L"red1      ", L"green1    ", L"blue1     " };
 
-    alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL, NULL,
-                                 "PAD_SPACE=1");
+    alloc_basic_handles_with_opt(
+      &henv1, &hdbc1, &hstmt1, NULL, NULL, NULL, NULL, "PAD_SPACE=1"
+    );
 
     memset(rows, 0, total_size);
 
@@ -1581,8 +1586,9 @@ DECLARE_TEST(t_bug28783266)
   my_print_non_format_result(hstmt);
 
   printf("Test with SSPS disabled\n");
-  alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL, NULL,
-                                "NO_SSPS=1");
+  alloc_basic_handles_with_opt(
+    &henv1, &hdbc1, &hstmt1, NULL, NULL, NULL, NULL, "NO_SSPS=1"
+  );
 
   ok_stmt(hstmt1, SQLPrepareW(hstmt1, W(L"\r\n SELECT * FROM t_bug28783266"), SQL_NTS));
   ok_stmt(hstmt1, SQLNumResultCols(hstmt1, &col_count));
@@ -1596,7 +1602,7 @@ DECLARE_TEST(t_bug28783266)
 
 DECLARE_TEST(t_wide_character_info)
 {
-  SQLCHAR buf[64];
+  char buf[64];
   ok_stmt(hstmt, SQLGetTypeInfo(hstmt, SQL_WCHAR));
   int is_wchar = 0;
   int is_wvarchar = 0;

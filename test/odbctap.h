@@ -77,12 +77,40 @@
 /* for clock() */
 #include <time.h>
 
+/**
+ Helper for converting a (char *) to a (SQLCHAR *)
+*/
+#undef  SC_SIZE
+#define SC(string) (SQLCHAR*)(string)
+#define SC_NTS(string)  SC(string), SQL_NTS
+#define SC_LEN(string) SC(string), strlen(string)
+#define SC_SIZE(string) SC(string), sizeof(string)
+
+/**
+ Helper for converting a (char *) to a (SQLWCHAR *)
+*/
+#define WC(string) dup_char_as_sqlwchar((string))
+
+
 /* Get routines for helping with Unicode conversion. */
 #define ODBCTAP
 
+#include "../util/compiler.h"
 #include "mysql_version.h"
 #include "../util/unicode_transcode.h"
 #include "../VersionInfo.h"
+
+DIAGNOSTIC_PUSH
+
+/*
+  Note: Some functions declared here as static lead to compiler warnings if
+  not used. We disable these warnings.
+*/
+
+#if defined(__clang__)
+  DISABLE_WARNING(-Wunused-function)
+#endif
+
 
 void printMessage(const char *fmt, ...)
 {
@@ -140,24 +168,24 @@ const char * wstr4output(const wchar_t *wstr)
 #define _MY_NEWLINE "\n"
 #endif
 
-SQLCHAR *mydriver= (SQLCHAR *)"{MySQL ODBC " MYODBC_STRSERIES " Driver}";
-SQLCHAR mydrv_nobrackets[255] = {'\0'}; /* mydriver value will be copied here */
-SQLCHAR *mydsn= (SQLCHAR *)"test";
-SQLCHAR *myuid= (SQLCHAR *)"root";
-SQLCHAR *mypwd= (SQLCHAR *)"";
-SQLCHAR *mysock= NULL;
-SQLCHAR *mydns_srv= NULL;
+const char *mydriver= "{MySQL ODBC " MYODBC_STRSERIES " Driver}";
+char mydrv_nobrackets[255] = {'\0'}; /* mydriver value will be copied here */
+const char *mydsn= "test";
+const char *myuid= "root";
+const char *mypwd= "";
+const char *mysock= NULL;
+const char *mydns_srv= NULL;
 int      myoption= 0, myport= 0, myenable_pooling= 0;
-SQLCHAR *my_str_options= (SQLCHAR *)""; /* String for additional connection options */
-SQLCHAR *myserver= (SQLCHAR *)"localhost";
-SQLCHAR *mydb= (SQLCHAR *)"test";
-SQLCHAR *myauth= NULL;
-SQLCHAR *myplugindir= NULL;
-SQLCHAR *odbcini = (SQLCHAR *)"ODBC.INI";
+const char *my_str_options= ""; /* String for additional connection options */
+const char *myserver= "localhost";
+const char *mydb= "test";
+const char *myauth= NULL;
+const char *myplugindir= NULL;
+const char *odbcini = "ODBC.INI";
 
-SQLCHAR *test_db= (SQLCHAR *)"client_odbc_test";
+const char *test_db= "client_odbc_test";
 /* Suffix is useful if a testsuite is run more than once */
-const SQLCHAR *testname_suffix= (SQLCHAR*)"";
+const char *testname_suffix= "";
 /* -1 means that the fact has to be established, 0 - ansi driver, 1 - unicode */
 int     unicode_driver= -1;
 #define REQUIRES_UNICODE_DRIVER if (unicode_driver == 0) skip("This testcase is designed for Unicode drivers only")
@@ -181,7 +209,7 @@ int      init_auth_plugin= 0;
 # define TRUE 1
 #endif
 
-char *SKIP_REASON= NULL;
+const char *SKIP_REASON= NULL;
 
 #define USE_DRIVER (char *)-1
 
@@ -204,7 +232,7 @@ static void print_diag(SQLRETURN rc, SQLSMALLINT htype, SQLHANDLE handle,
              SQLHENV henv __attribute__((unused)))
 
 typedef struct {
-  char      *name;
+  const char *name;
   test_func func;
   int       expect;
   int       required_driver_type;
@@ -300,45 +328,45 @@ int main(int argc, char **argv) \
 \
   /* Set from environment, possibly overrided by command line */ \
   if (getenv("TEST_DSN")) \
-    mydsn=  (SQLCHAR *)getenv("TEST_DSN"); \
+    mydsn=  getenv("TEST_DSN"); \
   if (getenv("TEST_DRIVER")) \
-    mydriver=  (SQLCHAR *)getenv("TEST_DRIVER"); \
-  size_t drvlen = strlen((const char*)mydriver); \
+    mydriver=  getenv("TEST_DRIVER"); \
+  size_t drvlen = strlen(mydriver); \
   if (mydriver[0] == '{') {\
-    memcpy(mydrv_nobrackets, mydriver + 1, sizeof(SQLCHAR)*(drvlen-2)); \
+    memcpy(mydrv_nobrackets, mydriver + 1, (drvlen-2)); \
     mydrv_nobrackets[drvlen-2] = '\0'; \
   } else { \
-    memcpy(mydrv_nobrackets, mydriver, sizeof(SQLCHAR)*drvlen); \
+    memcpy(mydrv_nobrackets, mydriver, drvlen); \
   } \
   if (getenv("TEST_UID")) \
-    myuid=  (SQLCHAR *)getenv("TEST_UID"); \
+    myuid=  getenv("TEST_UID"); \
   if (getenv("TEST_PASSWORD")) \
-    mypwd=  (SQLCHAR *)getenv("TEST_PASSWORD"); \
+    mypwd=  getenv("TEST_PASSWORD"); \
   if (getenv("TEST_SOCKET")) \
-    mysock= (SQLCHAR *)getenv("TEST_SOCKET"); \
+    mysock= getenv("TEST_SOCKET"); \
   if (getenv("TEST_SERVER")) \
-    myserver= (SQLCHAR *)getenv("TEST_SERVER"); \
+    myserver= getenv("TEST_SERVER"); \
   if (getenv("TEST_PORT")) \
     myport= atoi(getenv("TEST_PORT")); \
   if (getenv("TEST_ENABLE_POOLING")) \
     myenable_pooling= atoi(getenv("TEST_ENABLE_POOLING")); \
   if (getenv("TEST_DEFAULTAUTH")) \
-    myauth=  (SQLCHAR *)getenv("TEST_DEFAULTAUTH"); \
+    myauth=  getenv("TEST_DEFAULTAUTH"); \
   if (getenv("TEST_PLUGINDIR")) \
-    myplugindir=  (SQLCHAR *)getenv("TEST_PLUGINDIR"); \
+    myplugindir=  getenv("TEST_PLUGINDIR"); \
   else if (getenv("PLUGIN_DIR")) \
-    myplugindir=  (SQLCHAR *)getenv("PLUGIN_DIR"); \
+    myplugindir=  getenv("PLUGIN_DIR"); \
   if (getenv("TEST_DNS_SRV")) \
-    mydns_srv= (SQLCHAR *)getenv("TEST_DNS_SRV"); \
+    mydns_srv= getenv("TEST_DNS_SRV"); \
 \
   if (argc > 1) \
-    mydsn= (SQLCHAR *)argv[1]; \
+    mydsn= argv[1]; \
   if (argc > 2) \
-    myuid= (SQLCHAR *)argv[2]; \
+    myuid= argv[2]; \
   if (argc > 3) \
-    mypwd= (SQLCHAR *)argv[3]; \
+    mypwd= argv[3]; \
   if (argc > 4) \
-    mysock= (SQLCHAR *)argv[4];
+    mysock= argv[4];
 
 #define SET_DSN_OPTION(x) \
   myoption= (x);
@@ -590,7 +618,7 @@ do { \
 */
 #define is_str(a, b, c) \
 do { \
-  char *val_a= (char *)(a), *val_b= (char *)(b); \
+  const char *val_a= (const char *)(a), *val_b= (const char *)(b); \
   int val_len= (int)(c) == SQL_NTS ? (int)strlen(val_a) : (int)(c); \
   if (strncmp(val_a, val_b, val_len) != 0) { \
     printf("# %s ('%*s') != '%*s' in %s on line %d\n", \
@@ -641,7 +669,7 @@ do { \
   check_sqlstate_ex((stmt), SQL_HANDLE_STMT, (sqlstate))
 
 
-int check_sqlstate_ex(SQLHANDLE hnd, SQLSMALLINT hndtype, char *sqlstate)
+int check_sqlstate_ex(SQLHANDLE hnd, SQLSMALLINT hndtype, const char *sqlstate)
 {
   SQLCHAR     sql_state[6];
   SQLINTEGER  err_code= 0;
@@ -710,6 +738,7 @@ static void print_diag(SQLRETURN rc, SQLSMALLINT htype, SQLHANDLE handle,
   Print error and diagnostic information for ODBC INSTALLER API functions
   that did not return TRUE (1)
 */
+
 static void print_diag_installer(BOOL is_success, const char *text,
                                  const char *file, int line)
 {
@@ -848,7 +877,7 @@ int my_print_dashes(SQLHSTMT hstmt, SQLSMALLINT nCol)
 
 
 static int my_print_data(SQLHSTMT hstmt, SQLUSMALLINT index,
-                         SQLCHAR *data, SQLLEN length)
+                         const char *data, SQLLEN length)
 {
     SQLLEN     disp_size, nullable= 0;
     SQLCHAR    ColName[MAX_NAME_LEN+1];
@@ -956,8 +985,8 @@ SQLINTEGER myresult(SQLHSTMT hstmt)
 {
     SQLRETURN   rc;
     SQLUINTEGER nRowCount;
-    SQLCHAR     ColName[MAX_NAME_LEN+1];
-    SQLCHAR     Data[MAX_ROW_DATA_LEN+1];
+    char        ColName[MAX_NAME_LEN+1];
+    char        Data[MAX_ROW_DATA_LEN+1];
     SQLLEN      pcbLength;
     SQLUSMALLINT nIndex;
     SQLSMALLINT  ncol;
@@ -975,7 +1004,7 @@ SQLINTEGER myresult(SQLHSTMT hstmt)
     for (nIndex = 1; nIndex <= ncol; ++nIndex)
     {
         ok_stmt(hstmt, SQLColAttribute(hstmt, nIndex, SQL_DESC_BASE_COLUMN_NAME,
-                                       ColName, MAX_NAME_LEN, NULL, NULL));
+                                       SC(ColName), MAX_NAME_LEN, NULL, NULL));
         if (my_print_data(hstmt, nIndex, ColName, 0) != OK)
           return -1;
     }
@@ -993,7 +1022,7 @@ SQLINTEGER myresult(SQLHSTMT hstmt)
 
         for (nIndex=1; nIndex<= ncol; ++nIndex)
         {
-            rc = SQLGetData(hstmt, nIndex, SQL_C_CHAR, Data,
+            rc = SQLGetData(hstmt, nIndex, SQL_C_CHAR, SC(Data),
                             MAX_ROW_DATA_LEN,&pcbLength);
             mystmt(hstmt,rc);
             if (my_print_data(hstmt, nIndex, Data, pcbLength) != OK)
@@ -1034,14 +1063,14 @@ SQLUINTEGER myrowcount(SQLHSTMT hstmt)
 */
 SQLRETURN tmysql_exec(SQLHSTMT hstmt, char *sql_stmt)
 {
-    return(SQLExecDirect(hstmt,(SQLCHAR *)sql_stmt,SQL_NTS));
+    return(SQLExecDirect(hstmt, SC_NTS(sql_stmt)));
 }
 /**
   SQLPrepare
 */
 SQLRETURN tmysql_prepare(SQLHSTMT hstmt, char *sql_stmt)
 {
-    return(SQLPrepare(hstmt, (SQLCHAR *)sql_stmt, SQL_NTS));
+    return(SQLPrepare(hstmt, SC_NTS(sql_stmt)));
 }
 
 
@@ -1084,16 +1113,16 @@ SQLUINTEGER my_fetch_uint(SQLHSTMT hstmt, SQLUSMALLINT icol)
 /**
   return string data, by fetching it
 */
-const char *my_fetch_str(SQLHSTMT hstmt, SQLCHAR *szData,SQLUSMALLINT icol)
+const char *my_fetch_str(SQLHSTMT hstmt, char *szData, SQLUSMALLINT icol)
 {
     SQLLEN nLen;
 
-    SQLGetData(hstmt,icol,SQL_CHAR,szData,MAX_ROW_DATA_LEN+1,&nLen);
+    SQLGetData(hstmt, icol, SQL_CHAR, SC(szData), MAX_ROW_DATA_LEN+1, &nLen);
     /* If Null value - putting down smth meaningful. also that allows caller to
        better/(in more easy way) test the value */
     if (nLen < 0)
     {
-      strcpy((char*)szData, "(Null)");
+      strcpy(szData, "(Null)");
     }
     printMessage(" my_fetch_str: %s(%ld)", szData, nLen);
     return((const char *)szData);
@@ -1130,7 +1159,7 @@ wchar_t *my_fetch_wstr(SQLHSTMT hstmt, SQLWCHAR *buffer, SQLUSMALLINT icol)
 
   rc= SQLGetData(hstmt, icol, SQL_WCHAR, buffer, MAX_ROW_DATA_LEN + 1, &nLen);
   if (!SQL_IS_SUCCESS(rc))
-    return L"";
+    return (wchar_t*)L"";
 
   buffer[nLen/sizeof(SQLWCHAR)]= 0;
 
@@ -1157,7 +1186,7 @@ int driver_supports_setpos(SQLHDBC hdbc)
 /*
   Check for minimal MySQL version
 */
-int mysql_min_version(SQLHDBC hdbc, char *min_version, unsigned int length)
+int mysql_min_version(SQLHDBC hdbc, const char *min_version, unsigned int length)
 {
   char server_version[MYSQL_NAME_LEN+1];
   SQLRETURN rc;
@@ -1171,12 +1200,13 @@ int mysql_min_version(SQLHDBC hdbc, char *min_version, unsigned int length)
     sscanf(server_version, "%u.%u.%u", &major1, &minor1, &build1);
     sscanf(min_version, "%u.%u.%u", &major2, &minor2, &build2);
 
-    if ( major1 > major2 ||
-      major1 == major2 && (minor1 > minor2 ||
-                          minor1 ==  minor2 && build1 >= build2))
-    {
-      return TRUE;
-    }
+    if (major1 != major2)
+      return (major1 > major2);
+
+    if (minor1 != minor2)
+      return (minor1 > minor2);
+
+    return (build1 >= build2);
   }
 
   return FALSE;;
@@ -1202,7 +1232,9 @@ int server_supports_trans(SQLHDBC hdbc)
 /**
   DRV CONNECTION
 */
-int mydrvconnect(SQLHENV *henv, SQLHDBC *hdbc, SQLHSTMT *hstmt, SQLCHAR *connIn)
+int mydrvconnect(
+  SQLHENV *henv, SQLHDBC *hdbc, SQLHSTMT *hstmt, const char *connIn
+)
 {
   SQLCHAR   connOut[MAX_NAME_LEN+1];
   SQLSMALLINT len;
@@ -1214,7 +1246,7 @@ int mydrvconnect(SQLHENV *henv, SQLHDBC *hdbc, SQLHSTMT *hstmt, SQLCHAR *connIn)
 
   ok_env(*henv, SQLAllocHandle(SQL_HANDLE_DBC, *henv,  hdbc));
 
-  ok_con(*hdbc, SQLDriverConnect(*hdbc, NULL, connIn, SQL_NTS, connOut,
+  ok_con(*hdbc, SQLDriverConnect(*hdbc, NULL, SC_NTS(connIn), connOut,
                                  MAX_NAME_LEN, &len, SQL_DRIVER_NOPROMPT));
 
   ok_con(*hdbc, SQLSetConnectAttr(*hdbc, SQL_ATTR_AUTOCOMMIT,
@@ -1229,28 +1261,28 @@ int mydrvconnect(SQLHENV *henv, SQLHDBC *hdbc, SQLHSTMT *hstmt, SQLCHAR *connIn)
 /*
   Helper function to make the connection string.
 */
-SQLCHAR *make_conn_str(const SQLCHAR *dsn, const SQLCHAR *uid,
-                       const SQLCHAR *pwd, const SQLCHAR *db,
-                       const SQLCHAR *options, int hide_password)
+const char* make_conn_str(const char *dsn, const char *uid,
+                       const char *pwd, const char *db,
+                       const char *options, int hide_password)
 {
-  static SQLCHAR connIn[4096]= {0};
-  SQLCHAR dsn_buf[MAX_NAME_LEN]= {0};
-  SQLCHAR socket_buf[MAX_NAME_LEN]= {0};
-  SQLCHAR server_buf[MAX_NAME_LEN] = {0};
+  static char connIn[4096]= {0};
+  char dsn_buf[MAX_NAME_LEN]= {0};
+  char socket_buf[MAX_NAME_LEN]= {0};
+  char server_buf[MAX_NAME_LEN] = {0};
   /* ";database="+ we make buffer bigger for one certain test */
-  SQLCHAR     db_buf[4096]= {0};
+  char     db_buf[4096]= {0};
 
   /* Should fit 8 byte + ";port=" */
-  SQLCHAR     port_buf[32]= {0};
+  char     port_buf[32]= {0};
   BOOL skip_socket = 0;
 
   /* We never set the custom DSN, but sometimes use DRIVER instead */
   if (dsn == NULL)
-    snprintf((char *)dsn_buf, sizeof(dsn_buf), "DSN=%s", (char *)mydsn);
-  else if (dsn == (const SQLCHAR*)USE_DRIVER)
-    snprintf((char *)dsn_buf, sizeof(dsn_buf), "DRIVER=%s", (char *)mydriver);
+    snprintf(dsn_buf, sizeof(dsn_buf), "DSN=%s", mydsn);
+  else if (dsn == (const char*)USE_DRIVER)
+    snprintf(dsn_buf, sizeof(dsn_buf), "DRIVER=%s", mydriver);
   else
-    snprintf((char *)dsn_buf, sizeof(dsn_buf), "DSN=%s", (char *)dsn);
+    snprintf(dsn_buf, sizeof(dsn_buf), "DSN=%s", dsn);
 
   if (uid     == NULL) uid=     myuid;
   if (pwd     == NULL) pwd=     mypwd;
@@ -1258,13 +1290,13 @@ SQLCHAR *make_conn_str(const SQLCHAR *dsn, const SQLCHAR *uid,
   if (options == NULL) options= my_str_options;
 
   if (hide_password)
-    pwd = (SQLCHAR*)"*************";
+    pwd = "*************";
 
-  snprintf((char *)connIn, sizeof(connIn), "%s;UID=%s;PWD=%s;OPTION=%d;",
-          (char *)dsn_buf, (char *)uid, (char *)pwd, myoption);
+  snprintf(connIn, sizeof(connIn), "%s;UID=%s;PWD=%s;OPTION=%d;",
+          dsn_buf, uid, pwd, myoption);
 
-  if (strstr((const char*)options, "SOCKET=;") &&
-      strcmp((const char*)myserver, "localhost") == 0)
+  if (strstr(options, "SOCKET=;") &&
+      strcmp(myserver, "localhost") == 0)
   {
     skip_socket = 1;
     char *port = NULL;
@@ -1299,7 +1331,7 @@ SQLCHAR *make_conn_str(const SQLCHAR *dsn, const SQLCHAR *uid,
 
   if (options != NULL && options[0] > 0)
   {
-    strncat((char*)connIn, ";", sizeof(connIn));
+    strncat((char*)connIn, ";", sizeof(connIn) - 1);
     strncat((char*)connIn, (char*)options, sizeof(connIn) - 1);
   }
 
@@ -1309,12 +1341,12 @@ SQLCHAR *make_conn_str(const SQLCHAR *dsn, const SQLCHAR *uid,
     init_auth_plugin= 0; /* reset the plugin init flag */
     if (myauth && myauth[0])
     {
-      strncat((char *)connIn, ";DEFAULTAUTH=", sizeof(connIn));
+      strncat((char *)connIn, ";DEFAULTAUTH=", sizeof(connIn) - 1);
       strncat((char *)connIn, (char *)myauth, sizeof(connIn) - 1);
     }
     if (myplugindir && myplugindir[0])
     {
-      strncat((char *)connIn, ";PLUGIN_DIR=", sizeof(connIn));
+      strncat((char *)connIn, ";PLUGIN_DIR=", sizeof(connIn) - 1);
       strncat((char *)connIn, (char *)myplugindir, sizeof(connIn) - 1);
     }
   }
@@ -1327,20 +1359,24 @@ SQLCHAR *make_conn_str(const SQLCHAR *dsn, const SQLCHAR *uid,
    If dsn, uid, pwd or options is null - they defualt to mydsn, myuid, mypwd
    and my_str_options, respectively.
    myoption, mysock and myport values are used. */
-int get_connection(SQLHDBC *hdbc, const SQLCHAR *dsn, const SQLCHAR *uid,
-                   const SQLCHAR *pwd, const SQLCHAR *db,
-                   const SQLCHAR *options)
+
+int get_connection(SQLHDBC *hdbc, const char *dsn, const char *uid,
+                   const char *pwd, const char *db,
+                   const char *options)
 {
   /* Buffers have to be large enough to contain SSL options and long names */
-  SQLCHAR     connOut[4096];
+  char        connOut[4096];
   SQLSMALLINT len;
   SQLRETURN   rc;
-  SQLCHAR     driver_name[16]; /* Should be enough for myodbc library file name */
-  SQLCHAR     *connIn;
+  char        driver_name[16]; /* Should be enough for myodbc library file name */
+  const char  *connIn;
 
   connIn = make_conn_str(dsn, uid, pwd, db, options, 0);
-  rc= SQLDriverConnect(*hdbc, NULL, connIn, SQL_NTS, connOut,
-                       MAX_NAME_LEN, &len, SQL_DRIVER_NOPROMPT);
+
+  rc= SQLDriverConnect(
+    *hdbc, NULL, SC_NTS(connIn), SC(connOut), MAX_NAME_LEN,
+    &len, SQL_DRIVER_NOPROMPT
+  );
 
   if (!SQL_IS_SUCCESS(rc))
   {
@@ -1375,9 +1411,9 @@ int get_connection(SQLHDBC *hdbc, const SQLCHAR *dsn, const SQLCHAR *uid,
 
 
 int alloc_basic_handles_with_opt(SQLHENV *henv, SQLHDBC *hdbc,
-                                 SQLHSTMT *hstmt,  const SQLCHAR *dsn,
-                                 const SQLCHAR *uid, const SQLCHAR *pwd,
-                                 const SQLCHAR *db, const SQLCHAR *options)
+                                 SQLHSTMT *hstmt,  const char *dsn,
+                                 const char *uid, const char *pwd,
+                                 const char *db, const char *options)
 {
   if (myenable_pooling)
   {
@@ -1413,10 +1449,9 @@ int alloc_basic_handles_with_opt(SQLHENV *henv, SQLHDBC *hdbc,
 
 int alloc_basic_handles(SQLHENV *henv, SQLHDBC *hdbc, SQLHSTMT *hstmt)
 {
-  return alloc_basic_handles_with_opt(henv, hdbc, hstmt, (SQLCHAR *)mydsn,
-                                      (SQLCHAR *)myuid, (SQLCHAR *)mypwd,
-                                      (SQLCHAR *)mydb,
-                                      (SQLCHAR *)my_str_options);
+  return alloc_basic_handles_with_opt(
+    henv, hdbc, hstmt, mydsn, myuid, mypwd, mydb, my_str_options
+  );
 }
 
 
@@ -1505,7 +1540,7 @@ int mem_gc_flush()
   SQLWCHAR. New space is allocated and never freed. Because this is used in
   short-lived test programs, this is okay, if not ideal.
 */
-SQLWCHAR *dup_wchar_t_as_sqlwchar(wchar_t *from, size_t len)
+SQLWCHAR *dup_wchar_t_as_sqlwchar(const wchar_t *from, size_t len)
 {
   if (sizeof(wchar_t) == sizeof(SQLWCHAR))
   {
@@ -1527,17 +1562,11 @@ SQLWCHAR *dup_wchar_t_as_sqlwchar(wchar_t *from, size_t len)
 
 
 /**
- Helper for converting a (char *) to a (SQLWCHAR *)
-*/
-#define WC(string) dup_char_as_sqlwchar((string))
-
-
-/**
   Convert a char * to a SQLWCHAR *. New space is allocated and never freed.
   Because this is used in short-lived test programs, this is okay, if not
   ideal.
 */
-SQLWCHAR *dup_char_as_sqlwchar(SQLCHAR *from)
+SQLWCHAR *dup_char_as_sqlwchar(const char *from)
 {
   SQLWCHAR *to= (SQLWCHAR*)gc_alloc((strlen((char *)from) + 1) * sizeof(SQLWCHAR));
   SQLWCHAR *out= to;
@@ -1569,15 +1598,16 @@ int using_dm(HDBC hdbc)
 /*
   Check if we are using the unixODBC version specified
 */
-int using_unixodbc_version(SQLHANDLE henv, SQLCHAR *ver)
+int using_unixodbc_version(SQLHANDLE henv, const char *ver)
 {
 #ifdef SQL_ATTR_UNIXODBC_VERSION
-  SQLCHAR buf[10];
-  if(SQLGetEnvAttr(henv, SQL_ATTR_UNIXODBC_VERSION, buf, 10, NULL) != SQL_SUCCESS)
+  char buf[10];
+  if(SQLGetEnvAttr(henv, SQL_ATTR_UNIXODBC_VERSION, SC(buf), 10, NULL) != SQL_SUCCESS)
     return 0;
-  if(!strcmp((char*)buf, (char*)ver))
+  if(!strcmp(buf, ver))
     return 1;
 #endif /* SQL_ATTR_UNIXODBC_VERSION */
   return 0;
 }
 
+DIAGNOSTIC_POP

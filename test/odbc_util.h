@@ -94,12 +94,16 @@ struct xstring : public std::string
   xstring(std::nullptr_t) : m_is_null(true)
   {}
 
-  xstring(char* s) : m_is_null(s == nullptr),
-                  Base(s == nullptr ? "" : std::forward<char*>(s))
+  xstring(char* s)
+  : Base(s == nullptr ? "" : std::forward<char*>(s))
+  , m_is_null(s == nullptr)
   {
     if (m_is_null)
       m_is_null = true;
   }
+
+  xstring(const char* s) : xstring((char*)s)
+  {}
 
   xstring(SQLCHAR* s) : xstring((char*)s)
   {}
@@ -124,6 +128,7 @@ struct xstring : public std::string
   { return !m_is_null; }
 };
 
+
 struct xbuf
 {
   std::unique_ptr<char[]> m_buf;
@@ -141,8 +146,11 @@ struct xbuf
     strcpy(m_buf.get(), c);
   }
 
-  xbuf(size_t s) : size(s), m_buf(new char[s])
-  { setval(0, s); }
+  xbuf(size_t s)
+  : m_buf(new char[s]), size(s)
+  {
+    setval(0, s);
+  }
 
   xstring get_str()
   { return xstring(m_buf.get()); }
@@ -157,7 +165,7 @@ struct xbuf
 struct Exception
 {
   xstring     msg;
-  SQLCHAR     sqlstate[6] = {0, 0, 0, 0, 0, 0};
+  char        sqlstate[6] = {0, 0, 0, 0, 0, 0};
   SQLINTEGER  native_error = 0;
   SQLSMALLINT length = 0;
   SQLSMALLINT handle_type = SQL_HANDLE_STMT;
@@ -170,13 +178,13 @@ struct Exception
     odbc::xbuf  buf(SQL_MAX_MESSAGE_LENGTH);
     handle_type = htype;
 
-    SQLRETURN drc = SQLGetDiagRec(handle_type, handle, 1, sqlstate,
+    SQLRETURN drc = SQLGetDiagRec(handle_type, handle, 1, SC(sqlstate),
                     &native_error, buf, SQL_MAX_MESSAGE_LENGTH - 1, &length);
 
     msg = buf;
 
     if (SQL_IS_SUCCESS(drc))
-      printf("# [%6s][%d] %*s\n",
+      printf("# [%6s][%ld] %*s\n",
              sqlstate, native_error, length, (char*)msg);
     else
       printf("# Did not get expected diagnostics from SQLGetDiagRec() = %d\n",
@@ -239,7 +247,7 @@ struct tempfile
 
 void sql(SQLHSTMT hstmt, const char *query, bool ignore_result = false)
 {
-  SQLRETURN res = SQLExecDirect(hstmt, (SQLCHAR*)query, SQL_NTS);
+  SQLRETURN res = SQLExecDirect(hstmt, SC_NTS(query));
   if(!ignore_result && res != SQL_SUCCESS && res != SQL_SUCCESS_WITH_INFO)
   {
     throw odbc::Exception(hstmt, SQL_HANDLE_STMT);
@@ -277,7 +285,7 @@ void stmt_prepare(SQLHSTMT hstmt, xstring query)
 }
 
 int describe_col(SQLHSTMT hstmt, int col, bool print_data = true,
-                  SQLCHAR* col_name = nullptr,
+                  const char* col_name = nullptr,
                   SQLSMALLINT col_buf_len = 0, SQLSMALLINT *name_len = nullptr,
                   SQLSMALLINT *data_type = nullptr, SQLULEN *col_size = nullptr,
                   SQLSMALLINT *dec_digits = nullptr, SQLSMALLINT *nullable = nullptr)
@@ -286,7 +294,7 @@ int describe_col(SQLHSTMT hstmt, int col, bool print_data = true,
   SQLSMALLINT num_buf[4] = { 0, 0, 0, 0};
   SQLULEN ulen_data = 0;
 
-  SQLCHAR* col_name2 = col_name ? col_name : name;
+  const char* col_name2 = col_name ? col_name : name;
   SQLSMALLINT col_buf_len2 = col_buf_len ? col_buf_len : (SQLSMALLINT)name.size;
   SQLSMALLINT *name_len2 = name_len ? name_len : &num_buf[0];
   SQLSMALLINT *data_type2 = data_type ? data_type : &num_buf[1];
@@ -294,7 +302,7 @@ int describe_col(SQLHSTMT hstmt, int col, bool print_data = true,
   SQLSMALLINT *dec_digits2 = dec_digits ? dec_digits : &num_buf[2];
   SQLSMALLINT *nullable2 = nullable ? nullable : &num_buf[3];
 
-  int rc = SQLDescribeCol(hstmt, col, col_name2, col_buf_len2, name_len2,
+  int rc = SQLDescribeCol(hstmt, col, SC(col_name2), col_buf_len2, name_len2,
              data_type2, col_size2, dec_digits2, nullable2);
   if (print_data)
   {
@@ -530,7 +538,8 @@ struct connection
     }
   }
 
-  connection(xstring connstr) : m_connstr(connstr), m_alloc_connect(true)
+  connection(xstring connstr)
+  : m_alloc_connect(true), m_connstr(connstr)
   {
     alloc_and_connect();
   }
@@ -825,7 +834,8 @@ struct temp_user
   odbc::xstring pass;
   odbc::xbuf buf;
 
-  temp_user(SQLHSTMT stmt, odbc::xstring pwd) : hstmt(stmt), buf(1024), pass(pwd)
+  temp_user(SQLHSTMT stmt, odbc::xstring pwd)
+  : hstmt(stmt), pass(pwd), buf(1024)
   {
     odbc::select_one_str(hstmt, "SELECT USER()", buf, 1);
 

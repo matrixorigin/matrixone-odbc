@@ -1,4 +1,4 @@
-// Copyright (c) 2022, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2022, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -45,8 +45,8 @@ DECLARE_TEST(t_bug34355094_sqlcolumns_wchar)
     odbc::table tab(hstmt, nullptr, tab_name, fields);
 
     ok_stmt(hstmt, SQLColumns(hstmt, nullptr, 0, nullptr, 0,
-      (SQLCHAR*)tab_name.c_str(), SQL_NTS,
-      (SQLCHAR*)"col%", SQL_NTS));
+      SC_NTS(tab_name.c_str()),
+      SC_NTS("col%")));
 
     SQLINTEGER expected_type[2][3] = {
       {SQL_VARCHAR, SQL_CHAR, SQL_LONGVARCHAR},
@@ -116,8 +116,7 @@ DECLARE_TEST(t_bug35316630_sqlstatistics) {
     {
       int rnum = 0;
       ok_stmt(hstmt, SQLStatistics(hstmt, nullptr, 0, nullptr, 0,
-                                (SQLCHAR *)tab_name.c_str(), SQL_NTS,
-                                rnum_exp[0], SQL_QUICK));
+        SC_NTS(tab_name.c_str()), rnum_exp[0], SQL_QUICK));
       ++step;
 
       while (SQL_SUCCESS == SQLFetch(hstmt)) {
@@ -194,7 +193,7 @@ DECLARE_TEST(t_sqlmode_sqlcolumns) {
     odbc::table t(hstmt, "sqlmode_sqlcolumns", "id_col int");
     odbc::sql(hstmt, "SET SESSION sql_mode='ANSI'");
     ok_stmt(hstmt, SQLColumns(hstmt, nullptr, 0, nullptr, 0,
-      (SQLCHAR*)t.table_name.c_str(), SQL_NTS, (SQLCHAR*)"id_col", SQL_NTS));
+      SC_NTS(t.table_name.c_str()), SC_NTS("id_col")));
     int rnum = 0;
     odbc::xbuf buf(128);
 
@@ -258,12 +257,12 @@ DECLARE_TEST(t_bug37250400_mysql_escape) {
         // SQLColumns() and SQLSpecialColumns() were impacted by the bug.
         odbc::stmt_close(hstmt);
         ok_stmt(hstmt, SQLColumns(hstmt, nullptr, 0, nullptr, 0,
-          (SQLCHAR*)t.table_name.c_str(), SQL_NTS, (SQLCHAR*)"id_col", SQL_NTS));
+          SC_NTS(t.table_name.c_str()), SC_NTS("id_col")));
         is_num(1, fetch_test(4));
 
         odbc::stmt_close(hstmt);
         ok_stmt(hstmt, SQLSpecialColumns(hstmt, SQL_BEST_ROWID, nullptr, 0, nullptr, 0,
-          (SQLCHAR*)t.table_name.c_str(), SQL_NTS, SQL_SCOPE_SESSION, SQL_NULLABLE));
+          SC_NTS(t.table_name.c_str()), SQL_SCOPE_SESSION, SQL_NULLABLE));
         is_num(1, fetch_test(2));
 
       }

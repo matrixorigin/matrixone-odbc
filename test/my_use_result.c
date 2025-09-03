@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -24,7 +24,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software Foundation, Inc.,
-// 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA 
+// 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
 
 #include "odbctap.h"
 
@@ -35,14 +35,14 @@ SQLINTEGER my_max_rows= 100;
 DECLARE_TEST(t_use_result)
 {
   SQLINTEGER i, row_count= 0;
-  SQLCHAR    ch[]= "MySQL AB";
+  char       ch[]= "MySQL AB";
   SQLRETURN  rc;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_use_result");
   ok_sql(hstmt, "CREATE TABLE t_use_result (id INT, name CHAR(10))");
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)
-                            "INSERT INTO t_use_result VALUES (?,?)", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(
+    "INSERT INTO t_use_result VALUES (?,?)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
                                   SQL_INTEGER, 0, 0, &i, 0, NULL));
@@ -81,7 +81,7 @@ DECLARE_TEST(t_use_result)
 */
 DECLARE_TEST(t_bug4657)
 {
-  SQLCHAR     name[10];
+  char        name[10];
   SQLSMALLINT column_count;
   SQLLEN      name_length;
 
@@ -91,10 +91,8 @@ DECLARE_TEST(t_bug4657)
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug4657");
   ok_sql(hstmt, "CREATE TABLE t_bug4657 (a INT)");
 
-  ok_stmt(hstmt, SQLTables(hstmt, (SQLCHAR *)"", SQL_NTS,
-                           (SQLCHAR *)"", SQL_NTS,
-                           (SQLCHAR *)"", SQL_NTS,
-                           (SQLCHAR *)"UNKNOWN", SQL_NTS));
+  ok_stmt(hstmt, SQLTables(hstmt, SC_NTS(""),
+    SC_NTS(""), SC_NTS(""), SC_NTS("UNKNOWN")));
 
   ok_stmt(hstmt, SQLNumResultCols(hstmt, &column_count));
   is_num(column_count, 5);
@@ -135,8 +133,8 @@ DECLARE_TEST(t_bug39878)
 
   ok_sql(hstmt, "INSERT INTO t_bug39878 VALUES (0), (1)");
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)
-                            "INSERT INTO t_bug39878 SELECT a+? FROM t_bug39878", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(
+    "INSERT INTO t_bug39878 SELECT a+? FROM t_bug39878")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
                                   SQL_INTEGER, 0, 0, &row_count, 0, NULL));
@@ -152,7 +150,7 @@ DECLARE_TEST(t_bug39878)
   printMessage("Setting net_write_timeout to 1");
   ok_sql(hstmt, "SET net_write_timeout=1");
 
-  // Table scan 
+  // Table scan
 
   ok_sql(hstmt, "SELECT * FROM t_bug39878");
   printMessage("Started table scan, sleeping 3sec ...");

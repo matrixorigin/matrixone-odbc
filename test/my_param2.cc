@@ -1,4 +1,4 @@
-// Copyright (c) 2021, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2021, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -111,7 +111,7 @@ DECLARE_TEST(t_bug32763378)
     odbc::stmt_prepare(hstmt, "INSERT INTO " + tab.table_name + " VALUES(?,?)");
 
     SQLLEN rows_fetched = 0;
-    SQLCHAR buffers[2][10];
+    char buffers[2][10];
     SQLLEN lengths[2] = { 0, 0 };
     memset(buffers, 0, sizeof(buffers));
     odbc::xbuf buff(SQL_MAX_MESSAGE_LENGTH);
@@ -134,10 +134,10 @@ DECLARE_TEST(t_bug32763378)
     buffers[0][0] = 'B';
     is_err(SQLSetPos(hstmt, 1, SQL_UPDATE, SQL_LOCK_NO_CHANGE));
 
-    SQLCHAR sqlstate[6] = { 0, 0, 0, 0, 0, 0 };
+    char sqlstate[6] = { 0, 0, 0, 0, 0, 0 };
     SQLINTEGER  native_error = 0;
     SQLSMALLINT length = 0;
-    ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate, &native_error,
+    ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate), &native_error,
                      buff, (SQLSMALLINT)buff.size - 1, &length));
     std::cout << "Expected error message: " << buff.get_str() << std::endl;
   }
@@ -164,7 +164,7 @@ DECLARE_TEST(t_bug30578291_in_param)
     odbc::stmt_prepare(hstmt, "SELECT * FROM " + tab.table_name + " WHERE 'Z' > ?");
 
     SQLLEN rows_fetched = 0;
-    SQLCHAR buffers[2][10];
+    char buffers[2][10];
     SQLLEN lengths[2] = { 0, 0 };
     memset(buffers, 0, sizeof(buffers));
     odbc::xbuf buff(128);
@@ -496,17 +496,16 @@ DECLARE_TEST(t_bug26474373_setpos)
       ok_stmt(hstmt, SQLBindParameter(hstmt,
 			  1, SQL_PARAM_INPUT, SQL_C_CHAR,
 			  SQL_CHAR, param.length(), 0,
-			  (SQLCHAR*)param, param.length(), &len));
+			  SC(param), param.length(), &len));
 
       ok_stmt(hstmt, SQLExecDirect(hstmt,
-        (SQLCHAR*)"SELECT * FROM bug26474373 WHERE name=?",
-        SQL_NTS));
+        SC_NTS("SELECT * FROM bug26474373 WHERE name=?")));
 
 	    long n_id = 0;
 	    SQLLEN len_id = 0;
 	    ok_stmt(hstmt, SQLBindCol(hstmt, 1, SQL_C_SLONG, &n_id, 0, &len_id));
 
-	    SQLCHAR sz_name[81];
+	    char sz_name[81];
 	    SQLLEN len_name = 0;
 	    ok_stmt(hstmt, SQLBindCol(hstmt, 2, SQL_C_WCHAR, sz_name,
         sizeof(sz_name), &len_name));
@@ -545,7 +544,7 @@ DECLARE_TEST(t_bug36906892_procparams_crash)
     const size_t buf_len = 128;
 
     ok_stmt(hstmt, SQLProcedureColumns(hstmt, nullptr, 0, nullptr, 0,
-      (SQLCHAR*)"procbug36906892", SQL_NTS, nullptr, 0));
+      SC_NTS("procbug36906892"), nullptr, 0));
 
     ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_UNBIND));
 

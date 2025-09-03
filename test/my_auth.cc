@@ -42,13 +42,13 @@
 DECLARE_TEST(t_plugin_auth)
 {
 #if MYSQL_VERSION_ID >= 50507
-  SQLCHAR   conn[512], conn_out[512];
+  char   conn[512], conn_out[512];
   SQLSMALLINT conn_out_len;
-  SQLCHAR *tplugin_dir= (SQLCHAR *)"/tmp/test_new_directory/";
-  SQLCHAR *tdefault_auth= (SQLCHAR *)"auth_test_plugin";
+  const char *tplugin_dir= "/tmp/test_new_directory/";
+  const char *tdefault_auth= "auth_test_plugin";
   HDBC hdbc1;
   HSTMT hstmt1;
-  SQLCHAR buf[255];
+  char buf[255];
   SQLLEN buflen;
   SQLRETURN rc;
   SQLUSMALLINT plugin_status= FALSE;
@@ -59,7 +59,7 @@ DECLARE_TEST(t_plugin_auth)
   SQLGetData(hstmt, 1, SQL_CHAR, buf, sizeof(buf), &buflen);
 
   /* Check whether plugin already exist, if not install it. */
-  if(strcmp((const char*)buf, "test_plugin_server")!=0)
+  if(strcmp(buf, "test_plugin_server")!=0)
   {
     plugin_status= TRUE;
 #ifdef _WIN32
@@ -74,8 +74,8 @@ DECLARE_TEST(t_plugin_auth)
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
   /* Can FAIL if user does not exists */
-  SQLExecDirect(hstmt, (SQLCHAR*)"DROP USER `plug_13070711`@`localhost`", SQL_NTS);
-  SQLExecDirect(hstmt, (SQLCHAR*)"DROP USER `plug_13070711`@`%`", SQL_NTS);
+  SQLExecDirect(hstmt, SC_NTS("DROP USER `plug_13070711`@`localhost`"));
+  SQLExecDirect(hstmt, SC_NTS("DROP USER `plug_13070711`@`%`"));
 
   ok_sql(hstmt, "CREATE USER `plug_13070711`@`%` "
                   "IDENTIFIED BY 'plug_dest_passwd';");
@@ -95,24 +95,28 @@ DECLARE_TEST(t_plugin_auth)
     PLUGIN_DIR connection paramater, which fails connection as
     it won't find required library needed for authentication.
   */
-  sprintf((char *)conn, "DSN=%s;UID=plug_13070711;PWD=plug_dest_passwd;"
-                        "DATABASE=test;DEFAULT_AUTH=%s;PLUGIN_DIR=%s",
-            (char *)mydsn, (char *) tdefault_auth, (char *) tplugin_dir);
+  sprintf(conn,
+    "DSN=%s;UID=plug_13070711;PWD=plug_dest_passwd;"
+    "DATABASE=test;DEFAULT_AUTH=%s;PLUGIN_DIR=%s",
+    mydsn, tdefault_auth, tplugin_dir
+  );
+
   if (mysock != NULL)
   {
-    strcat((char *)conn, ";SOCKET=");
-    strcat((char *)conn, (char *)mysock);
+    strcat(conn, ";SOCKET=");
+    strcat(conn, mysock);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    strcat((char *)conn, pbuff);
+    strcat(conn, pbuff);
   }
 
-  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
-                              sizeof(conn_out), &conn_out_len,
-                              SQL_DRIVER_NOPROMPT), SQL_ERROR);
+  expect_dbc(hdbc1, SQLDriverConnect(
+    hdbc1, NULL, SC_NTS(conn), SC(conn_out), sizeof(conn_out),
+    &conn_out_len, SQL_DRIVER_NOPROMPT
+  ), SQL_ERROR);
 
   /*
     Test verifies that setting DEFAULT_AUTH coonection parameter
@@ -120,56 +124,64 @@ DECLARE_TEST(t_plugin_auth)
     using DEFAULT_AUTH connection paramater, which fails connection as
     it won't find required library needed for authentication.
   */
-  sprintf((char *)conn, "DSN=%s;UID=plug_13070711;PWD=plug_dest_passwd;"
-                        "DATABASE=test;DEFAULT_AUTH=%s_test",
-            (char *)mydsn, (char *) tdefault_auth);
+  sprintf(conn,
+    "DSN=%s;UID=plug_13070711;PWD=plug_dest_passwd;"
+    "DATABASE=test;DEFAULT_AUTH=%s_test",
+    mydsn, tdefault_auth
+  );
+
   if (mysock != NULL)
   {
-    strcat((char *)conn, ";SOCKET=");
-    strcat((char *)conn, (char *)mysock);
+    strcat(conn, ";SOCKET=");
+    strcat(conn, mysock);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    strcat((char *)conn, pbuff);
+    strcat(conn, pbuff);
   }
 
-  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
-                              sizeof(conn_out), &conn_out_len,
-                              SQL_DRIVER_NOPROMPT), SQL_ERROR);
+  expect_dbc(hdbc1, SQLDriverConnect(
+    hdbc1, NULL, SC_NTS(conn), SC(conn_out), sizeof(conn_out),
+    &conn_out_len, SQL_DRIVER_NOPROMPT
+  ), SQL_ERROR);
 
   /*
     Tests for successfull connection using DEFAULT_AUTH and TEST_PLUGINDIR
   */
-  sprintf((char *)conn, "DSN=%s;UID=plug_13070711;PWD=plug_dest_passwd;"
-                        "DATABASE=test;DEFAULT_AUTH=auth_test_plugin",
-  (char *)mydsn);
+  sprintf(conn,
+    "DSN=%s;UID=plug_13070711;PWD=plug_dest_passwd;"
+    "DATABASE=test;DEFAULT_AUTH=auth_test_plugin",
+    mydsn
+  );
+
   if (mysock != NULL)
   {
-    strcat((char *)conn, ";SOCKET=");
-    strcat((char *)conn, (char *)mysock);
+    strcat(conn, ";SOCKET=");
+    strcat(conn, mysock);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    strcat((char *)conn, pbuff);
+    strcat(conn, pbuff);
   }
   if (myauth && myauth[0])
   {
-    strcat((char *)conn, ";DEFAULT_AUTH=");
-    strcat((char *)conn, (char *)myauth);
+    strcat(conn, ";DEFAULT_AUTH=");
+    strcat(conn, myauth);
   }
   if (myplugindir && myplugindir[0])
   {
-    strcat((char *)conn, ";PLUGIN_DIR=");
-    strcat((char *)conn, (char *)myplugindir);
+    strcat(conn, ";PLUGIN_DIR=");
+    strcat(conn, myplugindir);
   }
 
-  rc= SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
-                        sizeof(conn_out), &conn_out_len,
-                        SQL_DRIVER_NOPROMPT);
+  rc= SQLDriverConnect(
+    hdbc1, NULL, SC_NTS(conn), SC(conn_out), sizeof(conn_out),
+    &conn_out_len, SQL_DRIVER_NOPROMPT
+  );
 
   /*
     If authetication plugin library 'auth_test_plugin' not found
@@ -214,11 +226,11 @@ DECLARE_TEST(t_plugin_auth)
 DECLARE_TEST(t_ldap_auth)
 {
 #if MYSQL_VERSION_ID >= 80021
-  SQLCHAR   conn[512], conn_out[512];
+  char   conn[512], conn_out[512];
   SQLSMALLINT conn_out_len;
   HDBC hdbc1;
   HSTMT hstmt1;
-  SQLCHAR buf[255];
+  char buf[255];
   SQLLEN buflen;
   SQLRETURN rc;
   const char* ldap_user = getenv("LDAP_USER");
@@ -233,21 +245,21 @@ DECLARE_TEST(t_ldap_auth)
   {
     if(ldap_user_dn)
     {
-      sprintf((char*)buf, "CREATE USER IF NOT EXISTS ldap_simple@'%%' IDENTIFIED WITH "
+      sprintf(buf, "CREATE USER IF NOT EXISTS ldap_simple@'%%' IDENTIFIED WITH "
                    "authentication_ldap_simple AS '%s'",ldap_user_dn);
-      rc = SQLExecDirect(hstmt, buf, SQL_NTS);
-      sprintf((char*)buf, "GRANT ALL ON *.* to ldap_simple@'%%'");
-      rc = SQLExecDirect(hstmt,(SQLCHAR*)buf, SQL_NTS);
+      rc = SQLExecDirect(hstmt, SC_NTS(buf));
+      sprintf(buf, "GRANT ALL ON *.* to ldap_simple@'%%'");
+      rc = SQLExecDirect(hstmt, SC_NTS(buf));
     }
 
     if(ldap_user)
     {
-      sprintf((char*)buf, "CREATE USER IF NOT EXISTS  %s@'%%' IDENTIFIED WITH authentication_ldap_sasl",
+      sprintf(buf, "CREATE USER IF NOT EXISTS  %s@'%%' IDENTIFIED WITH authentication_ldap_sasl",
               ldap_user);
-      rc = SQLExecDirect(hstmt, buf, SQL_NTS);
-      sprintf((char*)buf, "GRANT ALL ON *.* to  %s@'%%'",
+      rc = SQLExecDirect(hstmt, SC_NTS(buf));
+      sprintf(buf, "GRANT ALL ON *.* to  %s@'%%'",
               ldap_user);
-      rc = SQLExecDirect(hstmt, buf, SQL_NTS);
+      rc = SQLExecDirect(hstmt, SC_NTS(buf));
     }
 
   }
@@ -263,28 +275,32 @@ DECLARE_TEST(t_ldap_auth)
       PLUGIN_DIR connection paramater, which fails connection as
       it won't find required library needed for authentication.
     */
-    sprintf((char *)conn, "DSN=%s;UID=ldap_simple;PWD=%s;"
-                          "DATABASE=test; ENABLE_CLEARTEXT_PLUGIN=1",
-              (char *)mydsn, ldap_simple_pwd);
+    sprintf(conn,
+      "DSN=%s;UID=ldap_simple;PWD=%s;"
+      "DATABASE=test; ENABLE_CLEARTEXT_PLUGIN=1",
+      mydsn, ldap_simple_pwd
+    );
+
     if (mysock != NULL)
     {
-      strcat((char *)conn, ";SOCKET=");
-      strcat((char *)conn, (char *)mysock);
+      strcat(conn, ";SOCKET=");
+      strcat(conn, mysock);
     }
     if (myport)
     {
       char pbuff[20];
       sprintf(pbuff, ";PORT=%d", myport);
-      strcat((char *)conn, pbuff);
+      strcat(conn, pbuff);
     }
 
-    expect_dbc(hdbc1, rc = SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
-                                sizeof(conn_out), &conn_out_len,
-                                SQL_DRIVER_NOPROMPT), SQL_DRIVER_NOPROMPT);
+    expect_dbc(hdbc1, rc = SQLDriverConnect(
+      hdbc1, NULL, SC_NTS(conn), SC(conn_out), sizeof(conn_out),
+      &conn_out_len, SQL_DRIVER_NOPROMPT
+    ), SQL_DRIVER_NOPROMPT);
 
     ok_con(hdbc1, SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1));
 
-    rc= SQLExecDirect(hstmt1, (SQLCHAR *)"select 'Hello Simple LDAP'", SQL_NTS);
+    rc= SQLExecDirect(hstmt1, SC_NTS("select 'Hello Simple LDAP'"));
     if(rc == SQL_SUCCESS)
     {
       SQLFetch(hstmt1);
@@ -312,28 +328,32 @@ DECLARE_TEST(t_ldap_auth)
       PLUGIN_DIR connection paramater, which fails connection as
       it won't find required library needed for authentication.
     */
-    sprintf((char *)conn, "DSN=%s;UID=%s;PWD=%s;"
-                          "DATABASE=test; PLUGIN_DIR=%s",
-              (char *)mydsn, ldap_user ,ldap_scram_pwd,(char *) plugin_dir);
+    sprintf(conn,
+      "DSN=%s;UID=%s;PWD=%s;DATABASE=test; PLUGIN_DIR=%s",
+      mydsn, ldap_user ,ldap_scram_pwd, plugin_dir
+    );
+
     if (mysock != NULL)
     {
-      strcat((char *)conn, ";SOCKET=");
-      strcat((char *)conn, (char *)mysock);
+      strcat(conn, ";SOCKET=");
+      strcat(conn, mysock);
     }
     if (myport)
     {
       char pbuff[20];
       sprintf(pbuff, ";PORT=%d", myport);
-      strcat((char *)conn, pbuff);
+      strcat(conn, pbuff);
     }
 
-    expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
-                                sizeof(conn_out), &conn_out_len,
-                                SQL_DRIVER_NOPROMPT), SQL_DRIVER_NOPROMPT);
+    expect_dbc(hdbc1, SQLDriverConnect(
+      hdbc1, NULL, SC_NTS(conn), SC(conn_out), sizeof(conn_out),
+      &conn_out_len, SQL_DRIVER_NOPROMPT
+    ), SQL_DRIVER_NOPROMPT);
 
     ok_con(hdbc1, SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1));
 
-    rc= SQLExecDirect(hstmt1, (SQLCHAR *)"select 'Hello Simple LDAP'", SQL_NTS);
+    rc= SQLExecDirect(hstmt1, SC_NTS("select 'Hello Simple LDAP'"));
+
     if(rc == SQL_SUCCESS)
     {
       SQLFetch(hstmt1);
@@ -357,53 +377,55 @@ DECLARE_TEST(t_ldap_auth)
 
 struct MFA_TEST_DATA
 {
-  char* user;
-  char* pwd;
-  char* pwd1;
-  char* pwd2;
-  char* pwd3;
+  const char* user;
+  const char* pwd;
+  const char* pwd1;
+  const char* pwd2;
+  const char* pwd3;
   BOOL succeed;
 };
 
-SQLCHAR * get_connection_string(SQLCHAR   *conn,struct MFA_TEST_DATA *data, BOOL alternative_name)
+char * get_connection_string(char *conn,struct MFA_TEST_DATA *data, BOOL alternative_name)
 {
-  sprintf((char *)conn, "DSN=%s;DATABASE=test;ENABLE_CLEARTEXT_PLUGIN=1;UID=%s",
-                       (char *)mydsn,data->user);
+  sprintf(conn,
+    "DSN=%s;DATABASE=test;ENABLE_CLEARTEXT_PLUGIN=1;UID=%s", mydsn, data->user
+  );
+
   if(data->pwd)
   {
-    strcat((char *)conn, alternative_name ? ";PWD=" : ";PASSWORD=");
-    strcat((char *)conn, (const char*)data->pwd);
+    strcat(conn, alternative_name ? ";PWD=" : ";PASSWORD=");
+    strcat(conn, data->pwd);
   }
   if(data->pwd1)
   {
-    strcat((char *)conn, alternative_name ? ";PWD1=" : ";PASSWORD1=");
-    strcat((char *)conn, (const char*)data->pwd1);
+    strcat(conn, alternative_name ? ";PWD1=" : ";PASSWORD1=");
+    strcat(conn, data->pwd1);
   }
   if(data->pwd2)
   {
-    strcat((char *)conn, alternative_name ? ";PWD2=" : ";PASSWORD2=");
-    strcat((char *)conn, (const char*)data->pwd2);
+    strcat(conn, alternative_name ? ";PWD2=" : ";PASSWORD2=");
+    strcat(conn, data->pwd2);
   }
   if(data->pwd3)
   {
-    strcat((char *)conn, alternative_name ? ";PWD3=" : ";PASSWORD3=");
-    strcat((char *)conn, (const char*)data->pwd3);
+    strcat(conn, alternative_name ? ";PWD3=" : ";PASSWORD3=");
+    strcat(conn, data->pwd3);
   }
   if (mydriver != NULL)
   {
-    strcat((char *)conn, ";DRIVER=");
-    strcat((char *)conn, (char *)mydriver);
+    strcat(conn, ";DRIVER=");
+    strcat(conn, mydriver);
   }
   if (mysock != NULL)
   {
-    strcat((char *)conn, ";SOCKET=");
-    strcat((char *)conn, (char *)mysock);
+    strcat(conn, ";SOCKET=");
+    strcat(conn, mysock);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    strcat((char *)conn, pbuff);
+    strcat(conn, pbuff);
   }
 
   printf("%s\n",conn);
@@ -414,8 +436,8 @@ SQLCHAR * get_connection_string(SQLCHAR   *conn,struct MFA_TEST_DATA *data, BOOL
 DECLARE_TEST(t_mfa_auth)
 {
 #if MYSQL_VERSION_ID >= 80027
-  SQLCHAR   conn[1024], conn_out[1024];
-  SQLCHAR   buf[512];
+  char   conn[1024], conn_out[1024];
+  char   buf[512];
   SQLLEN buflen;
   SQLSMALLINT conn_out_len;
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
@@ -428,7 +450,7 @@ DECLARE_TEST(t_mfa_auth)
   struct MFA_TEST_DATA test_data[] =
   {
     //default test
-  {(char*)myuid, (char*)mypwd, NULL   , NULL   , NULL   , TRUE  },
+  {myuid, mypwd, NULL   , NULL   , NULL   , TRUE  },
   // user1 tests
   {"user_1f", "pass1", NULL   , NULL   , NULL   , TRUE  },
   {"user_1f", "pass1", "pass1", NULL   , NULL   , TRUE  },
@@ -484,9 +506,11 @@ DECLARE_TEST(t_mfa_auth)
 
   };
 
-  SQLExecDirect(hstmt,(SQLCHAR *) "UNINSTALL PLUGIN cleartext_plugin_server",SQL_NTS);
+  SQLExecDirect(hstmt, SC_NTS("UNINSTALL PLUGIN cleartext_plugin_server"));
 
-  rc = SQLExecDirect(hstmt,(SQLCHAR *) "INSTALL PLUGIN cleartext_plugin_server SONAME 'auth_test_plugin.so'",SQL_NTS);
+  rc = SQLExecDirect(hstmt, SC_NTS(
+    "INSTALL PLUGIN cleartext_plugin_server SONAME 'auth_test_plugin.so'"
+  ));
 
   if (rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO)
   {
@@ -559,11 +583,14 @@ DECLARE_TEST(t_mfa_auth)
     if(data->succeed)
     {
       rc = SQLDriverConnect(
-            hdbc1, NULL,
-            get_connection_string(conn, data, use_alternative_parameter_name),
-            SQL_NTS, conn_out,
-            sizeof(conn_out), &conn_out_len,
-            SQL_DRIVER_NOPROMPT);
+        hdbc1, NULL,
+        SC_NTS(get_connection_string(
+          conn, data, use_alternative_parameter_name
+        )),
+        SC(conn_out), sizeof(conn_out),
+        &conn_out_len, SQL_DRIVER_NOPROMPT
+      );
+
       if(!SQL_IS_SUCCESS(rc))
         TEST_RETURN_FAIL;
 
@@ -574,10 +601,13 @@ DECLARE_TEST(t_mfa_auth)
     {
       rc = SQLDriverConnect(
         hdbc1, NULL,
-        get_connection_string(conn, data, use_alternative_parameter_name),
-        SQL_NTS, conn_out,
-        sizeof(conn_out), &conn_out_len,
-        SQL_DRIVER_NOPROMPT);
+        SC_NTS(get_connection_string(
+          conn, data, use_alternative_parameter_name
+        )),
+        SC(conn_out), sizeof(conn_out),
+        &conn_out_len, SQL_DRIVER_NOPROMPT
+      );
+
       if (rc == SQL_SUCCESS || rc == SQL_SUCCESS_WITH_INFO)
       {
         TEST_RETURN_FAIL;
@@ -605,11 +635,13 @@ DECLARE_TEST(t_mfa_auth)
     ok_env(henv1, SQLAllocHandle(SQL_HANDLE_DBC, henv1, &hdbc1));
 
     rc = SQLDriverConnect(
-          hdbc1, NULL,
-          get_connection_string(conn, data, use_alternative_parameter_name),
-          SQL_NTS, conn_out,
-          sizeof(conn_out), &conn_out_len,
-          SQL_DRIVER_NOPROMPT);
+      hdbc1, NULL,
+      SC_NTS(get_connection_string(
+        conn, data, use_alternative_parameter_name
+      )),
+      SC(conn_out), sizeof(conn_out),
+      &conn_out_len, SQL_DRIVER_NOPROMPT
+    );
 
     if(!SQL_IS_SUCCESS(rc))
       TEST_RETURN_FAIL;
@@ -680,9 +712,10 @@ DECLARE_TEST(t_webauthn_test)
     return SKIP;
   }
 
-  is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                       (SQLCHAR*)"uwebauthn", (SQLCHAR*)"sha2_password",
-                                        NULL, (SQLCHAR*)"DATABASE=;"));
+  is(OK == alloc_basic_handles_with_opt(
+    &henv1, &hdbc1, &hstmt1,
+    NULL, "uwebauthn", "sha2_password", NULL, "DATABASE=;"
+  ));
 
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
   return OK;
@@ -716,10 +749,9 @@ DECLARE_TEST(t_fido_callback_test)
     return SKIP;
   }
 
-  SQLHDBC hdbc1 = NULL, hdbc2 = NULL;
   std::string str_connstr =
-    (char*)make_conn_str(NULL, (SQLCHAR*)"uwebauthn", (SQLCHAR*)"sha2_password",
-      NULL, (SQLCHAR*)"DATABASE=;", 0);
+    make_conn_str(NULL, "uwebauthn", "sha2_password",
+      NULL, "DATABASE=;", 0);
 
   fido_var = FIDO_VAL_DEFAULT;
 
@@ -737,12 +769,12 @@ DECLARE_TEST(t_fido_callback_test)
   auto fido_test_check = [henv, str_connstr](int attr_type, void (*callback_func)(const char*), int result)
   {
     SQLHDBC hdbc = NULL;
-    SQLCHAR *connstr = (SQLCHAR*)str_connstr.c_str();
+    const char *connstr = str_connstr.c_str();
     ok_env(henv, SQLAllocConnect(henv, &hdbc));
     if (attr_type != CB_FIDO_NOFUNC)
       ok_con(hdbc, SQLSetConnectAttr(hdbc, attr_type, (void*)callback_func, SQL_IS_POINTER));
     fido_var = FIDO_VAL_DEFAULT;
-    ok_con(hdbc, SQLDriverConnect(hdbc, NULL, connstr, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT));
+    ok_con(hdbc, SQLDriverConnect(hdbc, NULL, SC_NTS(connstr), NULL, 0, NULL, SQL_DRIVER_NOPROMPT));
     SQLDisconnect(hdbc);
     SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
     is_num(result, fido_var);
@@ -832,7 +864,7 @@ DECLARE_TEST(t_fido_callback_test)
   auto fido_thr_global_check = [henv, str_connstr, fido_func_global]()
   {
     auto ptr = (void (*)(const char*))fido_func_global;
-    SQLCHAR *connstr = (SQLCHAR*)str_connstr.c_str();
+    const char *connstr = str_connstr.c_str();
     fido_var = FIDO_VAL_DEFAULT;
     for (int i = 0; i < 3; ++i)
     {
@@ -841,7 +873,7 @@ DECLARE_TEST(t_fido_callback_test)
       ok_con(hdbc, SQLSetConnectAttr(hdbc, CB_FIDO_GLOBAL,
         (void*)(ptr), SQL_IS_POINTER));
 
-      SQLDriverConnect(hdbc, NULL, (SQLCHAR*)connstr, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+      SQLDriverConnect(hdbc, NULL, SC_NTS(connstr), NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
       SQLDisconnect(hdbc);
       SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
 
@@ -854,7 +886,7 @@ DECLARE_TEST(t_fido_callback_test)
   auto fido_thr_conn_check = [henv, str_connstr](
     void (*callback_func)(const char*), int idx)
   {
-    SQLCHAR* connstr = (SQLCHAR*)str_connstr.c_str();
+    const char* connstr = str_connstr.c_str();
     for (int i = 0; i < 3; ++i)
     {
       SQLHDBC hdbc = NULL;
@@ -863,7 +895,7 @@ DECLARE_TEST(t_fido_callback_test)
         (void *)(callback_func), SQL_IS_POINTER));
       fido_var2[idx] = FIDO_VAL_DEFAULT;
 
-      SQLDriverConnect(hdbc, NULL, (SQLCHAR*)connstr, SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+      SQLDriverConnect(hdbc, NULL, SC_NTS(connstr), NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
       SQLDisconnect(hdbc);
       SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
       int expected_val = idx + 1;
@@ -901,8 +933,10 @@ DECLARE_TEST(t_fido_callback_test)
   ok_con(hdbc3, SQLSetConnectAttr(hdbc3, CB_FIDO_GLOBAL,
     nullptr, SQL_IS_POINTER));
 
-  SQLDriverConnect(hdbc3, NULL, (SQLCHAR*)str_connstr.c_str(),
-    SQL_NTS, NULL, 0, NULL, SQL_DRIVER_NOPROMPT);
+  SQLDriverConnect(hdbc3,
+    NULL, SC_NTS(str_connstr.c_str()), NULL, 0, NULL, SQL_DRIVER_NOPROMPT
+  );
+
   SQLDisconnect(hdbc3);
   SQLFreeHandle(SQL_HANDLE_DBC, hdbc3);
 
@@ -1073,6 +1107,6 @@ BEGIN_TESTS
 #if MFA_ENABLED
   ADD_TEST(t_mfa_auth)
 #endif
-  END_TESTS
+END_TESTS
 
 RUN_TESTS

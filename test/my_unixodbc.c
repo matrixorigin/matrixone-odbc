@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -83,7 +83,7 @@ DECLARE_TEST(t_odbc3_handle)
       before we've set SQL_ATTR_ODBC_VERSION.
     */
     rc = SQLAllocHandle(SQL_HANDLE_DBC,henv1,&hdbc1);
-    myenv_err(henv1,rc == SQL_ERROR,rc);
+    myenv_err(henv1, (rc == SQL_ERROR), rc);
 
     rc = SQLSetEnvAttr(henv1,SQL_ATTR_ODBC_VERSION,(SQLPOINTER)SQL_OV_ODBC3,0);
     myenv(henv1,rc);
@@ -95,7 +95,7 @@ DECLARE_TEST(t_odbc3_handle)
     rc = SQLAllocHandle(SQL_HANDLE_DBC,henv1,&hdbc1);
     myenv(henv1,rc);
 
-    rc = SQLConnect(hdbc1, mydsn, SQL_NTS, myuid, SQL_NTS,  mypwd, SQL_NTS);
+    rc = SQLConnect(hdbc1, SC_NTS(mydsn), SC_NTS(myuid), SC_NTS(mypwd));
     mycon(hdbc1,rc);
 
     rc = SQLAllocHandle(SQL_HANDLE_STMT,hdbc1,&hstmt1);
@@ -119,9 +119,8 @@ DECLARE_TEST(t_driver_connect)
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                        NULL, NULL, NULL, 
-                                        "OPTION=3;STMT=use mysql"));
-  
+    NULL, NULL, NULL, "OPTION=3;STMT=use mysql"));
+
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
 
   return OK;

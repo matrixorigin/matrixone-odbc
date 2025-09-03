@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -147,7 +147,7 @@ DECLARE_TEST(t_tran)
 DECLARE_TEST(t_isolation)
 {
   SQLINTEGER isolation;
-  SQLCHAR    tx_isolation[20];
+  char       tx_isolation[20];
 
   if (!server_supports_trans(hdbc))
     skip("Server does not support transactions.");
@@ -171,7 +171,7 @@ DECLARE_TEST(t_isolation)
     ok_sql(hstmt, "SELECT @@transaction_isolation");
   else
     ok_sql(hstmt, "SELECT @@tx_isolation");
-    
+
   ok_stmt(hstmt, SQLBindCol(hstmt, 1, SQL_C_CHAR, tx_isolation,
                             sizeof(tx_isolation), NULL));
   ok_stmt(hstmt, SQLFetch(hstmt));

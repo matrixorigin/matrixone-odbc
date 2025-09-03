@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2018, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -41,10 +41,10 @@ DECLARE_TEST(my_json)
 {
   SQLINTEGER id_value = 1;
   SQLLEN out_bytes[3] = {0, 0, 0};
-  SQLCHAR buf[255], qbuf[255];
+  char buf[255], qbuf[255];
   DECLARE_BASIC_HANDLES(henv2, hdbc2, hstmt2);
   alloc_basic_handles_with_opt(&henv2, &hdbc2, &hstmt2, NULL, NULL, NULL, NULL,
-                               (SQLCHAR*)"CHARSET=utf8mb4");
+                               "CHARSET=utf8mb4");
 
   const char *json = "{\"key1\": \"value1\", \"key2\": \"value2\"}";
   const char *json2 = "{\"key1\": \"value10\", \"key2\": \"value20\"}";
@@ -52,11 +52,11 @@ DECLARE_TEST(my_json)
   ok_sql(hstmt2, "DROP TABLE IF EXISTS t_bug_json");
   ok_sql(hstmt2, "CREATE TABLE t_bug_json(id INT PRIMARY KEY, jdoc JSON)");
 
-  snprintf((char*)qbuf, 255, "INSERT INTO t_bug_json VALUES (1, '%s')", json);
-  ok_stmt(hstmt2, SQLExecDirect(hstmt2, qbuf, SQL_NTS));
+  snprintf(qbuf, 255, "INSERT INTO t_bug_json VALUES (1, '%s')", json);
+  ok_stmt(hstmt2, SQLExecDirect(hstmt2, SC_NTS(qbuf)));
 
-  ok_stmt(hstmt2, SQLColumns(hstmt2, mydb, SQL_NTS, NULL, 0,
-                            (SQLCHAR *)"t_bug_json", SQL_NTS, NULL, 0));
+  ok_stmt(hstmt2, SQLColumns(hstmt2, SC_NTS(mydb), NULL, 0,
+                            SC_NTS("t_bug_json"), NULL, 0));
 
   ok_stmt(hstmt2, SQLFetch(hstmt2)); // Fetch 1st column and ignore data
   ok_stmt(hstmt2, SQLFetch(hstmt2)); // Fetch 2nd column
@@ -67,8 +67,7 @@ DECLARE_TEST(my_json)
 
   expect_stmt(hstmt2, SQLFetch(hstmt2), SQL_NO_DATA);
   ok_stmt(hstmt2, SQLFreeStmt(hstmt2, SQL_CLOSE));
-  ok_stmt(hstmt2, SQLPrepare(hstmt2, (SQLCHAR*)"SELECT id, jdoc FROM t_bug_json WHERE id=?",
-                            SQL_NTS));
+  ok_stmt(hstmt2, SQLPrepare(hstmt2, SC_NTS("SELECT id, jdoc FROM t_bug_json WHERE id=?")));
   ok_stmt(hstmt2, SQLBindParameter(hstmt2, 1, SQL_PARAM_INPUT, SQL_C_DEFAULT,
                                   SQL_INTEGER, 10, 0, &id_value, 0, &out_bytes[0]));
   ok_stmt(hstmt2, SQLExecute(hstmt2));
@@ -78,8 +77,8 @@ DECLARE_TEST(my_json)
   expect_stmt(hstmt2, SQLFetch(hstmt2), SQL_NO_DATA);
 
   ok_stmt(hstmt2, SQLFreeStmt(hstmt2, SQL_CLOSE));
-  ok_stmt(hstmt2, SQLPrepare(hstmt2, (SQLCHAR*)"UPDATE t_bug_json SET jdoc = ? "\
-                                   "WHERE id = ?", SQL_NTS));
+  ok_stmt(hstmt2, SQLPrepare(hstmt2, SC_NTS("UPDATE t_bug_json SET jdoc = ? "\
+    "WHERE id = ?")));
 
   out_bytes[0] = strlen(json2);
   ok_stmt(hstmt2, SQLBindParameter(hstmt2, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
@@ -91,8 +90,7 @@ DECLARE_TEST(my_json)
 
   ok_stmt(hstmt2, SQLExecute(hstmt2));
 
-  ok_stmt(hstmt2, SQLPrepare(hstmt2, (SQLCHAR*)"SELECT id, jdoc FROM t_bug_json WHERE id=?",
-                            SQL_NTS));
+  ok_stmt(hstmt2, SQLPrepare(hstmt2, SC_NTS("SELECT id, jdoc FROM t_bug_json WHERE id=?")));
   out_bytes[0] = 0;
   ok_stmt(hstmt2, SQLBindParameter(hstmt2, 1, SQL_PARAM_INPUT, SQL_C_DEFAULT,
                                   SQL_INTEGER, 10, 0, &id_value, 0, &out_bytes[0]));
@@ -116,7 +114,7 @@ DECLARE_TEST(my_local_infile)
   SQLINTEGER num_rows = 0;
   FILE *csv_file = NULL;
 
-  if (strcmp((char*)myserver, "localhost"))
+  if (strcmp(myserver, "localhost"))
     return OK;
 
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
@@ -131,10 +129,10 @@ DECLARE_TEST(my_local_infile)
   fclose(csv_file);
 
   ok_sql(hstmt, "SET GLOBAL local_infile=true");
-  rc = SQLExecDirect(hstmt, (SQLCHAR*)"LOAD DATA LOCAL INFILE 'test_local_infile.csv' " \
+  rc = SQLExecDirect(hstmt, SC_NTS("LOAD DATA LOCAL INFILE 'test_local_infile.csv' " \
                     "INTO TABLE test_local_infile " \
                     "FIELDS TERMINATED BY ',' " \
-                    "LINES TERMINATED BY '\\n'", SQL_NTS);
+                    "LINES TERMINATED BY '\\n'"));
   if (rc != SQL_ERROR)  // First attempt must fail
   {
     rc = SQL_ERROR;
@@ -143,14 +141,14 @@ DECLARE_TEST(my_local_infile)
 
   rc = alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
                                     NULL, NULL, NULL, NULL,
-                                    (SQLCHAR*)"ENABLE_LOCAL_INFILE=1");
+                                    "ENABLE_LOCAL_INFILE=1");
   if (rc != SQL_SUCCESS) goto END_TEST;
 
-  rc = SQLExecDirect(hstmt1, (SQLCHAR*)
+  rc = SQLExecDirect(hstmt1, SC_NTS(
                      "LOAD DATA LOCAL INFILE 'test_local_infile.csv' " \
                      "INTO TABLE test_local_infile " \
                      "FIELDS TERMINATED BY ',' " \
-                     "LINES TERMINATED BY '\\n'", SQL_NTS);
+                     "LINES TERMINATED BY '\\n'"));
 
   if (rc != SQL_SUCCESS)
   {
@@ -158,7 +156,7 @@ DECLARE_TEST(my_local_infile)
       goto END_TEST;
   }
 
-  rc = SQLExecDirect(hstmt, (SQLCHAR*)"SELECT count(*) FROM test_local_infile", SQL_NTS);
+  rc = SQLExecDirect(hstmt, SC_NTS("SELECT count(*) FROM test_local_infile"));
   if (rc != SQL_SUCCESS) goto END_TEST;
   rc = SQLFetch(hstmt);
   if (rc != SQL_SUCCESS) goto END_TEST;
@@ -190,11 +188,11 @@ DECLARE_TEST(t_bug106683)
 
   is(SQL_SUCCESS == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
                    NULL, NULL, NULL, NULL,
-                   (SQLCHAR*)"NO_CACHE=1"));
+                   "NO_CACHE=1"));
 
   ok_stmt(hstmt1, SQLSetStmtAttr(hstmt1, SQL_ATTR_CURSOR_TYPE,
     (SQLPOINTER)SQL_CURSOR_FORWARD_ONLY, SQL_IS_UINTEGER));
-  ok_stmt(hstmt1, SQLPrepare(hstmt1, (SQLCHAR*)"SELECT * FROM bug106683", SQL_NTS));
+  ok_stmt(hstmt1, SQLPrepare(hstmt1, SC_NTS("SELECT * FROM bug106683")));
   ok_stmt(hstmt1, SQLExecute(hstmt1));
 
   int rnum = 1;
@@ -306,7 +304,7 @@ DECLARE_TEST(t_bug34109678_collations)
     {
       databuf.emplace_back(odbc::xbuf(32));
       lenbuf.emplace_back(32);
-      ok_stmt(hstmt1, SQLBindCol(hstmt1, i + 1, SQL_C_CHAR, (char*)databuf[i], 32, &lenbuf[0]));
+      ok_stmt(hstmt1, SQLBindCol(hstmt1, i + 1, SQL_C_CHAR, databuf[i], 32, &lenbuf[0]));
     }
 
     is(SQLFetch(hstmt1) == SQL_SUCCESS);
@@ -552,7 +550,7 @@ DECLARE_TEST(t_bug33401384_JSON_param)
 
     odbc::sql(hstmt, "SELECT value FROM tab_bug33401384");
     ok_stmt(hstmt, SQLFetch(hstmt));
-    SQLCHAR buf[10];
+    char buf[10];
     my_fetch_str(hstmt, buf, 1);
     is_str(buf, "B", 2);
     is_no_data(SQLFetch(hstmt));
@@ -690,12 +688,12 @@ DECLARE_TEST(t_wl15423_json)
 
       // Get info about 1st column in the result.
 
-      SQLCHAR col_name[20];
+      char col_name[20];
       SQLSMALLINT data_type = 0;
       SQLULEN col_size = 0;
 
       ok_stmt(hstmt, SQLDescribeCol(hstmt, 1,
-        col_name, 20, nullptr, &data_type, &col_size,
+        SC(col_name), 20, nullptr, &data_type, &col_size,
         nullptr, nullptr));
 
       is_num(data_type, exp_type);
@@ -710,7 +708,7 @@ DECLARE_TEST(t_wl15423_json)
 
       // check descriptors for the first column.
 
-      SQLCHAR str_attr[20];
+      char str_attr[20];
       SQLLEN num_attr;
 
       auto get_attr = [&str_attr, &num_attr, &hstmt](auto idx) {
@@ -808,7 +806,7 @@ DECLARE_TEST(t_bug_34350417_performance) {
     odbc::stmt_prepare(hstmt, "INSERT INTO " + tab.table_name +
       "(c1,c2)VALUES(?,?)");
 
-    char *c_val = "4.2345678902345678e+20";
+    const char *c_val = "4.2345678902345678e+20";
     double d_val = 4.2345678902345678e+20;
     char c_res[64];
     double d_res = 0;
@@ -819,7 +817,7 @@ DECLARE_TEST(t_bug_34350417_performance) {
 
     // Make driver convert CHAR into DOUBLE.
     ok_stmt(hstmt, SQLBindParameter(hstmt, 2, SQL_PARAM_INPUT, SQL_C_CHAR,
-      SQL_DOUBLE, 0, 0, c_val, strlen(c_val), nullptr));
+      SQL_DOUBLE, 0, 0, (SQLPOINTER)c_val, strlen(c_val), nullptr));
 
     odbc::stmt_execute(hstmt);
     odbc::stmt_close(hstmt);
@@ -901,7 +899,8 @@ DECLARE_TEST(t_utf8mb4_param) {
     // query like this ".. WHERE vc = ?"
     odbc::stmt_prepare(hstmt1, "SET @Currency = ?");
     ok_stmt(hstmt1, SQLBindParameter(hstmt1, 1, SQL_PARAM_INPUT, SQL_C_WCHAR,
-                                     SQL_WCHAR, 0, 0, param, 6 * 2, nullptr));
+                                     SQL_WCHAR, 0, 0, (SQLPOINTER)param,
+                                     6 * 2, nullptr));
 
     odbc::stmt_execute(hstmt1);
     odbc::stmt_reset(hstmt1);
@@ -1021,7 +1020,7 @@ DECLARE_TEST(t_wl16171_vector)
   is_num(16, float_buf_orig.size());
 
   SQLHSTMT hstmt2 = nullptr;
-  SQLCHAR char_buf[64];
+  char char_buf[64];
 
   try
   {
@@ -1084,12 +1083,12 @@ DECLARE_TEST(t_wl16171_vector)
   };
   auto check_metadata = [&char_buf](SQLHSTMT hstmt, size_t col_cnt)
   {
-    SQLCHAR col_name[32];
+    char col_name[32];
     SQLSMALLINT name_len = 0, data_type = 0, dec_digits = 0, nullable = 0;
     SQLULEN col_size = 0;
 
     // Check SQLDescribeCol()
-    ok_stmt(hstmt, SQLDescribeCol(hstmt, 1, col_name, sizeof(col_name),
+    ok_stmt(hstmt, SQLDescribeCol(hstmt, 1, SC(col_name), sizeof(col_name),
         &name_len, &data_type, &col_size, &dec_digits, &nullable));
 
     is_num(10, name_len);
@@ -1144,10 +1143,10 @@ DECLARE_TEST(t_wl16171_vector)
   // Check SQLColumns()
   auto check_table_columns = [](SQLHSTMT hstmt, size_t col_cnt)
   {
-    SQLCHAR char_buf[64];
+    char char_buf[64];
     ok_stmt(hstmt, SQLColumns(hstmt, nullptr, 0, nullptr, 0,
-      (SQLCHAR*)"test_vector", SQL_NTS,
-      (SQLCHAR*)"vector_col", SQL_NTS));
+      SC_NTS("test_vector"),
+      SC_NTS("vector_col")));
     ok_stmt(hstmt, SQLFetch(hstmt));
 
     // TABLE_CAT
@@ -1197,7 +1196,7 @@ DECLARE_TEST(t_wl16171_vector)
   // Check 3: SQLGetTypeInfo()
   auto check_type_info = [](SQLHSTMT hstmt)
   {
-    SQLCHAR char_buf[64];
+    char char_buf[64];
     for (auto opt : { SQL_VARBINARY, SQL_ALL_TYPES })
     {
       bool vector_detected = false;
@@ -1291,8 +1290,8 @@ DECLARE_TEST(t_bug21115726)
 
     auto res_check = [&c1, &c2, &c3, &len1, &len2, &len3]()
     {
-      is_num(-9223372036854775808LL, c1);
-      is_num(18446744073709551615LL, c2);
+      is_num(INT64_MIN, c1);
+      is_num(UINT64_MAX, c2);
       is_num(1234567123LL, c3);
       is_num(8, len1);
       is_num(8, len2);
@@ -1579,7 +1578,7 @@ DECLARE_TEST(t_bug37298936_pad_spaces)
             }
             else
             {
-              is((SQLCHAR)' ' == ((SQLCHAR*)(buf[i]))[str_len + k]);
+              is((char)' ' == ((char*)(buf[i]))[str_len + k]);
             }
           }
         }

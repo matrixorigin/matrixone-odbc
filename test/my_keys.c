@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -109,7 +109,7 @@ DECLARE_TEST(my_no_keys)
 DECLARE_TEST(my_foreign_keys)
 {
     SQLRETURN   rc=0;
-    SQLCHAR     dbc[255];
+    char dbc[255];
 
     ok_sql(hstmt,"DROP DATABASE IF EXISTS test_odbc_fk");
     ok_sql(hstmt,"CREATE DATABASE test_odbc_fk");
@@ -200,205 +200,205 @@ DECLARE_TEST(my_foreign_keys)
 
     SQLFreeStmt(hstmt,SQL_CLOSE);
 
-    strcpy((char *)dbc, "test_odbc_fk");
+    strcpy(dbc, "test_odbc_fk");
 
     printMessage("\n WITH ONLY PK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,               /*PK CATALOG*/
-                        NULL, SQL_NTS,                /*PK SCHEMA*/
-                        (SQLCHAR *)"test_fkey1", SQL_NTS,  /*PK TABLE*/
-                        dbc, SQL_NTS,               /*FK CATALOG*/
-                        NULL, SQL_NTS,                /*FK SCHEMA*/
-                        NULL, SQL_NTS);               /*FK TABLE*/
+                        SC_NTS(dbc),               /*PK CATALOG*/
+                        SC_NTS(NULL),              /*PK SCHEMA*/
+                        SC_NTS("test_fkey1"),      /*PK TABLE*/
+                        SC_NTS(dbc),               /*FK CATALOG*/
+                        SC_NTS(NULL),              /*FK SCHEMA*/
+                        SC_NTS(NULL));             /*FK TABLE*/
     mystmt(hstmt,rc);
     is(9 == myresult(hstmt));
 
     printMessage("\n WITH ONLY FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey1"));
     mystmt(hstmt,rc);
     is(0 == myresult(hstmt));
 
     printMessage("\n WITH ONLY FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_c1", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_c1"));
     mystmt(hstmt,rc);
     is(15 == myresult(hstmt));
 
     printMessage("\n WITH ONLY FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey2", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey2"));
     mystmt(hstmt,rc);
     is(3 == myresult(hstmt));
 
     printMessage("\n WITH ONLY PK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_p1", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_p1"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL));
     mystmt(hstmt,rc);
     is(11 == myresult(hstmt));
 
     printMessage("\n WITH ONLY PK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey3", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey3"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL));
     mystmt(hstmt,rc);
     is(0 == myresult(hstmt));
 
     printMessage("\n WITH ONLY PK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey2", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey2"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL));
     mystmt(hstmt,rc);
     is(2 == myresult(hstmt));
 
     printMessage("\n WITH ONLY PK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey1"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL));
     mystmt(hstmt,rc);
     is(9 == myresult(hstmt));
 
     printMessage("\n WITH ONLY FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        NULL, SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey3", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS(NULL),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey3"));
     mystmt(hstmt,rc);
     is(4 == myresult(hstmt));
 
     printMessage("\n WITH BOTH PK and FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1",SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey3", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey1"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey3"));
     mystmt(hstmt,rc);
     is(3 == myresult(hstmt));
 
     printMessage("\n WITH BOTH PK and FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_p1",SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_c1", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_p1"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_c1"));
     mystmt(hstmt,rc);
     is(11 == myresult(hstmt));
 
     printMessage("\n WITH BOTH PK and FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1",SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey2", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey1"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey2"));
     mystmt(hstmt,rc);
     is(3 == myresult(hstmt));
 
     printMessage("\n WITH BOTH PK and FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_p1",SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey2", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_p1"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey2"));
     mystmt(hstmt,rc);
     is(0 == myresult(hstmt));
 
     printMessage("\n WITH BOTH PK and FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey3", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey3"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey1"));
     mystmt(hstmt,rc);
     is(0 == myresult(hstmt));
 
     printMessage("\n WITH BOTH PK and FK OPTION");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey2", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey2"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey1"));
     mystmt(hstmt,rc);
     is(0 == myresult(hstmt));
 
     printMessage("\n WITH ACTUAL LENGTH INSTEAD OF SQL_NTS");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey1",10,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey2",10);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC("test_fkey1"), 10,
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC("test_fkey2"), 10);
     mystmt(hstmt,rc);
     is(3 == myresult(hstmt));
     SQLFreeStmt(hstmt,SQL_CLOSE);
 
     printMessage("\n WITH NON-EXISTANT TABLES");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_junk", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_junk", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_junk"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_junk"));
     mystmt(hstmt,rc);
     is(0 == myresult(hstmt));
     SQLFreeStmt(hstmt,SQL_CLOSE);
 
     printMessage("\n WITH COMMENT FIELD");
     rc = SQLForeignKeys(hstmt,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_comment_p", SQL_NTS,
-                        dbc, SQL_NTS,
-                        NULL, SQL_NTS,
-                        (SQLCHAR *)"test_fkey_comment_f", SQL_NTS);
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_comment_p"),
+                        SC_NTS(dbc),
+                        SC_NTS(NULL),
+                        SC_NTS("test_fkey_comment_f"));
     mystmt(hstmt,rc);
     is(1 == myresult(hstmt));
 
@@ -407,7 +407,7 @@ DECLARE_TEST(my_foreign_keys)
         sprintf(buff,"use %s",mydb);
         ok_sql(hstmt, "DROP DATABASE test_odbc_fk");
         SQLFreeStmt(hstmt, SQL_CLOSE);
-        SQLExecDirect(hstmt, (SQLCHAR *)buff, SQL_NTS);
+        SQLExecDirect(hstmt, SC_NTS(buff));
         SQLFreeStmt(hstmt, SQL_CLOSE);
     }
 
@@ -421,7 +421,7 @@ void t_strstr()
     char    *str=",";
     char    *type;
 
-    type = strstr((const char *)string,(const char *)str);
+    type = strstr(string, str);
     while (type++)
     {
         int len = (int)(type - string);
@@ -439,7 +439,7 @@ void t_strstr()
 */
 DECLARE_TEST(t_bug16920750)
 {
-  SQLCHAR buff[255];
+  char buff[255];
 
   ok_sql(hstmt, "DROP SCHEMA IF EXISTS fk_test");
   ok_sql(hstmt, "CREATE SCHEMA fk_test");
@@ -458,7 +458,7 @@ DECLARE_TEST(t_bug16920750)
                 "REFERENCES t_bug16920750b(id) ) ENGINE=InnoDB");
 
   ok_stmt(hstmt, SQLForeignKeys(hstmt, NULL, 0, NULL, 0, NULL, 0, NULL, 0,
-                                NULL, 0, (SQLCHAR *)"t_bug16920750c", SQL_NTS));
+                                NULL, 0, SC_NTS("t_bug16920750c")));
 
   ok_stmt(hstmt, SQLFetch(hstmt));
   is_str(my_fetch_str(hstmt, buff, 3), "t_bug16920750a", 14);

@@ -1,4 +1,4 @@
-// Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -209,11 +209,11 @@ DECLARE_TEST(t_get_all_info)
     SQLHDBC hdbc1;
     SQLHSTMT hstmt1;
 
-    sprintf((char *)conn, "DSN=%s;UID=%s;PASSWORD=%s",
+    sprintf(conn, "DSN=%s;UID=%s;PASSWORD=%s",
             mydsn, myuid, mypwd);
     ok_env(henv, SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1));
-    ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, (SQLSMALLINT)strlen(conn), NULL, 0,
-                                   NULL, SQL_DRIVER_NOPROMPT));
+    ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, SC(conn),
+      (SQLSMALLINT)strlen(conn), NULL, 0, NULL, SQL_DRIVER_NOPROMPT));
     ok_con(hdbc1, SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1));
 
     printf("** SQLGetInfo START\n");
@@ -288,7 +288,7 @@ DECLARE_TEST(t_bug28385722)
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                        NULL, NULL, NULL, "NO_SCHEMA=0"));
+    NULL, NULL, NULL, "NO_SCHEMA=0"));
 
   ok_con(hdbc, SQLGetInfo(hdbc1, SQL_MAX_SCHEMA_NAME_LEN, &schema_len,
                           sizeof(schema_len), &val_len));
@@ -322,7 +322,7 @@ DECLARE_TEST(t_gettypeinfo)
 
 DECLARE_TEST(sqlgetinfo)
 {
-  SQLCHAR   rgbValue[100];
+  char        rgbValue[100];
   SQLSMALLINT pcbInfo;
 
   ok_con(hdbc, SQLGetInfo(hdbc, SQL_DRIVER_ODBC_VER, rgbValue,
@@ -383,7 +383,7 @@ DECLARE_TEST(t_stmt_attr_status)
 
 DECLARE_TEST(t_msdev_bug)
 {
-  SQLCHAR    catalog[30];
+  char       catalog[30];
   SQLINTEGER len;
 
   ok_con(hdbc, SQLGetConnectOption(hdbc, SQL_CURRENT_QUALIFIER, catalog));
@@ -424,7 +424,7 @@ DECLARE_TEST(t_bug28657)
 
 DECLARE_TEST(t_bug14639)
 {
-  SQLINTEGER connection_id;
+  int  connection_id;
   SQLUINTEGER is_dead;
   char buf[100];
   SQLHENV henv2;
@@ -445,7 +445,7 @@ DECLARE_TEST(t_bug14639)
 
   /* From another connection, kill the connection created above */
   sprintf(buf, "KILL %d", connection_id);
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *)buf, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buf)));
 
   /* Now check that the connection killed returns the right state */
   ok_con(hdbc, SQLGetConnectAttr(hdbc2, SQL_ATTR_CONNECTION_DEAD, &is_dead,
@@ -489,13 +489,13 @@ DECLARE_TEST(t_bug31055)
 DECLARE_TEST(t_bug3780)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR   rgbValue[MAX_NAME_LEN];
+  char rgbValue[MAX_NAME_LEN];
   SQLSMALLINT pcbInfo;
   SQLINTEGER attrlen;
 
   /* The connection string must not include DATABASE. */
-  is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, USE_DRIVER,
-                                        NULL, NULL, "", NULL));
+  is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
+    USE_DRIVER, NULL, NULL, "", NULL));
 
   ok_con(hdbc1, SQLGetInfo(hdbc1, SQL_DATABASE_NAME, rgbValue,
                            MAX_NAME_LEN, &pcbInfo));
@@ -522,7 +522,7 @@ DECLARE_TEST(t_bug3780)
 DECLARE_TEST(t_bug16653)
 {
   SQLHANDLE hdbc1;
-  SQLCHAR buf[50];
+  char buf[50];
 
   /*
     Driver managers handle SQLGetConnectAttr before connection in
@@ -550,7 +550,7 @@ DECLARE_TEST(t_bug16653)
 DECLARE_TEST(t_bug30626)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR conn[512];
+  char conn[512];
 
   /* odbc 3 */
   ok_stmt(hstmt, SQLGetTypeInfo(hstmt, SQL_TYPE_TIMESTAMP));
@@ -566,26 +566,26 @@ DECLARE_TEST(t_bug30626)
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
   /* odbc 2 */
-  sprintf((char *)conn, "DRIVER=%s;SERVER=%s;UID=%s;PASSWORD=%s",
+  sprintf(conn, "DRIVER=%s;SERVER=%s;UID=%s;PASSWORD=%s",
           mydriver, myserver, myuid, mypwd);
   if (mysock != NULL)
   {
-    strcat((char *)conn, ";SOCKET=");
-    strcat((char *)conn, (char *)mysock);
+    strcat(conn, ";SOCKET=");
+    strcat(conn, mysock);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    strcat((char *)conn, pbuff);
+    strcat(conn, pbuff);
   }
 
   ok_env(henv1, SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &henv1));
   ok_env(henv1, SQLSetEnvAttr(henv1, SQL_ATTR_ODBC_VERSION,
 			      (SQLPOINTER) SQL_OV_ODBC2, SQL_IS_INTEGER));
   ok_env(henv1, SQLAllocHandle(SQL_HANDLE_DBC, henv1, &hdbc1));
-  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, (SQLSMALLINT)strlen(conn), NULL, 0,
-				 NULL, SQL_DRIVER_NOPROMPT));
+  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, SC(conn),
+    (SQLSMALLINT)strlen(conn), NULL, 0, NULL, SQL_DRIVER_NOPROMPT));
   ok_con(hdbc1, SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1));
 
   ok_stmt(hstmt1, SQLGetTypeInfo(hstmt1, SQL_TIMESTAMP));
@@ -640,35 +640,30 @@ MyODBC 5 - calling SQLGetConnectAttr before getting all results of "CALL ..." st
 */
 DECLARE_TEST(t_bug46910)
 {
-	SQLCHAR     catalog[30];
+	char        catalog[30];
 	SQLINTEGER  len, i;
 
-	SQLCHAR * initStmt[]= {"DROP PROCEDURE IF EXISTS `spbug46910_1`",
+	const char * initStmt[]= { "DROP PROCEDURE IF EXISTS `spbug46910_1`",
 		"CREATE PROCEDURE `spbug46910_1`()\
 		BEGIN\
 		SELECT 1 AS ret;\
 		END"};
 
-	SQLCHAR * cleanupStmt= "DROP PROCEDURE IF EXISTS `spbug46910_1`;";
+	const char * cleanupStmt = "DROP PROCEDURE IF EXISTS `spbug46910_1`;";
 
 	for (i= 0; i < 2; ++i)
-		ok_stmt(hstmt, SQLExecDirect(hstmt, initStmt[i], SQL_NTS));
+		ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(initStmt[i])));
 
-	SQLExecDirect(hstmt, "CALL spbug46910_1()", SQL_NTS);
-	/*
-	SQLRowCount(hstmt, &i);
-	SQLNumResultCols(hstmt, &i);*/
+	SQLExecDirect(hstmt, SC_NTS("CALL spbug46910_1()"));
 
 	SQLGetConnectAttr(hdbc, SQL_ATTR_CURRENT_CATALOG, catalog,
 		sizeof(catalog), &len);
-	//is_num(len, 4);
-	//is_str(catalog, "test", 4);
 
 	/*ok_con(hdbc, */
 	SQLGetConnectAttr(hdbc, SQL_ATTR_CURRENT_CATALOG, catalog,
 		sizeof(catalog), &len);
 
-	ok_stmt(hstmt, SQLExecDirect(hstmt, cleanupStmt, SQL_NTS));
+	ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(cleanupStmt)));
 
 	return OK;
 }
@@ -686,19 +681,19 @@ DECLARE_TEST(t_bug11749093)
   SQLSMALLINT maxColLen;
 
   ok_stmt(hstmt, SQLExecDirect(hstmt,
-              "SELECT 1234567890+2234567890+3234567890"
+       SC_NTS("SELECT 1234567890+2234567890+3234567890"
               "+4234567890+5234567890+6234567890+7234567890+"
               "+8234567890+9234567890+1034567890+1234567890+"
               "+1334567890+1434567890+1534567890+1634567890+"
               "+1734567890+1834567890+1934567890+2034567890+"
               "+2134567890+2234567890+2334567890+2434567890+"
               "+2534567890+2634567890+2734567890+2834567890"
-              , SQL_NTS));
+              )));
 
   ok_stmt(hstmt, SQLGetInfo(hdbc, SQL_MAX_COLUMN_NAME_LEN, &maxColLen, 255, NULL));
 
-  ok_stmt(hstmt, SQLDescribeCol(hstmt, 1, colName, sizeof(colName), &colNameLen,
-                    NULL, NULL, NULL, NULL));
+  ok_stmt(hstmt, SQLDescribeCol(hstmt, 1, SC_SIZE(colName),
+    &colNameLen, NULL, NULL, NULL, NULL));
 
   is_str(colName, "1234567890+2234567890+3234567890"
               "+4234567890+5234567890+6234567890+7234567890+"
@@ -717,7 +712,7 @@ DECLARE_TEST(t_bug11749093)
 DECLARE_TEST(t_getkeywordinfo)
 {
   SQLSMALLINT pccol;
-  SQLCHAR keywords[8192];
+  char keywords[8192];
 
   ok_con(hdbc, SQLGetInfo(hdbc, SQL_KEYWORDS, keywords,
                           sizeof(keywords), &pccol));
@@ -764,8 +759,8 @@ DECLARE_TEST(t_query_timeout)
   {
     SQLULEN q_timeout1= 10;
     time_t t1, t2;
-    SQLCHAR *large_buf;
-    SQLCHAR iquery[1024]= {0};
+    char *large_buf;
+    char iquery[1024]= {0};
     int i= 0;
 
     ok_sql(hstmt, "DROP TABLE if exists t_query_timeout1");
@@ -783,7 +778,7 @@ DECLARE_TEST(t_query_timeout)
       strcat(large_buf, iquery);
     }
 
-    ok_stmt(hstmt, SQLExecDirect(hstmt, large_buf, SQL_NTS));
+    ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(large_buf)));
 
     ok_stmt(hstmt, SQLGetStmtAttr(hstmt, SQL_QUERY_TIMEOUT, (SQLPOINTER) &q_timeout1,
                                   sizeof(SQLULEN), NULL));
@@ -796,7 +791,7 @@ DECLARE_TEST(t_query_timeout)
 
     t1= time(NULL);
 
-    expect_stmt(hstmt, SQLExecDirect(hstmt, "SELECT t1.c11 FROM t_query_timeout1 t1, t_query_timeout1 t2, t_query_timeout1 t3, t_query_timeout1 t4, t_query_timeout1 t5 WHERE (substring(t2.c13, -3) IN (select substring(concat(tt5.c11,tt4.c13,tt3.c11,tt2.c12), instr(tt5.c12, 'val '), 3) FROM t_query_timeout1 tt5, t_query_timeout1 tt4, t_query_timeout1 tt3, t_query_timeout1 tt2)) LIMIT 100", SQL_NTS),
+    expect_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("SELECT t1.c11 FROM t_query_timeout1 t1, t_query_timeout1 t2, t_query_timeout1 t3, t_query_timeout1 t4, t_query_timeout1 t5 WHERE (substring(t2.c13, -3) IN (select substring(concat(tt5.c11,tt4.c13,tt3.c11,tt2.c12), instr(tt5.c12, 'val '), 3) FROM t_query_timeout1 tt5, t_query_timeout1 tt4, t_query_timeout1 tt3, t_query_timeout1 tt2)) LIMIT 100")),
                                             SQL_ERROR);
     t2= time(NULL);
 

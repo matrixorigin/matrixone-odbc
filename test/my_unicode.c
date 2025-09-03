@@ -1,4 +1,4 @@
-// Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -37,7 +37,7 @@ DECLARE_TEST(emojibug)
   SQLLEN nLen = 0;
 
   alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL,
-                               NULL, "CHARSET=utf8mb4");
+    NULL, "CHARSET=utf8mb4");
 
   ok_con(hdbc, SQLAllocStmt(hdbc1, &hstmt1));
 
@@ -129,8 +129,7 @@ DECLARE_TEST(sqlprepare)
 
     /* Now try ANSI SQLPrepare. */
     ok_stmt(hstmt1, SQLPrepare(hstmt1,
-                               (SQLCHAR *)"SELECT '\xe3' FROM DUAL WHERE 1 = ?",
-                               SQL_NTS));
+      SC_NTS("SELECT '\xe3' FROM DUAL WHERE 1 = ?")));
 
     data= 0;
     ok_stmt(hstmt1, SQLExecute(hstmt1));
@@ -206,12 +205,12 @@ DECLARE_TEST(sqlprepare_ansi)
 DECLARE_TEST(sqlchar)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR data[]= "S\xC3\xA3o Paolo", buff[30];
+  char data[]= "S\xC3\xA3o Paolo", buff[30];
   SQLWCHAR wbuff[MAX_ROW_DATA_LEN+1];
   wchar_t wcdata[] = L"S\x00e3o Paolo";
 
   alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL,
-                               NULL, unicode_driver ? "" : "CHARSET=utf8mb4");
+    NULL, unicode_driver ? "" : "CHARSET=utf8mb4");
 
   ok_con(hdbc, SQLAllocStmt(hdbc1, &hstmt1));
 
@@ -267,31 +266,31 @@ DECLARE_TEST(sqldriverconnect)
 
   *conn_in= L'\0';
   wcscat(conn_in, L"DRIVER=");
-  mbstowcs(dummy, (char *)mydriver, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydriver, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";UID=");
-  mbstowcs(dummy, (char *)myuid, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, myuid, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";PWD=");
-  mbstowcs(dummy, (char *)mypwd, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mypwd, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";DATABASE=");
-  mbstowcs(dummy, (char *)mydb, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydb, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";SERVER=");
-  mbstowcs(dummy, (char *)myserver, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, myserver, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   if (mysock != NULL)
   {
     wcscat(conn_in, L";SOCKET=");
-    mbstowcs(dummy, (char *)mysock, sizeof(dummy)/sizeof(wchar_t));
+    mbstowcs(dummy, mysock, sizeof(dummy)/sizeof(wchar_t));
     wcscat(conn_in, dummy);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    mbstowcs(dummy, (char *)pbuff, sizeof(dummy)/sizeof(wchar_t));
+    mbstowcs(dummy, pbuff, sizeof(dummy)/sizeof(wchar_t));
     wcscat(conn_in, dummy);
   }
 
@@ -350,7 +349,7 @@ DECLARE_TEST(sqlsetcursorname)
   HDBC hdbc1;
   HSTMT hstmt1, hstmt_pos;
   SQLLEN  nRowCount;
-  SQLCHAR data[10];
+  char data[10];
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS my_demo_cursor");
   ok_sql(hstmt, "CREATE TABLE my_demo_cursor (id INT, name VARCHAR(20))");
@@ -479,7 +478,7 @@ DECLARE_TEST(sqlgetcursorname)
     expect_stmt(hstmt3,  SQLGetCursorNameW(hstmt1, curname, 0, &nlen),
                 SQL_SUCCESS_WITH_INFO);
     rc = SQLGetCursorNameW(hstmt1, curname, 0, &nlen);
-    mystmt_err(hstmt1,rc == SQL_SUCCESS_WITH_INFO, rc);
+    mystmt_err(hstmt1, (rc == SQL_SUCCESS_WITH_INFO), rc);
     is_num(nlen, 8);
 
     expect_stmt(hstmt1, SQLGetCursorNameW(hstmt1, curname, 8, &nlen),
@@ -1116,7 +1115,7 @@ DECLARE_TEST(t_bug34672)
 
   if (mysql_min_version(hdbc, "6.0.4", 5))
   {
-    ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *) "select ?", SQL_NTS));
+    ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("select ?")));
     ok_stmt(hstmt, SQLFetch(hstmt));
     ok_stmt(hstmt, SQLGetData(hstmt, 1, SQL_C_WCHAR, result,
                               sizeof(result), &reslen));
@@ -1127,7 +1126,7 @@ DECLARE_TEST(t_bug34672)
   }
   else
   {
-    expect_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *) "select ?", SQL_NTS),
+    expect_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("select ?")),
                 SQL_ERROR);
     return check_sqlstate(hstmt, "HY000");
   }
@@ -1170,13 +1169,13 @@ DECLARE_TEST(t_bug28168)
 
   *work_conn_in= L'\0';
   wcscat(work_conn_in, L"DSN=");
-  mbstowcs(dummy, (char *)mydsn, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydsn, sizeof(dummy)/sizeof(wchar_t));
   wcscat(work_conn_in, dummy);
   wcscat(work_conn_in, L";UID=");
-  mbstowcs(dummy, (char *)myuid, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, myuid, sizeof(dummy)/sizeof(wchar_t));
   wcscat(work_conn_in, dummy);
   wcscat(work_conn_in, L";PWD=");
-  mbstowcs(dummy, (char *)mypwd, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mypwd, sizeof(dummy)/sizeof(wchar_t));
   wcscat(work_conn_in, dummy);
 
   ok_env(henv, SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1));
@@ -1201,22 +1200,22 @@ DECLARE_TEST(t_bug28168)
 
   *conn_in= L'\0';
   wcscat(conn_in, L"DRIVER=");
-  mbstowcs(dummy, (char *)mydriver, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydriver, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";UID=");
   wcscat(conn_in, L"{\x03A8\x0391\x03A1\x039F uid}");
   wcscat(conn_in, L";PWD=");
   wcscat(conn_in, L"{\x03A8\x0391\x03A1\x039F pwd}");
   wcscat(conn_in, L";DATABASE=");
-  mbstowcs(dummy, (char *)mydb, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydb, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";SERVER=");
-  mbstowcs(dummy, (char *)myserver, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, myserver, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   if (mysock != NULL)
   {
     wcscat(conn_in, L";SOCKET=");
-    mbstowcs(dummy, (char *)mysock, sizeof(dummy)/sizeof(wchar_t));
+    mbstowcs(dummy, mysock, sizeof(dummy)/sizeof(wchar_t));
     wcscat(conn_in, dummy);
   }
 
@@ -1224,7 +1223,7 @@ DECLARE_TEST(t_bug28168)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    mbstowcs(dummy, (char *)pbuff, sizeof(dummy)/sizeof(wchar_t));
+    mbstowcs(dummy, pbuff, sizeof(dummy)/sizeof(wchar_t));
     wcscat(conn_in, dummy);
   }
 
@@ -1291,31 +1290,31 @@ DECLARE_TEST(t_bug14363601)
 
   *conn_in= L'\0';
   wcscat(conn_in, L"DRIVER=");
-  mbstowcs(dummy, (char *)mydriver, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydriver, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";UID=");
-  mbstowcs(dummy, (char *)myuid, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, myuid, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";PWD=");
-  mbstowcs(dummy, (char *)mypwd, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mypwd, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";DATABASE=");
-  mbstowcs(dummy, (char *)mydb, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, mydb, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   wcscat(conn_in, L";SERVER=");
-  mbstowcs(dummy, (char *)myserver, sizeof(dummy)/sizeof(wchar_t));
+  mbstowcs(dummy, myserver, sizeof(dummy)/sizeof(wchar_t));
   wcscat(conn_in, dummy);
   if (mysock != NULL)
   {
     wcscat(conn_in, L";SOCKET=");
-    mbstowcs(dummy, (char *)mysock, sizeof(dummy)/sizeof(wchar_t));
+    mbstowcs(dummy, mysock, sizeof(dummy)/sizeof(wchar_t));
     wcscat(conn_in, dummy);
   }
   if (myport)
   {
     char pbuff[20];
     sprintf(pbuff, ";PORT=%d", myport);
-    mbstowcs(dummy, (char *)pbuff, sizeof(dummy)/sizeof(wchar_t));
+    mbstowcs(dummy, pbuff, sizeof(dummy)/sizeof(wchar_t));
     wcscat(conn_in, dummy);
   }
   wcscat(conn_in, L";CHARSET=utf16");

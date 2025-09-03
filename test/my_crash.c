@@ -1,4 +1,4 @@
-// Copyright (c) 2018, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2018, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -56,7 +56,7 @@ DECLARE_TEST(t_bug18641824)
   ok_sql(hstmt1, "CREATE TABLE tab_fk (" \
                 "fi1d int,CONSTRAINT Constraint_1 FOREIGN KEY(fi1d) REFERENCES tab_pk(i1d)," \
                 "fi2d int,CONSTRAINT Constraint_2 FOREIGN KEY(fi2d) REFERENCES tab_pk(i2d))");
-  ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0, (SQLCHAR*)"tab_pk", SQL_NTS,
+  ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0, SC_NTS("tab_pk"),
                                 NULL, 0, NULL, 0, NULL, 0));
 
   while (SQLFetch(hstmt1) == SQL_SUCCESS)
@@ -94,7 +94,8 @@ DECLARE_TEST(t_bug18805392)
 
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
-             NULL, NULL, NULL, NULL, "DYNAMIC_CURSOR=1;NO_SSPS=1"));
+             NULL, NULL, NULL, NULL,
+             "DYNAMIC_CURSOR=1;NO_SSPS=1"));
 
   ok_stmt(hstmt1, SQLSetStmtAttr(hstmt1, SQL_ATTR_CURSOR_TYPE,
                                  (SQLPOINTER)SQL_CURSOR_DYNAMIC, 0));
@@ -103,7 +104,7 @@ DECLARE_TEST(t_bug18805392)
   ok_sql(hstmt1, "INSERT INTO t_bug18805392 VALUES (1234567891234),"
 								"(51234567891234),(61234567891234),(56789453632)");
 
-  ok_stmt(hstmt1, SQLPrepare(hstmt1, (SQLCHAR *)"SELECT * FROM t_bug18805392 where record>?", SQL_NTS));
+  ok_stmt(hstmt1, SQLPrepare(hstmt1, SC_NTS("SELECT * FROM t_bug18805392 where record>?")));
 
   ok_stmt(hstmt1, SQLBindParameter(hstmt1, 1, SQL_PARAM_INPUT,
                                    SQL_C_SBIGINT, SQL_NUMERIC, 0, 0, &val, 0, NULL));
@@ -128,7 +129,7 @@ DECLARE_TEST(t_bug19148246)
   SQLBIGINT val = 0;
   SQLLEN  StrLen = 0;
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"SELECT ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("SELECT ?")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT,
                                   SQL_C_SBIGINT, SQL_NUMERIC, 0, 0, &val, 0, NULL));
@@ -149,8 +150,8 @@ DECLARE_TEST(t_bug69950)
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug69950");
 
   /* Create an EMPTY fake result set */
-  ok_stmt(hstmt, SQLTables(hstmt, mydb, SQL_NTS, NULL, 0,
-                           "t_bug69950", SQL_NTS, "TABLE", SQL_NTS));
+  ok_stmt(hstmt, SQLTables(hstmt, SC_NTS(mydb), NULL, 0,
+    SC_NTS("t_bug69950"), SC_NTS("TABLE")));
 
   expect_stmt(hstmt, SQLFetch(hstmt), SQL_NO_DATA_FOUND);
   expect_stmt(hstmt, SQLMoreResults(hstmt), SQL_NO_DATA_FOUND);
@@ -210,9 +211,9 @@ DECLARE_TEST(t_bug70642)
 */
 DECLARE_TEST(t_bug17358838)
 {
-  SQLCHAR    colName[512];
-  SQLCHAR message[SQL_MAX_MESSAGE_LENGTH + 1];
-  SQLCHAR sqlstate[SQL_SQLSTATE_SIZE + 1];
+  char    colName[512];
+  char    message[SQL_MAX_MESSAGE_LENGTH + 1];
+  char    sqlstate[SQL_SQLSTATE_SIZE + 1];
   SQLINTEGER error;
   SQLSMALLINT len;
 
@@ -222,14 +223,16 @@ DECLARE_TEST(t_bug17358838)
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug17358838");
   ok_sql(hstmt, "CREATE TABLE t_bug17358838 (a INT)");
 
-  expect_stmt(hstmt, SQLColumns(hstmt, mydb, SQL_NTS, NULL, SQL_NTS,
-    (SQLCHAR *)"t_bug17358838", SQL_NTS, colName, SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLColumns(hstmt, SC_NTS(mydb), SC_NTS(NULL),
+    SC_NTS("t_bug17358838"), SC_NTS(colName)), SQL_ERROR);
 
-  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate, &error,
-                               message, sizeof(message), &len));
+  ok_stmt(hstmt, SQLGetDiagRec(
+    SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate), &error,
+    SC_SIZE(message), &len
+  ));
 
   is_str(sqlstate, "HY090", 5);
-  is(strstr((char *)message, "One or more parameters exceed the maximum allowed name length"));
+  is(strstr(message, "One or more parameters exceed the maximum allowed name length"));
 
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
@@ -246,18 +249,19 @@ DECLARE_TEST(t_bug17358838)
 DECLARE_TEST(t_bug17587913)
 {
   SQLHDBC hdbc1;
-  SQLCHAR str[1024]={0};
+  char str[1024]={0};
   SQLINTEGER len = 0;
-  SQLCHAR *DatabaseName = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
-                          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const char *DatabaseName =
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+              "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
   /*
     We are not going to use alloc_basic_handles() for a special purpose:
     SQLSetConnectAttr() is to be called before the connection is made
@@ -268,13 +272,14 @@ DECLARE_TEST(t_bug17587913)
   get_connection(&hdbc1, NULL, NULL, NULL, DatabaseName, NULL);
 
   ok_con(hdbc1, SQLSetConnectAttr(hdbc1, SQL_ATTR_CURRENT_CATALOG,
-                                  DatabaseName, (SQLINTEGER)strlen(DatabaseName)));
+                                  (SQLPOINTER)DatabaseName,
+                                  (SQLINTEGER)strlen(DatabaseName)));
 
   /* Expecting error here */
   SQLGetConnectAttr(hdbc1, SQL_ATTR_CURRENT_CATALOG, str, 100, &len);
 
   /* The driver crashes here on getting connected */
-  SQLConnect(hdbc1, mydsn, SQL_NTS, NULL, SQL_NTS, NULL, SQL_NTS);
+  SQLConnect(hdbc1, SC_NTS(mydsn), SC_NTS(NULL), SC_NTS(NULL));
   SQLDisconnect(hdbc1);
   SQLFreeConnect(hdbc1);
 
@@ -301,13 +306,13 @@ DECLARE_TEST(t_bug17857204)
   for (i= 0; i < 10; i++)
   {
     sprintf(TmpBuff,"INSERT INTO bug17857204 VALUES (%d,'%d')", i, i);
-    ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)TmpBuff, SQL_NTS));
+    ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(TmpBuff)));
   }
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR*)"EXPLAIN DELETE a1,a2 "\
-                                             "FROM bug17857204 AS a1 "\
-                                             "INNER JOIN bug17857204 AS a2 "\
-                                             "WHERE a1.id=a2.id and a2.id>=?",
-                                             SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("EXPLAIN DELETE a1,a2 "\
+    "FROM bug17857204 AS a1 "\
+    "INNER JOIN bug17857204 AS a2 "\
+    "WHERE a1.id=a2.id and a2.id>=?")));
+
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_ULONG,
           SQL_NUMERIC, 4, 0, &uintval, 0,  &len));
 
@@ -346,7 +351,8 @@ DECLARE_TEST(t_bug17857204)
 */
 DECLARE_TEST(t_bug17854697)
 {
-  SQLCHAR *any_name = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
+  const char *any_name =
+                      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
@@ -356,54 +362,50 @@ DECLARE_TEST(t_bug17854697)
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  SQLCHAR buf[1024]= {0};
+  char buf[1024]= {0};
 
   /* lets check all catalog functions */
-  expect_stmt(hstmt, SQLColumnPrivileges(hstmt, any_name, SQL_NTS, NULL, 0,
-                                         any_name, SQL_NTS, any_name,
-                                         SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLColumnPrivileges(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name), SC_NTS(any_name)), SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  expect_stmt(hstmt, SQLColumns(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS, any_name,
-                                SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLColumns(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name), SC_NTS(any_name)), SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  expect_stmt(hstmt, SQLForeignKeys(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS, any_name, SQL_NTS,
-                                any_name, SQL_NTS, any_name, SQL_NTS),
+  expect_stmt(hstmt, SQLForeignKeys(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name), SC_NTS(any_name),
+    SC_NTS(any_name), SC_NTS(any_name)), SQL_ERROR);
+  ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
+
+  expect_stmt(hstmt, SQLPrimaryKeys(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name)), SQL_ERROR);
+  ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
+
+  expect_stmt(hstmt, SQLProcedureColumns(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name), SC_NTS(any_name)),
                      SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  expect_stmt(hstmt, SQLPrimaryKeys(hstmt, any_name, SQL_NTS, NULL, 0,
-                                    any_name, SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLProcedures(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name)), SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  expect_stmt(hstmt, SQLProcedureColumns(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS, any_name, SQL_NTS),
+  expect_stmt(hstmt, SQLSpecialColumns(hstmt, SQL_BEST_ROWID, SC_NTS(any_name),
+    NULL, 0, SC_NTS(any_name), SQL_SCOPE_SESSION, SQL_NULLABLE), SQL_ERROR);
+  ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
+
+  expect_stmt(hstmt, SQLStatistics(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name), SQL_INDEX_ALL, SQL_QUICK),
                      SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  expect_stmt(hstmt, SQLProcedures(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLTablePrivileges(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name)), SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
-  expect_stmt(hstmt, SQLSpecialColumns(hstmt, SQL_BEST_ROWID, any_name, SQL_NTS,
-                                NULL, 0, any_name, SQL_NTS, SQL_SCOPE_SESSION,
-                                SQL_NULLABLE), SQL_ERROR);
-  ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
-
-  expect_stmt(hstmt, SQLStatistics(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS, SQL_INDEX_ALL, SQL_QUICK),
-                     SQL_ERROR);
-  ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
-
-  expect_stmt(hstmt, SQLTablePrivileges(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS), SQL_ERROR);
-  ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
-
-  expect_stmt(hstmt, SQLTables(hstmt, any_name, SQL_NTS, NULL, 0,
-                                any_name, SQL_NTS, any_name, SQL_NTS),
+  expect_stmt(hstmt, SQLTables(hstmt, SC_NTS(any_name), NULL, 0,
+    SC_NTS(any_name), SC_NTS(any_name)),
                      SQL_ERROR);
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
   return OK;
@@ -440,7 +442,7 @@ DECLARE_TEST(t_bug17966018)
   sprintf(opt_buff, "OPTION_%0*d=1", 1000, 0);
 
   result_connect= alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                               NULL, NULL, NULL, opt_buff);
+    NULL, NULL, NULL, opt_buff);
   is_num(result_connect, FAIL);
 
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -473,7 +475,7 @@ DECLARE_TEST(t_bug17841121)
     ok_stmt(hstmt1, SQLSetStmtAttr(hstmt1, SQL_ATTR_APP_ROW_DESC,
                                   SQL_NULL_HANDLE, 0));
 
-    ok_stmt(hstmt1, SQLExecDirect(hstmt1, (SQLCHAR*)"select 1", SQL_NTS));
+    ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS("select 1")));
 
 
     ok_stmt(hstmt1, SQLFetch(hstmt1));
@@ -513,8 +515,8 @@ DECLARE_TEST(t_bookmark_update_zero_rec)
   SQLUSMALLINT rowStatus[4];
   SQLULEN numRowsFetched;
   SQLINTEGER nData[4];
-  SQLCHAR szData[4][16];
-  SQLCHAR bData[4][10];
+  char szData[4][16];
+  char bData[4][10];
   SQLLEN nRowCount;
 
   ok_sql(hstmt, "drop table if exists t_bookmark");
@@ -565,8 +567,8 @@ DECLARE_TEST(t_bookmark_update_zero_rec)
 */
 DECLARE_TEST(t_bug17085344)
 {
-  expect_stmt(hstmt, SQLExecDirect(hstmt, "", SQL_NTS), SQL_ERROR);
-  expect_stmt(hstmt, SQLExecDirect(hstmt, "  ", SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("")), SQL_ERROR);
+  expect_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("  ")), SQL_ERROR);
 
   return OK;
 }
@@ -611,7 +613,7 @@ DECLARE_TEST(t_bug18325878)
 
   ok_stmt(hstmt, SQLParamOptions(hstmt, RCNT, NULL));
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR*)"INSERT INTO t_bug18325878 VALUES (?+1)", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("INSERT INTO t_bug18325878 VALUES (?+1)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_ULONG,
                                   SQL_NUMERIC, sizeof(SQLUINTEGER), 0,
@@ -644,11 +646,11 @@ DECLARE_TEST(t_bug18325878)
 DECLARE_TEST(t_bug18286366)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buff[2048], tmp_buff[50];
+  char buff[2048], tmp_buff[50];
   int i, len= 0;
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL,
-                                        NULL, NULL, ""));
+    NULL, NULL, ""));
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug18286366b, t_bug18286366a");
   len= sprintf(buff, "CREATE TABLE t_bug18286366a ( ");
@@ -657,23 +659,22 @@ DECLARE_TEST(t_bug18286366)
     len+= sprintf(buff + len, "`id%02d` INT, UNIQUE(`id%02d`),", i, i);
   }
   len= sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)buff, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
   len= sprintf(buff, "CREATE TABLE t_bug18286366b ( ");
   for (i= 0; i < 20; i++)
   {
     len+= sprintf(buff + len, "`id%02d` INT, "
-                              "CONSTRAINT `cons%02d` FOREIGN KEY "
-                              "(`id%02d`) REFERENCES `t_bug18286366a` (`id%02d`),",
-                              i, i, i, i);
+      "CONSTRAINT `cons%02d` FOREIGN KEY "
+      "(`id%02d`) REFERENCES `t_bug18286366a` (`id%02d`),",
+      i, i, i, i);
   }
   len= sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)buff, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
 
   ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0,
-                                (SQLCHAR *)"t_bug18286366a", SQL_NTS, NULL, 0,
-                                NULL, 0, (SQLCHAR *)"t_bug18286366b", SQL_NTS));
+    SC_NTS("t_bug18286366a"), NULL, 0, NULL, 0, SC_NTS("t_bug18286366b")));
 
   for (i= 0; i < 20; i++)
   {
@@ -701,46 +702,46 @@ DECLARE_TEST(t_bug18286366)
 DECLARE_TEST(t_bug18286366_2)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buff[8192];
+  char buff[8192];
   int i, len= 0;
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL,
-                                        NULL, NULL, ""));
+    NULL, NULL, ""));
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug182863662c,  t_bug182863662b, t_bug182863662a");
-  len= sprintf(buff, "CREATE TABLE t_bug182863662a ( ");
+  len = sprintf(buff, "CREATE TABLE t_bug182863662a ( ");
   for (i= 0; i < MAX_18286366_KEYS; i++)
   {
-    len+= sprintf(buff + len, "`id%03d` INT, UNIQUE(`id%03d`),", i, i);
+    len += sprintf(buff + len, "`id%03d` INT, UNIQUE(`id%03d`),", i, i);
   }
-  len= sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)buff, SQL_NTS));
+  len = sprintf(buff + len - 1, ")");
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
-  len= sprintf(buff, "CREATE TABLE t_bug182863662b ( ");
+  len = sprintf(buff, "CREATE TABLE t_bug182863662b ( ");
   for (i= 0; i < MAX_18286366_KEYS; i++)
   {
-    len+= sprintf(buff + len, "`id%03d` INT, "
-                              "CONSTRAINT `consb%d` FOREIGN KEY "
-                              "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
-                              i, i, i, i);
+    len += sprintf(buff + len, "`id%03d` INT, "
+      "CONSTRAINT `consb%d` FOREIGN KEY "
+      "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
+      i, i, i, i);
   }
-  len= sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)buff, SQL_NTS));
+  len = sprintf(buff + len - 1, ")");
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
-  len= sprintf(buff, "CREATE TABLE t_bug182863662c ( ");
+  len = sprintf(buff, "CREATE TABLE t_bug182863662c ( ");
   for (i= 0; i < MAX_18286366_KEYS; i++)
   {
-    len+= sprintf(buff + len, "`id%03d` INT, "
-                              "CONSTRAINT `consc%03d` FOREIGN KEY "
-                              "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
-                              i, i, i, i);
+    len += sprintf(buff + len, "`id%03d` INT, "
+      "CONSTRAINT `consc%03d` FOREIGN KEY "
+      "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
+      i, i, i, i);
   }
-  len= sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR*)buff, SQL_NTS));
+  len = sprintf(buff + len - 1, ")");
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
   ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0,
-                                (SQLCHAR *)"t_bug182863662a", SQL_NTS, NULL, 0,
-                                NULL, 0, (SQLCHAR *)"", SQL_NTS));
+    SC_NTS("t_bug182863662a"), NULL, 0,
+    NULL, 0, SC_NTS("")));
 
   for (i= 0; i < MAX_18286366_KEYS; i++)
   {
@@ -775,14 +776,14 @@ DECLARE_TEST(t_bug18286366_2)
 DECLARE_TEST(t_bug18286366_3)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buff[8192];
+  char buff[8192];
   int i, len = 0;
 
   if (! mysql_min_version(hdbc, "8.0", 3))
     return OK;
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL,
-                                        NULL, NULL, ""));
+    NULL, NULL, ""));
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS bug182863662 ,t_bug182863662c,  t_bug182863662b, t_bug182863662a");
 
@@ -794,33 +795,33 @@ DECLARE_TEST(t_bug18286366_3)
     len += sprintf(buff + len, "`id%03d` INT, UNIQUE(`id%03d`),", i, i);
   }
   len = sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *)buff, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
   len = sprintf(buff, "CREATE TABLE t_bug182863662b ( ");
   for (i = 0; i < MAX_18286366_KEYS; i++)
   {
     len += sprintf(buff + len, "`id%03d` INT, "
-                               "CONSTRAINT `consb%d` FOREIGN KEY "
-                               "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
-                   i, i, i, i);
+      "CONSTRAINT `consb%d` FOREIGN KEY "
+      "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
+      i, i, i, i);
   }
   len = sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *)buff, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
   len = sprintf(buff, "CREATE TABLE t_bug182863662c ( ");
   for (i = 0; i < MAX_18286366_KEYS; i++)
   {
     len += sprintf(buff + len, "`id%03d` INT, "
-                               "CONSTRAINT `consc%03d` FOREIGN KEY "
-                               "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
-                   i, i, i, i);
+      "CONSTRAINT `consc%03d` FOREIGN KEY "
+      "(`id%03d`) REFERENCES `t_bug182863662a` (`id%03d`),",
+      i, i, i, i);
   }
   len = sprintf(buff + len - 1, ")");
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *)buff, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buff)));
 
   ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0,
-                                 (SQLCHAR *)"t_bug182863662a", SQL_NTS, NULL, 0,
-                                 NULL, 0, (SQLCHAR *)"", SQL_NTS));
+    SC_NTS("t_bug182863662a"), NULL, 0,
+    NULL, 0, SC_NTS("")));
 
   for (i = 0; i < MAX_18286366_KEYS; i++)
   {
@@ -856,37 +857,37 @@ DECLARE_TEST(t_bug18286118)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
-  char *tabname1= (char*)"t1";
-  char *tabname2= (char*)"t2";
-  char *colname1= (char*)"col1";
-  char *colname2= (char*)") Specialname (";
-  char tmpBuff[2048]= {0};
+  const char* tabname1 = "t1";
+  const char* tabname2 = "t2";
+  const char* colname1 = "col1";
+  const char* colname2 = ") Specialname (";
+  char tmpBuff[2048] = {0};
   SQLSMALLINT col_count= 0;
   SQLLEN nLen= 0;
   SQLRETURN sqlrc= SQL_SUCCESS;
   int i= 0;
   is_num(OK, alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
                                       NULL, NULL, NULL,
-                                      (SQLCHAR*)""));
+                                      ""));
 
   sprintf(tmpBuff, "DROP TABLE IF EXISTS %s,%s CASCADE", tabname2,tabname1);
-  ok_stmt(hstmt1, SQLExecDirect(hstmt1, (SQLCHAR*)tmpBuff, SQL_NTS));
+  ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS(tmpBuff)));
 
   sprintf(tmpBuff,
     "CREATE TABLE %s (id int, %s bigint unique, primary key(%s,id))"
     " COMMENT  \"  Comment1 \"",
     tabname1, colname1, colname1
   );
-  ok_stmt(hstmt1, SQLExecDirect(hstmt1, (SQLCHAR*)tmpBuff, SQL_NTS));
+  ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS(tmpBuff)));
 
   sprintf(tmpBuff, "CREATE TABLE %s (id  int, `%s` bigint, bd1 double, "\
                    "FOREIGN KEY (`%s`) REFERENCES %s(%s) ON DELETE CASCADE) "\
                    "COMMENT  \" Comment 2\"", tabname2, colname2, colname2,
                    tabname1, colname1);
-  ok_stmt(hstmt1, SQLExecDirect(hstmt1, (SQLCHAR*)tmpBuff, SQL_NTS));
+  ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS(tmpBuff)));
 
-  ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0, (SQLCHAR*)tabname1,
-          SQL_NTS, NULL, 0, NULL, 0, (SQLCHAR*)tabname2, SQL_NTS));
+  ok_stmt(hstmt1, SQLForeignKeys(hstmt1, NULL, 0, NULL, 0, SC_NTS(tabname1),
+          NULL, 0, NULL, 0, SC_NTS(tabname2)));
 
   ok_stmt(hstmt1, SQLNumResultCols(hstmt1, &col_count));
 
@@ -910,12 +911,12 @@ DECLARE_TEST(t_bug18286118)
     is_str(my_fetch_str(hstmt1, tmpBuff, 7), tabname2, strlen(tabname2));
 
     /* FKCOLUMN_NAME */
-    is_str(my_fetch_str(hstmt1, tmpBuff, 8), colname2, strlen(tabname2));
+    is_str(my_fetch_str(hstmt1, tmpBuff, 8), colname2, strlen(colname2));
   }
   ok_stmt(hstmt1, SQLFreeStmt(hstmt, SQL_CLOSE));
 
   sprintf(tmpBuff, "DROP TABLE %s,%s CASCADE", tabname2,tabname1);
-  ok_stmt(hstmt1, SQLExecDirect(hstmt1, (SQLCHAR*)tmpBuff, SQL_NTS));
+  ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS(tmpBuff)));
 
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
   return OK;
@@ -942,8 +943,8 @@ DECLARE_TEST(t_setpos_update_no_ssps)
   alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL, NULL,
                                NULL, "NO_SSPS=0");
   /* create cursor and get first row */
-  ok_stmt(hstmt, SQLPrepare(hstmt1, "select x from t_setpos_update_no_ssps "
-                                   "where x > ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt1, SC_NTS("select x from t_setpos_update_no_ssps "
+                                   "where x > ?")));
   id= 1;
   ok_stmt(hstmt1, SQLBindParameter(hstmt1, 1, SQL_PARAM_INPUT, SQL_C_ULONG,
                         SQL_INTEGER, 0, 0, &id, 0, NULL));
@@ -993,36 +994,31 @@ DECLARE_TEST(t_bug18796005)
   {
     stmt = i ? hstmt1 : hstmt;
     /* Doon't mind the result, it should not crash */
-    SQLColumnPrivileges(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-                        (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS);
+    SQLColumnPrivileges(stmt, SC_NTS(buff), SC_NTS(buff),
+      SC_NTS(buff), SC_NTS(buff));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
 
-    SQLColumns(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-               (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS);
+    SQLColumns(stmt, SC_NTS(buff), SC_NTS(buff),
+      SC_NTS(buff), SC_NTS(buff));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
 
-    SQLTablePrivileges(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff,
-                       SQL_NTS, (SQLCHAR*)buff, SQL_NTS);
+    SQLTablePrivileges(stmt, SC_NTS(buff), SC_NTS(buff), SC_NTS(buff));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
 
-    SQLTables(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-              (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)"VIEW,TABLE,", SQL_NTS);
+    SQLTables(stmt, SC_NTS(buff), SC_NTS(buff), SC_NTS(buff), SC_NTS("VIEW,TABLE,"));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
 
-    SQLProcedures(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-              (SQLCHAR*)buff, SQL_NTS);
+    SQLProcedures(stmt, SC_NTS(buff), SC_NTS(buff), SC_NTS(buff));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
-    SQLProcedureColumns(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-                        (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS);
-    ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
-
-    SQLForeignKeys(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-                          (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-                          (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS);
+    SQLProcedureColumns(stmt, SC_NTS(buff), SC_NTS(buff),
+      SC_NTS(buff), SC_NTS(buff));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
 
-    SQLPrimaryKeys(stmt, (SQLCHAR*)buff, SQL_NTS, (SQLCHAR*)buff, SQL_NTS,
-                          (SQLCHAR*)buff, SQL_NTS);
+    SQLForeignKeys(stmt, SC_NTS(buff), SC_NTS(buff),
+      SC_NTS(buff), SC_NTS(buff), SC_NTS(buff), SC_NTS(buff));
+    ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
+
+    SQLPrimaryKeys(stmt, SC_NTS(buff), SC_NTS(buff), SC_NTS(buff));
     ok_stmt(stmt, SQLFreeStmt(stmt, SQL_CLOSE));
   }
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1036,7 +1032,7 @@ DECLARE_TEST(t_bug32813838)
 {
   struct {
     SQLINTEGER id;
-    SQLCHAR name[16];
+    char name[16];
   } rows[25];
   size_t row_size= (sizeof(rows) / 25);
   SQLULEN bind_offset= 20 * row_size;
@@ -1044,7 +1040,7 @@ DECLARE_TEST(t_bug32813838)
   SQLHANDLE apd = NULL;
   SQLLEN ipd_oct_len = 0, apd_oct_len = 0;
 
-  SQLExecDirect(hstmt, "DROP TABLE t_bug32813838", SQL_NTS);
+  SQLExecDirect(hstmt, SC_NTS("DROP TABLE t_bug32813838"));
   ok_sql(hstmt, "CREATE TABLE IF NOT EXISTS t_bug32813838 (id int,"
                 "name char(16))");
   ok_sql(hstmt, "INSERT INTO t_bug32813838 VALUES (1,'abc'),(2,'def')");

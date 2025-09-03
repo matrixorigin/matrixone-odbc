@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -77,15 +77,14 @@ DECLARE_TEST(my_basics)
 DECLARE_TEST(t_max_select)
 {
   SQLINTEGER num;
-  SQLCHAR    szData[20];
+  char szData[20];
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_max_select");
 
   ok_sql(hstmt, "CREATE TABLE t_max_select (a INT, b VARCHAR(30))");
 
-  ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"INSERT INTO t_max_select VALUES (?,?)",
-                            SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(
+    "INSERT INTO t_max_select VALUES (?,?)")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
                                   SQL_INTEGER, 0, 0, &num, 0, NULL));
@@ -95,7 +94,7 @@ DECLARE_TEST(t_max_select)
 
   for (num= 1; num <= 1000; num++)
   {
-    sprintf((char *)szData, "MySQL%d", (int)num);
+    sprintf(szData, "MySQL%d", (int)num);
     ok_stmt(hstmt, SQLExecute(hstmt));
   }
 
@@ -119,7 +118,7 @@ DECLARE_TEST(t_max_select)
 DECLARE_TEST(t_basic)
 {
   SQLINTEGER nRowCount= 0, nInData= 1, nOutData;
-  SQLCHAR szOutData[31];
+  char szOutData[31];
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_myodbc");
 
@@ -131,10 +130,8 @@ DECLARE_TEST(t_basic)
   ok_sql(hstmt, "INSERT INTO t_myodbc VALUES (10, 'direct')");
 
   /* PREPARE INSERT */
-  ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)
-                            "INSERT INTO t_myodbc VALUES (?, 'param')",
-                            SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(
+    "INSERT INTO t_myodbc VALUES (?, 'param')")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1, SQL_PARAM_INPUT, SQL_C_LONG,
                                   SQL_INTEGER, 0, 0, &nInData, 0, NULL));
@@ -177,19 +174,20 @@ DECLARE_TEST(t_basic)
 
 DECLARE_TEST(t_nativesql)
 {
-  SQLCHAR    out[128], in[]= "SELECT * FROM venu";
+  char out[128];
+  const char *in = "SELECT * FROM venu";
   SQLINTEGER len;
 
-  ok_con(hdbc, SQLNativeSql(hdbc, in, SQL_NTS, out, sizeof(out), &len));
-  is_num(len, (SQLINTEGER) sizeof(in) - 1);
+  ok_con(hdbc, SQLNativeSql(hdbc, SC_NTS(in), SC_SIZE(out), &len));
+  is_num(len, strlen(in));
 
   /*
    The second call is to make sure the first didn't screw up the stack.
    (Bug #28758)
   */
 
-  ok_con(hdbc, SQLNativeSql(hdbc, in, SQL_NTS, out, sizeof(out), &len));
-  is_num(len, (SQLINTEGER) sizeof(in) - 1);
+  ok_con(hdbc, SQLNativeSql(hdbc, SC_NTS(in), SC_SIZE(out), &len));
+  is_num(len, strlen(in));
 
   return OK;
 }
@@ -231,8 +229,8 @@ DECLARE_TEST(t_bug19823)
    implementation of SQLSetConnectAttr. It is fixed in 3.52.6, but
    Debian/Ubuntu still ships 3.52.5 as of 2007-12-06.
   */
-  ok_con(hdbc1, SQLConnect(hdbc1, mydsn, SQL_NTS, myuid, SQL_NTS,
-                           mypwd, SQL_NTS));
+  ok_con(hdbc1, SQLConnect(hdbc1, SC_NTS(mydsn), SC_NTS(myuid),
+                           SC_NTS(mypwd)));
   ok_con(hdbc1, SQLDisconnect(hdbc1));
 
   ok_con(hdbc1, SQLSetConnectAttr(hdbc1, SQL_ATTR_LOGIN_TIMEOUT,
@@ -240,8 +238,8 @@ DECLARE_TEST(t_bug19823)
   ok_con(hdbc1, SQLSetConnectAttr(hdbc1, SQL_ATTR_CONNECTION_TIMEOUT,
                                   (SQLPOINTER)12, 0));
 
-  ok_con(hdbc1, SQLConnect(hdbc1, mydsn, SQL_NTS, myuid, SQL_NTS,
-                           mypwd, SQL_NTS));
+  ok_con(hdbc1, SQLConnect(hdbc1, SC_NTS(mydsn), SC_NTS(myuid),
+                           SC_NTS(mypwd)));
 
   ok_con(hdbc1, SQLGetConnectAttr(hdbc1, SQL_ATTR_LOGIN_TIMEOUT,
                                   &timeout, 0, NULL));
@@ -272,7 +270,7 @@ DECLARE_TEST(t_bug19823)
 DECLARE_TEST(charset_utf8)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buff1[512], buff2[512];
+  char buff1[512], buff2[512];
   SQLLEN len;
   /**
    Bug #19345: Table column length multiplies on size session character set
@@ -285,7 +283,8 @@ DECLARE_TEST(charset_utf8)
   ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                        NULL, NULL, NULL, "CHARSET=utf8"));
+                                        NULL, NULL, NULL,
+                                        "CHARSET=utf8"));
 
   ok_sql(hstmt1, "SELECT _latin1 0x73E36F207061756C6F");
 
@@ -297,9 +296,9 @@ DECLARE_TEST(charset_utf8)
 
   ok_stmt(hstmt1, SQLFreeStmt(hstmt1, SQL_CLOSE));
 
-  ok_stmt(hstmt1, SQLColumns(hstmt1, (SQLCHAR *)"test", SQL_NTS, NULL, 0,
-                             (SQLCHAR *)"t_bug19345", SQL_NTS,
-                             (SQLCHAR *)"%", 1));
+  ok_stmt(hstmt1, SQLColumns(hstmt1, SC_NTS("test"), NULL, 0,
+                             SC_NTS("t_bug19345"),
+                             SC("%"), 1));
 
   ok_stmt(hstmt1, SQLFetch(hstmt1));
   is_num(my_fetch_int(hstmt1, 7), 10);
@@ -319,15 +318,15 @@ DECLARE_TEST(charset_utf8)
   ok_stmt(hstmt1, SQLFetch(hstmt1));
 
   ok_stmt(hstmt1, SQLGetData(hstmt1, 1, SQL_C_CHAR, buff1, 2, &len));
-  is_num(buff1[0], 0xE4);
+  is_num(buff1[0], (char)0xE4);
   is_num(len, 3);
 
   ok_stmt(hstmt1, SQLGetData(hstmt1, 1, SQL_C_CHAR, buff1, 2, &len));
-  is_num(buff1[0], 0xB8);
+  is_num(buff1[0], (char)0xB8);
   is_num(len, 2);
 
   ok_stmt(hstmt1, SQLGetData(hstmt1, 1, SQL_C_CHAR, buff1, 2, &len));
-  is_num(buff1[0], 0xAD);
+  is_num(buff1[0], (char)0xAD);
   is_num(len, 1);
 
   expect_stmt(hstmt1, SQLGetData(hstmt1, 1, SQL_C_CHAR, buff1, 2, &len),
@@ -352,18 +351,19 @@ DECLARE_TEST(charset_utf8)
 DECLARE_TEST(charset_gbk)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buff1[512];
+  char buff1[512];
   /*
     The fun here is that 0xbf5c is a valid GBK character, and we have 0x27
     as the second byte of an invalid GBK character. mysql_real_escape_string()
     handles this, as long as it knows the character set is GBK.
   */
-  SQLCHAR str[]= "\xef\xbb\xbf\x27\xbf\x10";
+  char * str= "\xef\xbb\xbf\x27\xbf\x10";
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL,
-                                        NULL, NULL, "CHARSET=gbk"));
+                                        NULL, NULL,
+                                        "CHARSET=gbk"));
 
-  ok_stmt(hstmt1, SQLPrepare(hstmt1, (SQLCHAR *)"SELECT ?", SQL_NTS));
+  ok_stmt(hstmt1, SQLPrepare(hstmt1, SC_NTS("SELECT ?")));
   ok_stmt(hstmt1, SQLBindParameter(hstmt1, 1, SQL_PARAM_INPUT, SQL_C_CHAR,
                                    SQL_CHAR, 0, 0, str, sizeof(str),
                                    NULL));
@@ -427,16 +427,16 @@ DECLARE_TEST(t_bug30774)
 {
   SQLHDBC hdbc1;
   SQLHSTMT hstmt1;
-  SQLCHAR username[MAX_ROW_DATA_LEN+1]= {0};
+  char username[MAX_ROW_DATA_LEN+1]= {0};
 
   strcat((char *)username, (char *)myuid);
   strcat((char *)username, "!!!");
 
   /* No reason to use alloc_basic_handles */
   ok_env(henv, SQLAllocConnect(henv, &hdbc1));
-  ok_con(hdbc1, SQLConnect(hdbc1, mydsn, SQL_NTS,
-                           username, (SQLSMALLINT)strlen((char *)myuid),
-                           mypwd, SQL_NTS));
+  ok_con(hdbc1, SQLConnect(hdbc1, SC_NTS(mydsn),
+                           SC(username), (SQLSMALLINT)strlen(myuid),
+                           SC_NTS(mypwd)));
   ok_con(hdbc1, SQLAllocStmt(hdbc1, &hstmt1));
 
   ok_sql(hstmt1, "SELECT USER()");
@@ -467,7 +467,8 @@ DECLARE_TEST(t_bug30840)
     skip("test does not work with all driver managers");
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL,
-                                        NULL, NULL, "NO_PROMPT=1"));
+                                        NULL, NULL,
+                                        "NO_PROMPT=1"));
 
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
   return OK;
@@ -479,21 +480,21 @@ DECLARE_TEST(t_bug30840)
 */
 DECLARE_TEST(t_bug30983)
 {
-  SQLCHAR buf[(80 * 1024) + 100]; /* ~80k */
-  SQLCHAR *bufp = buf;
+  char buf[(80 * 1024) + 100]; /* ~80k */
+  char *bufp = buf;
   SQLLEN buflen;
   int i, j;
 
-  bufp+= sprintf((char *)bufp, "select '");
+  bufp+= sprintf(bufp, "select '");
 
   /* fill 1k of each value */
   for (i= 0; i < 80; ++i)
     for (j= 0; j < 512; ++j, bufp += 2)
-      sprintf((char *)bufp, "%02x", i);
+      sprintf(bufp, "%02x", i);
 
-  sprintf((char *)bufp, "' as val");
+  sprintf(bufp, "' as val");
 
-  ok_stmt(hstmt, SQLExecDirect(hstmt, buf, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buf)));
   ok_stmt(hstmt, SQLFetch(hstmt));
   ok_stmt(hstmt, SQLGetData(hstmt, 1, SQL_C_CHAR, buf, 0, &buflen));
   is_num(buflen, 80 * 1024);
@@ -509,58 +510,58 @@ DECLARE_TEST(t_bug30983)
 DECLARE_TEST(t_driverconnect_outstring)
 {
   HDBC hdbc1;
-  SQLCHAR conn[512], conn_out[512];
+  char conn[512], conn_out[512];
   SQLSMALLINT conn_out_len, exp_conn_out_len;
 
-  sprintf((char *)conn, "DSN=%s;UID=%s;PWD=%s;CHARSET=utf8",
+  sprintf(conn, "DSN=%s;UID=%s;PWD=%s;CHARSET=utf8",
           mydsn, myuid, mypwd);
   if (mysock != NULL)
   {
-    strcat((char *)conn, ";SOCKET=");
-    strcat((char *)conn, (char *)mysock);
+    strcat(conn, ";SOCKET=");
+    strcat(conn, mysock);
   }
 
   ok_env(henv, SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1));
 
-  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
+  ok_con(hdbc1, SQLDriverConnect(hdbc1, NULL, SC_NTS(conn), SC(conn_out),
                                  sizeof(conn_out), &conn_out_len,
                                  SQL_DRIVER_NOPROMPT));
 
-  is_num(conn_out_len, strlen((char*)conn_out));
+  is_num(conn_out_len, strlen(conn_out));
 
   /*
   TODO: enable when driver builds the connection string via options
 
-  SQLCHAR exp_out[512];
-  sprintf((char *)exp_out, "DSN=%s;UID=%s", mydsn, myuid);
+  char exp_out[512];
+  sprintf(exp_out, "DSN=%s;UID=%s", mydsn, myuid);
   if (mypwd && *mypwd)
   {
-    strcat((char *)exp_out, ";PWD=");
-    strcat((char *)exp_out, (char *)mypwd);
+    strcat(exp_out, ";PWD=");
+    strcat(exp_out, (char *)mypwd);
   }
-  strcat((char *)exp_out, ";DATABASE=");
+  strcat(exp_out, ";DATABASE=");
   ok_con(hdbc1, SQLGetConnectAttr(hdbc1, SQL_ATTR_CURRENT_CATALOG,
-                                  exp_out + strlen((char *)exp_out), 100,
+                                  exp_out + strlen(exp_out), 100,
                                   NULL));
 
   if (mysock != NULL)
   {
-    strcat((char *)exp_out, ";SOCKET=");
-    strcat((char *)exp_out, (char *)mysock);
+    strcat(exp_out, ";SOCKET=");
+    strcat(exp_out, mysock);
   }
-  strcat((char *)exp_out, ";PORT=3306;CHARSET=utf8");
+  strcat(exp_out, ";PORT=3306;CHARSET=utf8");
 
   printMessage("Output connection string: %s", conn_out);
   printMessage("Expected output   string: %s", exp_out);
   // save proper length for later tests
-  is_str(conn_out, exp_out, strlen((char *)conn_out));
+  is_str(conn_out, exp_out, strlen(conn_out));
   */
   exp_conn_out_len = conn_out_len;
   ok_con(hdbc1, SQLDisconnect(hdbc1));
 
   /* test truncation */
   conn_out_len= 999;
-  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
+  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, SC_NTS(conn), SC(conn_out),
                                      10, &conn_out_len,
                                      SQL_DRIVER_NOPROMPT),
              SQL_SUCCESS_WITH_INFO);
@@ -576,7 +577,7 @@ DECLARE_TEST(t_driverconnect_outstring)
 
   /* test truncation on boundary */
   conn_out_len= 999;
-  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, conn, SQL_NTS, conn_out,
+  expect_dbc(hdbc1, SQLDriverConnect(hdbc1, NULL, SC_NTS(conn), SC(conn_out),
                                      exp_conn_out_len,
                                      &conn_out_len, SQL_DRIVER_NOPROMPT),
              SQL_SUCCESS_WITH_INFO);
@@ -629,7 +630,7 @@ DECLARE_TEST(sqlcancel)
 {
   SQLLEN     pcbLength= SQL_LEN_DATA_AT_EXEC(0);
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, "select ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 1,SQL_PARAM_INPUT,SQL_C_CHAR,
                           SQL_VARCHAR,0,0,(SQLPOINTER)1,0,&pcbLength));
@@ -639,7 +640,7 @@ DECLARE_TEST(sqlcancel)
   /* Without SQLCancel we would get "out of sequence" DM error */
   ok_stmt(hstmt, SQLCancel(hstmt));
 
-  ok_stmt(hstmt, SQLPrepare(hstmt, "select 1", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select 1")));
 
   ok_stmt(hstmt, SQLExecute(hstmt));
 
@@ -797,15 +798,17 @@ DECLARE_TEST(t_bug32014)
 */
 DECLARE_TEST(t_bug10128)
 {
-  SQLCHAR *query= (SQLCHAR *) "select 1,2,3,4";
-  SQLCHAR nativesql[1000];
+  const char *query = "select 1,2,3,4";
+  char nativesql[1000];
   SQLINTEGER nativelen;
-  SQLINTEGER querylen= (SQLINTEGER) strlen((char *)query);
+  SQLINTEGER querylen= (SQLINTEGER) strlen(query);
 
-  ok_con(hdbc, SQLNativeSql(hdbc, query, SQL_NTS, NULL, 0, &nativelen));
+  ok_con(hdbc, SQLNativeSql(hdbc, SC_NTS(query), NULL, 0, &nativelen));
   is_num(nativelen, querylen);
 
-  ok_con(hdbc, SQLNativeSql(hdbc, query, SQL_NTS, nativesql, 1000, NULL));
+  ok_con(hdbc, SQLNativeSql(
+    hdbc, SC_NTS(query), SC_SIZE(nativesql), NULL
+  ));
   is_str(nativesql, query, querylen + 1);
 
   return OK;
@@ -832,7 +835,7 @@ DECLARE_TEST(t_bug32727)
 DECLARE_TEST(t_bug28820)
 {
   SQLULEN length;
-  SQLCHAR dummy[20];
+  char dummy[20];
   SQLSMALLINT i;
 
   ok_sql(hstmt, "drop table if exists t_bug28820");
@@ -846,7 +849,7 @@ DECLARE_TEST(t_bug28820)
   for (i= 0; i < 3; ++i)
   {
     length= 0;
-    ok_stmt(hstmt, SQLDescribeCol(hstmt, i+1, dummy, sizeof(dummy), NULL,
+    ok_stmt(hstmt, SQLDescribeCol(hstmt, i+1, SC_SIZE(dummy), NULL,
                                   NULL, &length, NULL, NULL));
     is_num(length, 90);
   }
@@ -862,21 +865,20 @@ DECLARE_TEST(t_bug28820)
 */
 DECLARE_TEST(t_bug31959)
 {
-  SQLCHAR level[50] = "uninitialized";
+  char level[50] = "uninitialized";
   SQLINTEGER i;
   SQLINTEGER levelid[] = {SQL_TXN_SERIALIZABLE, SQL_TXN_REPEATABLE_READ,
                           SQL_TXN_READ_COMMITTED, SQL_TXN_READ_UNCOMMITTED};
-  SQLCHAR *levelname[] = {(SQLCHAR *)"SERIALIZABLE",
-                          (SQLCHAR *)"REPEATABLE-READ",
-                          (SQLCHAR *)"READ-COMMITTED",
-                          (SQLCHAR *)"READ-UNCOMMITTED"};
+  const char *levelname[] = {"SERIALIZABLE",
+                          "REPEATABLE-READ",
+                          "READ-COMMITTED",
+                          "READ-UNCOMMITTED"};
 
   if (mysql_min_version(hdbc, "8.0", 3))
-    ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"select @@transaction_isolation", SQL_NTS));
+    ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS(
+      "select @@transaction_isolation")));
   else
-    ok_stmt(hstmt, SQLPrepare(hstmt,
-                            (SQLCHAR *)"select @@tx_isolation", SQL_NTS));
+    ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select @@tx_isolation")));
 
 
   /* check all 4 valid isolation levels */
@@ -888,7 +890,7 @@ DECLARE_TEST(t_bug31959)
     ok_stmt(hstmt, SQLExecute(hstmt));
     ok_stmt(hstmt, SQLFetch(hstmt));
     ok_stmt(hstmt, SQLGetData(hstmt, 1, SQL_C_CHAR, level, 50, NULL));
-    is_str(level, levelname[i], strlen((char *)levelname[i]));
+    is_str(level, levelname[i], strlen(levelname[i]));
     printMessage("Level = %s\n", level);
     ok_stmt(hstmt, SQLFreeStmt(hstmt, SQL_CLOSE));
   }
@@ -897,16 +899,16 @@ DECLARE_TEST(t_bug31959)
   is_num(SQLSetConnectAttr(hdbc, SQL_ATTR_TXN_ISOLATION, (SQLPOINTER)999, 0),
      SQL_ERROR);
   {
-  SQLCHAR     sql_state[6];
-  SQLINTEGER  err_code= 0;
-  SQLCHAR     err_msg[SQL_MAX_MESSAGE_LENGTH]= {0};
-  SQLSMALLINT err_len= 0;
+    char        sql_state[6];
+    SQLINTEGER  err_code= 0;
+    char        err_msg[SQL_MAX_MESSAGE_LENGTH] = {0};
+    SQLSMALLINT err_len= 0;
 
-  memset(err_msg, 'C', SQL_MAX_MESSAGE_LENGTH);
-  SQLGetDiagRec(SQL_HANDLE_DBC, hdbc, 1, sql_state, &err_code, err_msg,
-                SQL_MAX_MESSAGE_LENGTH - 1, &err_len);
+    memset(err_msg, 'C', SQL_MAX_MESSAGE_LENGTH);
+    SQLGetDiagRec(SQL_HANDLE_DBC, hdbc, 1, SC(sql_state), &err_code,
+      SC(err_msg), SQL_MAX_MESSAGE_LENGTH - 1, &err_len);
 
-  is_str(sql_state, (SQLCHAR *)"HY024", 5);
+    is_str(sql_state, "HY024", 5);
   }
 
   return OK;
@@ -956,7 +958,7 @@ DECLARE_TEST(t_bug48603)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
   SQLINTEGER timeout, interactive, diff= 1000;
-  SQLCHAR conn[512], query[53];
+  char conn[512], query[53];
 
   ok_sql(hstmt, "select @@wait_timeout, @@interactive_timeout");
   ok_stmt(hstmt,SQLFetch(hstmt));
@@ -971,9 +973,9 @@ DECLARE_TEST(t_bug48603)
     printMessage("Changing interactive timeout globally as it is equal to wait_timeout");
     /* Changing globally interactive timeout to be able to test
        if INTERACTIVE option works */
-    sprintf((char *)query, "set GLOBAL interactive_timeout=%d", timeout + diff);
+    sprintf(query, "set GLOBAL interactive_timeout=%ld", timeout + diff);
 
-    if (!SQL_SUCCEEDED(SQLExecDirect(hstmt, query, SQL_NTS)))
+    if (!SQL_SUCCEEDED(SQLExecDirect(hstmt, SC_NTS(query))))
     {
       printMessage("Don't have rights to change interactive timeout globally - so can't really test if option INTERACTIVE works");
       // Let the testcase does not fail
@@ -990,8 +992,8 @@ DECLARE_TEST(t_bug48603)
   }
 
   /* INITSTMT={set @@wait_timeout=%d} */
-  sprintf((char *)conn, "CHARSET=utf8;INITSTMT=set @@interactive_timeout=%d;" \
-                        "INTERACTIVE=1", timeout+diff);
+  sprintf(conn, "CHARSET=utf8;INITSTMT=set @@interactive_timeout=%ld;" \
+                "INTERACTIVE=1", timeout+diff);
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL, NULL,
                                         NULL, NULL, conn));
 
@@ -1007,8 +1009,8 @@ DECLARE_TEST(t_bug48603)
     if (timeout == interactive)
     {
       /* setting global interactive timeout back if we changed it */
-      sprintf((char *)query, "set GLOBAL interactive_timeout=%d", timeout);
-      ok_stmt(hstmt, SQLExecDirect(hstmt, query, SQL_NTS));
+      sprintf(query, "set GLOBAL interactive_timeout=%ld", timeout);
+      ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(query)));
     }
 
     is_num(timeout + diff, cur_timeout);
@@ -1024,10 +1026,10 @@ DECLARE_TEST(t_bug48603)
 DECLARE_TEST(t_bug45378)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buff1[512], buff2[512];
+  char buff1[512], buff2[512];
 
-  sprintf((char *)buff1, " {%s} ", myuid);
-  sprintf((char *)buff2, " %s ", mypwd);
+  sprintf(buff1, " {%s} ", myuid);
+  sprintf(buff2, " %s ", mypwd);
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
                                         buff1, buff2, NULL, NULL));
@@ -1043,7 +1045,7 @@ DECLARE_TEST(t_bug45378)
 DECLARE_TEST(t_bug63844)
 {
   SQLHDBC hdbc1;
-  SQLCHAR *DatabaseName = mydb;
+  const char *DatabaseName = mydb;
 
   /*
     We are not going to use alloc_basic_handles() for a special purpose:
@@ -1052,7 +1054,8 @@ DECLARE_TEST(t_bug63844)
   ok_env(henv, SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc1));
 
   ok_con(hdbc1, SQLSetConnectAttr(hdbc1, SQL_ATTR_CURRENT_CATALOG,
-                                  DatabaseName, (SQLINTEGER)strlen(DatabaseName)));
+                                  SC(DatabaseName),
+                                  (SQLINTEGER)strlen(DatabaseName)));
 
   /* The driver crashes here on getting connected */
   ok_con(hdbc1, get_connection(&hdbc1, NULL, NULL, NULL, NULL, NULL));
@@ -1075,8 +1078,8 @@ DECLARE_TEST(t_bug52996)
   /* TODO: remove #ifdef _WIN32 when Linux and MacOS setup is released */
 #ifdef _WIN32
   size_t i, len;
-  SQLCHAR attrs[8192];
-  SQLCHAR drv[128];
+  char attrs[8192];
+  char drv[128];
   SQLLEN row_count= 0;
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
@@ -1090,9 +1093,9 @@ DECLARE_TEST(t_bug52996)
     The last attribute in the list must end with ';'
   */
 
-  sprintf((char*)attrs, "DSN=bug52996dsn;SERVER=%s;USER=%s;PASSWORD=%s;"
-                          "DATABASE=%s;FOUND_ROWS=1;",
-                          myserver, myuid, mypwd, mydb);
+  sprintf(attrs, "DSN=bug52996dsn;SERVER=%s;USER=%s;PASSWORD=%s;"
+                 "DATABASE=%s;FOUND_ROWS=1;",
+                  myserver, myuid, mypwd, mydb);
 
   len= strlen(attrs);
 
@@ -1110,12 +1113,12 @@ DECLARE_TEST(t_bug52996)
   {
     /* We need to remove {} in the driver name or it will not register */
     len= strlen(mydriver);
-    memcpy(drv, mydriver+1, sizeof(SQLCHAR)*(len-2));
+    memcpy(drv, mydriver+1, sizeof(char)*(len-2));
     drv[len-2]= '\0';
   }
   else
   {
-    memcpy(drv, mydriver, sizeof(SQLCHAR)*len);
+    memcpy(drv, mydriver, sizeof(char)*len);
     drv[len]= '\0';
   }
 
@@ -1159,7 +1162,7 @@ DECLARE_TEST(t_bug52996)
 DECLARE_TEST(t_tls_opts)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buf[1024] = { 0 };
+  char buf[1024] = { 0 };
   SQLLEN len = 0;
 
   ok_sql(hstmt, "SHOW VARIABLES LIKE 'tls_version'");
@@ -1189,10 +1192,10 @@ DECLARE_TEST(t_tls_opts)
 
   for (unsigned i = 0; i < VERSION_COUNT; ++i)
   {
-      if (strstr(buf, ver[i]) != NULL)
+      if (strstr((const char*)buf, ver[i]) != NULL)
       {
         char connstr[512] = "SOCKET=;SSLMODE=REQUIRED;TLS-VERSIONS=";
-        strncat(connstr, ver[i], sizeof(connstr) - strlen(connstr));
+        strncat(connstr, ver[i], sizeof(connstr) - strlen(connstr) - 1);
         printf("Connection options: %s\n", connstr);
 
         // The version is marked as supported only when client
@@ -1250,7 +1253,7 @@ DECLARE_TEST(t_tls_opts)
 
     if (i < VERSION_COUNT)
     {
-      is(strcmp(buf, ver[i]) != 0);
+      is(strcmp((const char*)buf, ver[i]) != 0);
     }
     else
     {
@@ -1274,7 +1277,7 @@ DECLARE_TEST(t_tls_opts)
           break;
 
       is(j < VERSION_COUNT);
-      is(strcmp(buf, ver[j]) == 0);
+      is(strcmp((const char*)buf, ver[j]) == 0);
     }
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1294,7 +1297,7 @@ DECLARE_TEST(t_tls_opts)
 
     char connstr[512] = "SOCKET=;";
     for (int i = 0; i < VERSION_COUNT; ++i)
-      strncat(connstr, opts[i], sizeof(connstr)-1);
+      strncat(connstr, opts[i], sizeof(connstr) - 1);
     printf("Connection options: %s\n", connstr);
 
     is(FAIL == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
@@ -1309,24 +1312,26 @@ DECLARE_TEST(t_tls_opts)
 DECLARE_TEST(t_ssl_mode)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buf[1024] = { 0 };
+  char buf[1024] = { 0 };
   for(int i = 0; i < 2; ++i)
   {
     if(i == 0)
     {
       is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                            NULL, NULL, NULL, "SSLMODE=DISABLED"));
+                                            NULL, NULL, NULL,
+                                            "SSLMODE=DISABLED"));
     }
     else
     {
       is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                            NULL, NULL, NULL, "ssl-mode=DISABLED"));
+                                            NULL, NULL, NULL,
+                                            "ssl-mode=DISABLED"));
     }
 
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] == '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1340,7 +1345,7 @@ DECLARE_TEST(t_ssl_mode)
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] != '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1351,7 +1356,7 @@ DECLARE_TEST(t_ssl_mode)
 DECLARE_TEST(t_ssl_align)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR buf[1024] = { 0 };
+  char buf[1024] = { 0 };
 
   char* ssl_opts[] =
   {"ssl-ca", "ssl-capath", "ssl-cert", "ssl-cipher", "ssl-key",
@@ -1370,7 +1375,7 @@ DECLARE_TEST(t_ssl_align)
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] == '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1382,13 +1387,14 @@ DECLARE_TEST(t_ssl_align)
 
     is(OK == alloc_basic_handles_with_opt(
          &henv1, &hdbc1, &hstmt1, NULL,
-         NULL, NULL, NULL, "SSLMODE=DISABLED;SSLMODE=REQUIRED;"));
+         NULL, NULL, NULL,
+         "SSLMODE=DISABLED;SSLMODE=REQUIRED;"));
 
 
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] != '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1396,13 +1402,14 @@ DECLARE_TEST(t_ssl_align)
 
     is(OK == alloc_basic_handles_with_opt(
          &henv1, &hdbc1, &hstmt1, NULL,
-         NULL, NULL, NULL, "SSLMODE=REQUIRED;SSLMODE=DISABLED;"));
+         NULL, NULL, NULL,
+         "SSLMODE=REQUIRED;SSLMODE=DISABLED;"));
 
 
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] == '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1415,7 +1422,7 @@ DECLARE_TEST(t_ssl_align)
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] != '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1429,7 +1436,7 @@ DECLARE_TEST(t_ssl_align)
     /* Check the affected tows */
     ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_cipher'");
     ok_stmt(hstmt1, SQLFetch(hstmt1));
-    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+    ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
     is(buf[0] == '\0');
 
     free_basic_handles(&henv1, &hdbc1, &hstmt1);
@@ -1495,7 +1502,7 @@ DECLARE_TEST(t_tls_versions)
   const char *list = tls_versions_list;
   while((list = make_tls_str(list, con_str, exp_result, ssl_disabled)))
   {
-    SQLCHAR buf[1024] = { 0 };
+    char buf[1024] = { 0 };
     ssl_disabled = 0;
     int connect_res = alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
                                           NULL, NULL, NULL, con_str);
@@ -1504,7 +1511,7 @@ DECLARE_TEST(t_tls_versions)
       ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_version'");
 
       ok_stmt(hstmt1, SQLFetch(hstmt1));
-      ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+      ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
       is_str(exp_result, buf, strlen(exp_result));
     }
     else
@@ -1536,7 +1543,7 @@ DECLARE_TEST(t_bug107307)
   ok_sql(hstmt1, "INSERT INTO t_bug107307 VALUES (12.3), (-12.3), (15.7),"
     "(-15.7), (3.5), (-3.5), (0), (NULL), (10)");
 
-  ok_stmt(hstmt1, SQLPrepare(hstmt1, "SELECT * FROM t_bug107307", SQL_NTS));
+  ok_stmt(hstmt1, SQLPrepare(hstmt1, SC_NTS("SELECT * FROM t_bug107307")));
   ok_stmt(hstmt, SQLExecute(hstmt1));
 
   ok_stmt(hstmt1, SQLBindCol(hstmt1, 1, SQL_C_DOUBLE, (SQLPOINTER)&value, 0, &ind));
@@ -1592,7 +1599,7 @@ DECLARE_TEST(t_ssl_crl)
 
   for (int i = 0; i < 4; ++i)
   {
-    SQLCHAR buf[1024] = { 0 };
+    char buf[1024] = { 0 };
     int connect_res = alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
       NULL, NULL, NULL, conn_strs[i][0]);
 
@@ -1603,7 +1610,7 @@ DECLARE_TEST(t_ssl_crl)
       // If connected check if encryption is used.
       ok_sql(hstmt1, "SHOW STATUS LIKE 'Ssl_version'");
       ok_stmt(hstmt1, SQLFetch(hstmt1));
-      ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, buf, sizeof(buf), NULL));
+      ok_stmt(hstmt1, SQLGetData(hstmt1, 2, SQL_C_CHAR, SC_SIZE(buf), NULL));
       if(conn_strs[i][2][0])
       {
         // Encryption is used
@@ -1636,22 +1643,22 @@ DECLARE_TEST(t_bug34786939_out_trunc)
 {
   SQLHDBC hdbc1 = NULL;
   ok_env(henv, SQLAllocConnect(henv, &hdbc1));
-  SQLCHAR *connstr = make_conn_str(NULL, NULL, NULL, NULL, NULL, 0);
+  const char *connstr = make_conn_str(NULL, NULL, NULL, NULL, NULL, 0);
   SQLSMALLINT out_str_len = -1;
 
   // Give NULL for out string, but non-NULL for out string length.
-  SQLRETURN rc = SQLDriverConnect(hdbc1, NULL, connstr, SQL_NTS,
+  SQLRETURN rc = SQLDriverConnect(hdbc1, NULL, SC_NTS(connstr),
     NULL, 0, &out_str_len, SQL_DRIVER_NOPROMPT);
   // It must not return anything except SQL_SUCCESS.
   is_num(rc, SQL_SUCCESS);
 
   SQLDisconnect(hdbc1);
 
-  SQLCHAR out_str[10] = { 0 };
+  char out_str[10] = { 0 };
 
   // Give a very small buffer out string and non-NULL for out string length.
-  rc = SQLDriverConnect(hdbc1, NULL, connstr, SQL_NTS,
-    out_str, 10, &out_str_len, SQL_DRIVER_NOPROMPT);
+  rc = SQLDriverConnect(hdbc1, NULL, SC_NTS(connstr),
+    SC(out_str), 10, &out_str_len, SQL_DRIVER_NOPROMPT);
   // It must not return anything except SQL_SUCCESS_WITH_INFO.
   is_num(rc, SQL_SUCCESS_WITH_INFO);
 
@@ -1678,14 +1685,14 @@ DECLARE_TEST(t_bug36605973_sqlconnect_params)
 
   typedef struct DSN_DATA
   {
-    SQLCHAR* uid;
-    SQLCHAR* pwd;
+    char* uid;
+    char* pwd;
     SQLRETURN res[4];
   } DSN_DATA;
 
-  SQLCHAR* dsn_name = "dsn_36605973";
+  const char* dsn_name = "dsn_36605973";
 
-  SQLCHAR *pass_list[] = {
+  const char *pass_list[] = {
     "pass_correct",
     "pass_wrong",
     "",
@@ -1807,24 +1814,27 @@ DECLARE_TEST(t_bug36605973_sqlconnect_params)
     // 5 - user for DSN is wrong, user in param is not given (NULL)
     for (size_t uidx = 0; uidx < 6; ++uidx)
     {
-      SQLCHAR *u_dsn = NULL;
-      SQLCHAR *u_par = NULL;
+      char *u_dsn = NULL;
+      char *u_par = NULL;
 
       SQLRemoveDSNFromIni(dsn_name);
 
       ok_install(SQLWriteDSNToIni(dsn_name, mydrv_nobrackets));
 
-      ok_install(SQLWritePrivateProfileString(dsn_name, "SERVER", myserver, odbcini));
+      ok_install(SQLWritePrivateProfileString(dsn_name,
+        "SERVER", myserver, odbcini));
 
 
       if (mysock)
-        ok_install(SQLWritePrivateProfileString(dsn_name, "SOCKET", mysock, odbcini));
+        ok_install(SQLWritePrivateProfileString(dsn_name,
+          "SOCKET", mysock, odbcini));
 
       if (myport)
       {
         char s_port[16];
         snprintf(s_port, sizeof(s_port), "%d", myport);
-        ok_install(SQLWritePrivateProfileString(dsn_name, "PORT", s_port, odbcini));
+        ok_install(SQLWritePrivateProfileString(dsn_name,
+          "PORT", s_port, odbcini));
       }
 
       switch (uidx)
@@ -1856,10 +1866,12 @@ DECLARE_TEST(t_bug36605973_sqlconnect_params)
       }
 
       if (u_dsn)
-        ok_install(SQLWritePrivateProfileString(dsn_name, "UID", u_dsn, odbcini));
+        ok_install(SQLWritePrivateProfileString(dsn_name, "UID",
+          u_dsn, odbcini));
 
       if (dsn_list[i].pwd)
-        ok_install(SQLWritePrivateProfileString(dsn_name, "PWD", dsn_list[i].pwd, odbcini));
+        ok_install(SQLWritePrivateProfileString(dsn_name, "PWD",
+          dsn_list[i].pwd, odbcini));
 
       for (size_t r = 0; r < 4; ++r)
       {
@@ -1867,9 +1879,8 @@ DECLARE_TEST(t_bug36605973_sqlconnect_params)
         ok_env(henv, SQLAllocConnect(henv, &hdbc1));
 
         SQLRETURN res = SQLConnect(hdbc1,
-          dsn_name, SQL_NTS,
-          u_par, SQL_NTS,
-          pass_list[r], SQL_NTS);
+          SC_NTS(dsn_name), SC_NTS(u_par),
+          SC_NTS(pass_list[r]));
 
         switch (uidx)
         {

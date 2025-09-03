@@ -1,4 +1,4 @@
-// Copyright (c) 2003, 2024, Oracle and/or its affiliates.
+// Copyright (c) 2003, 2025, Oracle and/or its affiliates.
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License, version 2.0, as
@@ -30,7 +30,7 @@
 
 DECLARE_TEST(t_get_diag_all)
 {
-  SQLCHAR buf[1024];
+  char buf[1024];
   SQLSMALLINT str_len_ptr = 0;
   SQLLEN data1 = 0;
   SQLINTEGER data2 = 0;
@@ -76,7 +76,6 @@ DECLARE_TEST(t_odbc3_error)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
   SQLINTEGER ov_version;
-  /*SQLCHAR dm_version[6];*/
 
   is(OK == alloc_basic_handles(&henv1, &hdbc1, &hstmt1));
 
@@ -126,8 +125,8 @@ DECLARE_TEST(t_odbc2_error)
                               (SQLPOINTER)&ov_version, 0, 0));
   is_num(ov_version, SQL_OV_ODBC2);
 
-  ok_con(hdbc1, SQLConnect(hdbc1, mydsn, SQL_NTS, myuid, SQL_NTS,
-                           mypwd, SQL_NTS));
+  ok_con(hdbc1, SQLConnect(hdbc1, SC_NTS(mydsn), SC_NTS(myuid),
+                           SC_NTS(mypwd)));
 
   ok_con(hdbc1, SQLAllocHandle(SQL_HANDLE_STMT, hdbc1, &hstmt1));
 
@@ -187,8 +186,8 @@ DECLARE_TEST(t_odbc3_80)
 
 DECLARE_TEST(t_diagrec)
 {
-  SQLCHAR   sqlstate[6]= {0};
-  SQLCHAR   message[255]= {0};
+  char sqlstate[6]= {0};
+  char message[255]= {0};
   SQLINTEGER native_err= 0;
   SQLSMALLINT msglen= 0;
 
@@ -204,20 +203,20 @@ DECLARE_TEST(t_diagrec)
               SQL_NO_DATA_FOUND);
 #endif
 
-  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate,
-                               &native_err, message, 255, &msglen));
+  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
+                               &native_err, SC(message), 255, &msglen));
 
   /* MSSQL returns SQL_SUCCESS in similar situations */
-  expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate,
-                                   &native_err, message, 0, &msglen),
+  expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
+                                   &native_err, SC(message), 0, &msglen),
               SQL_SUCCESS);
 
-  expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate,
-                                   &native_err, message, 10, &msglen),
+  expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
+                                   &native_err, SC(message), 10, &msglen),
               SQL_SUCCESS_WITH_INFO);
 
-  expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate,
-                                   &native_err, message, -1, &msglen),
+  expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
+                                   &native_err, SC(message), -1, &msglen),
               SQL_ERROR);
 
   return OK;
@@ -226,7 +225,7 @@ DECLARE_TEST(t_diagrec)
 
 DECLARE_TEST(t_warning)
 {
-  SQLCHAR    szData[20];
+  char       szData[20];
   SQLLEN     pcbValue;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_warning");
@@ -283,7 +282,7 @@ DECLARE_TEST(t_warning)
 
 DECLARE_TEST(t_bug3456)
 {
-  SQLINTEGER connection_id;
+  int  connection_id;
   char buf[100];
   SQLHENV henv2;
   SQLHDBC  hdbc2;
@@ -298,7 +297,7 @@ DECLARE_TEST(t_bug3456)
 
   /* From another connection, kill the connection created above */
   sprintf(buf, "KILL %d", connection_id);
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *)buf, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buf)));
 
   /* Now check that the connection killed returns the right SQLSTATE */
   expect_sql(hstmt2, "SELECT connection_id()", SQL_ERROR);
@@ -331,7 +330,7 @@ DECLARE_TEST(t_bug16224)
  */
 DECLARE_TEST(bind_invalidcol)
 {
-  SQLCHAR dummy[10];
+  char dummy[10];
   ok_sql(hstmt, "select 1,2,3,4");
 
   /* test out of range column number */
@@ -344,13 +343,15 @@ DECLARE_TEST(bind_invalidcol)
   is_num(check_sqlstate(hstmt, "07009"), OK);
 
   /* SQLDescribeCol() */
-  expect_stmt(hstmt, SQLDescribeCol(hstmt, 0, dummy, sizeof(dummy), NULL, NULL,
-                                    NULL, NULL, NULL), SQL_ERROR);
+  expect_stmt(hstmt, SQLDescribeCol(
+    hstmt, 0, SC_SIZE(dummy), NULL, NULL,
+    NULL, NULL, NULL
+  ), SQL_ERROR);
   /* Older versions of iODBC return the wrong result (S1002) here. */
   is(check_sqlstate(hstmt, "07009") == OK ||
      check_sqlstate(hstmt, "S1002") == OK);
 
-  expect_stmt(hstmt, SQLDescribeCol(hstmt, 5, dummy, sizeof(dummy), NULL,
+  expect_stmt(hstmt, SQLDescribeCol(hstmt, 5, SC_SIZE(dummy), NULL,
                                     NULL, NULL, NULL, NULL), SQL_ERROR);
   is_num(check_sqlstate(hstmt, "07009"), OK);
 
@@ -374,7 +375,7 @@ DECLARE_TEST(bind_invalidcol)
 DECLARE_TEST(bind_notenoughparam1)
 {
   SQLINTEGER i= 0;
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"select ?, ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?, ?")));
 
   ok_stmt(hstmt, SQLBindParameter(hstmt, 2, SQL_PARAM_INPUT, SQL_C_LONG,
                                   SQL_INTEGER, 0, 0, &i, 0, NULL));
@@ -392,7 +393,7 @@ DECLARE_TEST(bind_notenoughparam2)
 {
   SQLINTEGER i= 0;
   SQLSMALLINT cols= 0;
-  ok_stmt(hstmt, SQLPrepare(hstmt, (SQLCHAR *)"select ?, ?", SQL_NTS));
+  ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("select ?, ?")));
 
   /* trigger pre-execute */
   ok_stmt(hstmt, SQLNumResultCols(hstmt, &cols));
@@ -438,8 +439,8 @@ DECLARE_TEST(t_handle_err)
   ok_env(henv1, SQLAllocHandle(SQL_HANDLE_DBC, henv1, &hdbc1));
 
   /* we have to connect for the DM to pass the calls to the driver */
-  ok_con(hdbc1, SQLConnect(hdbc1, mydsn, SQL_NTS, myuid, SQL_NTS,
-                           mypwd, SQL_NTS));
+  ok_con(hdbc1, SQLConnect(hdbc1, SC_NTS(mydsn), SC_NTS(myuid),
+                           SC_NTS(mypwd)));
 
   expect_env(henv1, SQLSetEnvAttr(henv1, SQL_ATTR_ODBC_VERSION,
                                   (SQLPOINTER)SQL_OV_ODBC3, 0), SQL_ERROR);
@@ -460,24 +461,24 @@ DECLARE_TEST(t_handle_err)
 
 DECLARE_TEST(sqlerror)
 {
-  SQLCHAR message[SQL_MAX_MESSAGE_LENGTH + 1];
-  SQLCHAR sqlstate[SQL_SQLSTATE_SIZE + 1];
+  char message[SQL_MAX_MESSAGE_LENGTH + 1];
+  char sqlstate[SQL_SQLSTATE_SIZE + 1];
   SQLINTEGER error;
   SQLSMALLINT len;
 
   expect_sql(hstmt, "SELECT * FROM tabledoesnotexist", SQL_ERROR);
 
-  ok_stmt(hstmt, SQLError(henv, hdbc, hstmt, sqlstate, &error,
-                          message, sizeof(message), &len));
+  ok_stmt(hstmt, SQLError(henv, hdbc, hstmt, SC(sqlstate), &error,
+                          SC_SIZE(message), &len));
 
   /* Message has been consumed. */
-  expect_stmt(hstmt, SQLError(henv, hdbc, hstmt, sqlstate, &error,
-                              message, sizeof(message), &len),
+  expect_stmt(hstmt, SQLError(henv, hdbc, hstmt, SC(sqlstate), &error,
+                              SC_SIZE(message), &len),
               SQL_NO_DATA_FOUND);
 
   /* But should still be available using SQLGetDiagRec. */
-  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate, &error,
-                               message, sizeof(message), &len));
+  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate), &error,
+                               SC_SIZE(message), &len));
 
   return OK;
 }
@@ -513,7 +514,7 @@ DECLARE_TEST(t_bug14285620)
   SQLUINTEGER info;
   SQLULEN col_size;
   SQLINTEGER timeout= 20, cbilen;
-  SQLCHAR szData[255]={0};
+  char szData[255]={0};
   SQLRETURN rc = 0;
 
   /* Numeric attribute */
@@ -569,49 +570,52 @@ DECLARE_TEST(t_bug14285620)
   expect_dbc(hdbc, SQLGetInfo(hdbc, SQL_DATABASE_NAME, szData, 0, NULL), SQL_SUCCESS);
 
   /* Get the native string for further checks */
-  expect_dbc(hdbc, SQLNativeSql(hdbc, "SELECT 10", SQL_NTS, szData, sizeof(szData), NULL), SQL_SUCCESS);
-  expect_dbc(hdbc, SQLNativeSql(hdbc, "SELECT 10", SQL_NTS, NULL, 0, &cbilen), SQL_SUCCESS);
+  expect_dbc(hdbc, SQLNativeSql(hdbc, SC_NTS("SELECT 10"), SC_SIZE(szData), NULL), SQL_SUCCESS);
+  expect_dbc(hdbc, SQLNativeSql(hdbc, SC_NTS("SELECT 10"), NULL, 0, &cbilen), SQL_SUCCESS);
 
   /* Do like MSSQL, which does calculate as char_count*sizeof(SQLWCHAR) */
   is_num(cbilen, strlen(szData));
 
-  rc = SQLNativeSql(hdbc, "SELECT 10", SQL_NTS, szData, 0, NULL);
+  rc = SQLNativeSql(hdbc, SC_NTS("SELECT 10"), SC(szData), 0, NULL);
   if (rc != SQL_SUCCESS && rc != SQL_SUCCESS_WITH_INFO)
     return FAIL;
 
   /* Get the cursor name for further checks */
-  expect_stmt(hstmt, SQLGetCursorName(hstmt, szData, sizeof(szData), NULL), SQL_SUCCESS);
+  expect_stmt(hstmt, SQLGetCursorName(hstmt, SC_SIZE(szData), NULL), SQL_SUCCESS);
   expect_stmt(hstmt, SQLGetCursorName(hstmt, NULL, 0, &cblen), SQL_SUCCESS);
 
   /* Do like MSSQL, which does calculate as char_count*sizeof(SQLWCHAR) */
   is_num(cblen, strlen(szData));
 
-  expect_stmt(hstmt, SQLGetCursorName(hstmt, szData, 0, NULL), SQL_SUCCESS_WITH_INFO);
+  expect_stmt(hstmt, SQLGetCursorName(hstmt, SC(szData), 0, NULL), SQL_SUCCESS_WITH_INFO);
 
-  expect_stmt(hstmt, SQLExecDirect(hstmt, "ERROR SQL QUERY", SQL_NTS), SQL_ERROR);
+  expect_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("ERROR SQL QUERY")), SQL_ERROR);
 
   expect_stmt(hstmt, SQLGetDiagField(SQL_HANDLE_STMT, hstmt, 1, SQL_DIAG_SQLSTATE, NULL, 0, NULL), SQL_SUCCESS);
 
   {
-    SQLCHAR sqlstate[30], message[255];
+    char sqlstate[30], message[255];
     SQLINTEGER native_error= 0;
     SQLSMALLINT text_len= 0;
     /* try with the NULL pointer for Message */
-    expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate,
+    expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
                                     &native_error, NULL, 0, &cblen), SQL_SUCCESS);
     /* try with the non-NULL pointer for Message */
-    expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, sqlstate,
-                                    &native_error, message, 0, NULL), SQL_SUCCESS);
+    expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
+                                    &native_error, SC(message), 0, NULL), SQL_SUCCESS);
   }
 
-  SQLExecDirect(hstmt, "drop table bug14285620", SQL_NTS);
+  SQLExecDirect(hstmt, SC_NTS("drop table bug14285620"));
 
-  ok_stmt(hstmt, SQLExecDirect(hstmt, "CREATE TABLE bug14285620 (id INT)", SQL_NTS));
-  ok_stmt(hstmt, SQLExecDirect(hstmt, "INSERT INTO bug14285620 (id) VALUES (1)", SQL_NTS));
-  ok_stmt(hstmt, SQLExecDirect(hstmt, "SELECT * FROM bug14285620", SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("CREATE TABLE bug14285620 (id INT)")));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("INSERT INTO bug14285620 (id) VALUES (1)")));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS("SELECT * FROM bug14285620")));
 
   expect_stmt(hstmt, SQLDescribeCol(hstmt, 1, NULL, 0, NULL, &data_type, &col_size, &dec_digits, &nullable), SQL_SUCCESS);
-  expect_stmt(hstmt, SQLDescribeCol(hstmt, 1, szData, 0, &cblen, &data_type, &col_size, &dec_digits, &nullable), SQL_SUCCESS_WITH_INFO);
+  expect_stmt(hstmt, SQLDescribeCol(
+    hstmt, 1, SC(szData), 0, &cblen, &data_type, &col_size, &dec_digits,
+    &nullable
+  ), SQL_SUCCESS_WITH_INFO);
 
   expect_stmt(hstmt, SQLColAttribute(hstmt,1, SQL_DESC_TYPE, NULL, 0, NULL, NULL), SQL_SUCCESS);
   expect_stmt(hstmt, SQLColAttribute(hstmt,1, SQL_DESC_TYPE, &data_type, 0, NULL, NULL), SQL_SUCCESS);
@@ -631,26 +635,25 @@ DECLARE_TEST(t_bug14285620)
 DECLARE_TEST(t_bug49466)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
-  SQLCHAR message[SQL_MAX_MESSAGE_LENGTH + 1];
-  SQLCHAR sqlstate[SQL_SQLSTATE_SIZE + 1];
+  char message[SQL_MAX_MESSAGE_LENGTH + 1];
+  char sqlstate[SQL_SQLSTATE_SIZE + 1];
   SQLINTEGER error;
   SQLSMALLINT len;
 
   is(OK == alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
-                                        NULL, NULL, NULL,
-                                        "OPTION=67108864"));//;NO_SSPS=1"));
+    NULL, NULL, NULL, "OPTION=67108864"));
 
-  ok_stmt(hstmt1, SQLExecDirect(hstmt1, "SELECT 100; CALL t_bug49466proc()", SQL_NTS));
+  ok_stmt(hstmt1, SQLExecDirect(hstmt1, SC_NTS("SELECT 100; CALL t_bug49466proc()")));
 
   ok_stmt(hstmt1, SQLFetch(hstmt1));
   is_num(my_fetch_int(hstmt1, 1), 100);
 
   SQLMoreResults(hstmt1);
 
-  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt1, 1, sqlstate, &error,
-                               message, sizeof(message), &len));
+  ok_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt1, 1, SC(sqlstate), &error,
+                               SC_SIZE(message), &len));
   is_num(error, 1305);
-  is(strstr((char *)message, "t_bug49466proc does not exist"));
+  is(strstr(message, "t_bug49466proc does not exist"));
 
   free_basic_handles(&henv1, &hdbc1, &hstmt1);
 
@@ -669,7 +672,7 @@ DECLARE_TEST(t_passwordexpire)
   }
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_password_expire");
-  SQLExecDirect(hstmt, (SQLCHAR *)"DROP USER IF EXISTS t_pwd_expire", SQL_NTS);
+  SQLExecDirect(hstmt, SC_NTS("DROP USER IF EXISTS t_pwd_expire"));
 
   ok_sql(hstmt, "CREATE USER t_pwd_expire IDENTIFIED BY 'foo'");
   ok_sql(hstmt, "GRANT ALL ON *.* TO t_pwd_expire");
@@ -678,17 +681,19 @@ DECLARE_TEST(t_passwordexpire)
   ok_env(henv, SQLAllocConnect(henv, &hdbc1));
 
   /* Expecting error without OPT_CAN_HANDLE_EXPIRED_PASSWORDS */
-  expect_dbc(hdbc1, get_connection(&hdbc1, NULL, "t_pwd_expire", "foo",
-             NULL, NULL), SQL_ERROR);
+  expect_dbc(hdbc1, get_connection(&hdbc1, NULL, "t_pwd_expire",
+    "foo", NULL, NULL), SQL_ERROR);
 
   {
-    SQLCHAR sql_state[6];
+    char sql_state[6];
     SQLINTEGER  err_code= 0;
-    SQLCHAR     err_msg[SQL_MAX_MESSAGE_LENGTH]= {0};
+    char        err_msg[SQL_MAX_MESSAGE_LENGTH]= {0};
     SQLSMALLINT err_len= 0;
 
-    SQLGetDiagRec(SQL_HANDLE_DBC, hdbc1, 1, sql_state, &err_code, err_msg,
-                  SQL_MAX_MESSAGE_LENGTH - 1, &err_len);
+    SQLGetDiagRec(
+      SQL_HANDLE_DBC, hdbc1, 1, SC(sql_state), &err_code,
+      SC(err_msg), SQL_MAX_MESSAGE_LENGTH - 1, &err_len
+    );
 
     /* ER_MUST_CHANGE_PASSWORD = 1820, ER_MUST_CHANGE_PASSWORD_LOGIN = 1862 */
     if (strncmp(sql_state, "08004", 5) != 0 || !(err_code == 1820 || err_code == 1862))
@@ -699,8 +704,8 @@ DECLARE_TEST(t_passwordexpire)
   }
 
   /* Expecting error as password has not been reset */
-  ok_con(hdbc1, get_connection(&hdbc1, NULL, "t_pwd_expire", "foo",
-                                NULL, "CAN_HANDLE_EXP_PWD=1;INITSTMT={set password='bar'}"));
+  ok_con(hdbc1, get_connection(&hdbc1, NULL, "t_pwd_expire",
+    "foo", NULL, "CAN_HANDLE_EXP_PWD=1;INITSTMT={set password='bar'}"));
 
   ok_con(hdbc1, SQLAllocStmt(hdbc1, &hstmt1));
 
@@ -712,8 +717,9 @@ DECLARE_TEST(t_passwordexpire)
   ok_con(hdbc1, SQLDisconnect(hdbc1));
 
   /* Checking we can get connection with new credentials */
-  ok_con(hdbc1, get_connection(&hdbc1, mydsn, "t_pwd_expire", "bar", NULL,
-                               NULL));
+  ok_con(hdbc1, get_connection(&hdbc1, mydsn, "t_pwd_expire",
+    "bar", NULL, NULL));
+
   ok_con(hdbc1, SQLAllocStmt(hdbc1, &hstmt1));
 
   /* Also verifying that we got normal connection */
@@ -735,9 +741,9 @@ DECLARE_TEST(t_passwordexpire)
 DECLARE_TEST(t_cleartext_password)
 {
   SQLHDBC hdbc1;
-  SQLCHAR sql_state[6];
+  char sql_state[6];
   SQLINTEGER  err_code= 0;
-  SQLCHAR     err_msg[SQL_MAX_MESSAGE_LENGTH]= {0};
+  char        err_msg[SQL_MAX_MESSAGE_LENGTH]= {0};
   SQLSMALLINT err_len= 0;
   unsigned int major1= 0, minor1= 0, build1= 0;
 
@@ -746,12 +752,12 @@ DECLARE_TEST(t_cleartext_password)
     skip("The server does not support tested functionality(Cleartext Auth)");
   }
 
-  SQLExecDirect(hstmt, (SQLCHAR *)"DROP USER 't_ct_user'@'%'", SQL_NTS);
+  SQLExecDirect(hstmt, SC_NTS("DROP USER 't_ct_user'@'%'"));
 
   if (!SQL_SUCCEEDED(SQLExecDirect(hstmt,
-            "GRANT ALL ON *.* TO "
-            "'t_ct_user'@'%' IDENTIFIED WITH "
-            "'authentication_pam'", SQL_NTS)))
+    SC_NTS("GRANT ALL ON *.* TO "
+      "'t_ct_user'@'%' IDENTIFIED WITH "
+      "'authentication_pam'"))))
   {
     skip("The authentication_pam plugin not loaded");
   }
@@ -762,11 +768,13 @@ DECLARE_TEST(t_cleartext_password)
     Expecting error CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR
     without option ENABLE_CLEARTEXT_PLUGIN
   */
-  if(!SQL_SUCCEEDED(get_connection(&hdbc1, mydsn, "t_ct_user", "t_ct_pass",
-                        mydb, NULL)))
+  if(!SQL_SUCCEEDED(get_connection(&hdbc1, mydsn, "t_ct_user",
+    "t_ct_pass", mydb, NULL)))
   {
-    SQLGetDiagRec(SQL_HANDLE_DBC, hdbc1, 1, sql_state, &err_code, err_msg,
-                  SQL_MAX_MESSAGE_LENGTH - 1, &err_len);
+    SQLGetDiagRec(
+      SQL_HANDLE_DBC, hdbc1, 1, SC(sql_state), &err_code,
+      SC(err_msg), SQL_MAX_MESSAGE_LENGTH - 1, &err_len
+    );
 
     printMessage("%s %d %s", sql_state, err_code, err_msg);
     if ((strncmp(sql_state, "08004", 5) != 0 || err_code != 2059))
@@ -779,11 +787,13 @@ DECLARE_TEST(t_cleartext_password)
     Expecting error other then CR_AUTH_PLUGIN_CANNOT_LOAD_ERROR
     as option ENABLE_CLEARTEXT_PLUGIN is used
   */
-  if(!SQL_SUCCEEDED(get_connection(&hdbc1, mydsn, "t_ct_user", "t_ct_pass",
-                        mydb, "ENABLE_CLEARTEXT_PLUGIN=1")))
+  if(!SQL_SUCCEEDED(get_connection(&hdbc1, mydsn, "t_ct_user",
+    "t_ct_pass", mydb, "ENABLE_CLEARTEXT_PLUGIN=1")))
   {
-    SQLGetDiagRec(SQL_HANDLE_DBC, hdbc1, 1, sql_state, &err_code, err_msg,
-                  SQL_MAX_MESSAGE_LENGTH - 1, &err_len);
+    SQLGetDiagRec(
+      SQL_HANDLE_DBC, hdbc1, 1, SC(sql_state), &err_code,
+      SC(err_msg), SQL_MAX_MESSAGE_LENGTH - 1, &err_len
+    );
     printMessage("%s %d %s", sql_state, err_code, err_msg);
 
     if ((strncmp(sql_state, "08004", 5) == 0 && err_code == 2059))
@@ -821,13 +831,13 @@ DECLARE_TEST(t_bug25671389)
 {
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
 
-  SQLINTEGER connection_id;
-  SQLCHAR buf[255];
+  int  connection_id;
+  char buf[255];
   SQLHSTMT hstmt2;
 
   SQLRETURN rc = SQL_ERROR;
-  SQLCHAR sqlState[6] = { '\0' };
-  SQLCHAR eMsg[SQL_MAX_MESSAGE_LENGTH] = { '\0' };
+  char sqlState[6] = { '\0' };
+  char eMsg[SQL_MAX_MESSAGE_LENGTH] = { '\0' };
   SQLINTEGER nError = 0;
   SQLSMALLINT msgLen = 0;
 
@@ -843,12 +853,15 @@ DECLARE_TEST(t_bug25671389)
 
   /* From another connection, kill the connection created above */
   sprintf(buf, "KILL %d", connection_id);
-  ok_stmt(hstmt, SQLExecDirect(hstmt, (SQLCHAR *)buf, SQL_NTS));
+  ok_stmt(hstmt, SQLExecDirect(hstmt, SC_NTS(buf)));
 
   /* Now check that the connection killed returns the right SQLSTATE */
   expect_sql(hstmt2, "SELECT connection_id()", SQL_ERROR);
 
-  rc = SQLGetDiagRec(SQL_HANDLE_STMT, hstmt2, 1, sqlState, &nError, eMsg, sizeof(eMsg), &msgLen);
+  rc = SQLGetDiagRec(
+    SQL_HANDLE_STMT, hstmt2, 1, SC(sqlState), &nError,
+    SC_SIZE(eMsg), &msgLen
+  );
   /* Check that the error has been properly reported */
   is(rc == SQL_SUCCESS);
   is(nError > 0);
