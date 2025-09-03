@@ -42,7 +42,9 @@ add_version_info(myodbc-installer
   "Provides installer tool functionality."
 )
 
+# target_link_options(myodbc-installer PRIVATE "-Wl,--trace")
 TARGET_LINK_LIBRARIES(myodbc-installer otel_api)
+target_link_libraries(myodbc-installer mysql_sys mysql_strings)
 
 IF(WIN32)
   IF(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -55,10 +57,9 @@ IF(WIN32)
 
   IF(MYSQL8)
     TARGET_LINK_LIBRARIES(myodbc-installer myodbc-util ${ODBCLIB} ${ODBCINSTLIB}
-        ${MYSQL_CLIENT_LIBS} legacy_stdio_definitions.lib)
+        legacy_stdio_definitions.lib)
   ELSE()
-    TARGET_LINK_LIBRARIES(myodbc-installer myodbc-util ${ODBCLIB} ${ODBCINSTLIB}
-        ${MYSQL_CLIENT_LIBS})
+    TARGET_LINK_LIBRARIES(myodbc-installer myodbc-util ${ODBCLIB} ${ODBCINSTLIB})
   ENDIF()
 
   IF (WITH_NODEFAULTLIB)
@@ -69,13 +70,13 @@ IF(WIN32)
   ENDIF ()
 
   SET_TARGET_PROPERTIES(myodbc-installer PROPERTIES
-        LINK_FLAGS "${MYSQLODBCCONN_LINK_FLAGS_ENV} ${MYSQL_LINK_FLAGS}")
+        LINK_FLAGS "${MYSQLODBCCONN_LINK_FLAGS_ENV}")
 ELSE(WIN32)
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ODBC_LINK_FLAGS}")
   TARGET_LINK_LIBRARIES(myodbc-installer myodbc-util
-      ${ODBC_LINK_FLAGS} ${MYSQL_CLIENT_LIBS} ${CMAKE_THREAD_LIBS_INIT} m)
+      ${ODBC_LINK_FLAGS} ${CMAKE_THREAD_LIBS_INIT} m)
   SET_TARGET_PROPERTIES(myodbc-installer PROPERTIES
-        LINK_FLAGS "${MYSQLODBCCONN_LINK_FLAGS_ENV} ${MYSQL_LINK_FLAGS}")
+        LINK_FLAGS "${MYSQLODBCCONN_LINK_FLAGS_ENV}")
 ENDIF(WIN32)
 
 if(APPLE)
