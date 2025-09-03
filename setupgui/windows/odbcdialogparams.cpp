@@ -367,7 +367,7 @@ void btnDetails_Click (HWND hwnd)
 
   if(!flag && mod==1)
   {
-    static PWSTR tabnames[] = {
+    static const PCWSTR tabnames[] = {
       L"Connection",
       L"Authentication",
       L"Metadata",
@@ -388,7 +388,7 @@ void btnDetails_Click (HWND hwnd)
 
     New_TabControl( &TabCtrl_1,                 // address of TabControl struct
                     GetDlgItem(hwnd, IDC_TAB1), // handle to tab control
-                    tabnames,                   // text for each tab
+                    (PWSTR*)tabnames,           // text for each tab
                     dlgnames,                   // dialog id's of each tab page dialog
                     &FormMain_DlgProc,          // address of main windows proc
                     NULL,                       // address of size function
@@ -475,7 +475,7 @@ void chooseFile( HWND parent, int hostCtlId )
   dialog.lpstrInitialDir		= NULL;
   dialog.Flags				= OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST ;
   dialog.hwndOwner			= parent;
-  dialog.lpstrCustomFilter	= L"All Files\0*.*\0PEM\0*.pem\0";
+  dialog.lpstrCustomFilter	= (LPWSTR)L"All Files\0*.*\0PEM\0*.pem\0";
   dialog.nFilterIndex			= 2;
 
   if ( GetOpenFileNameW( &dialog ) )
@@ -511,7 +511,7 @@ void choosePath( HWND parent, int hostCtlId )
     IMalloc * imalloc = 0;
     if ( SUCCEEDED( SHGetMalloc ( &imalloc )) )
     {
-      imalloc->Free ( pidl );
+      imalloc->Free ( (void*)pidl );
       imalloc->Release ( );
     }
   }
@@ -871,7 +871,7 @@ int ShowOdbcParamsDialog(DataSource* params, HWND ParentWnd, BOOL isPrompt)
   InitStaticValues();
 
   pParams= params;
-  pCaption= L"MySQL Connector/ODBC Data Source Configuration";
+  pCaption= (PWCHAR)L"MySQL Connector/ODBC Data Source Configuration";
   g_isPrompt= isPrompt;
 
   /*

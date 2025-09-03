@@ -76,6 +76,23 @@ void FillParameters(HWND hwnd, DataSource *params);
 
 static SQLWCHAR out_buf[1024];
 
+#if GTK_MAJOR_VERSION >= 3
+
+#define MY_GTK_VBOX_NEW() gtk_box_new(GTK_ORIENTATION_VERTICAL, 0)
+#define MY_GTK_TABLE_NEW() gtk_grid_new()
+#define MY_GTK_HSEPARATOR_NEW() gtk_separator_new(GTK_ORIENTATION_HORIZONTAL)
+#define MY_GTK_STOCK_OPEN "_Open"
+#define MY_GTK_STOCK_CANCEL "_Cancel"
+
+#else
+
+#define MY_GTK_VBOX_NEW() gtk_vbox_new(0, 0)
+#define MY_GTK_TABLE_NEW() gtk_table_new(0, 0, 0)
+#define MY_GTK_HSEPARATOR_NEW() gtk_hseparator_new()
+#define MY_GTK_STOCK_OPEN GTK_STOCK_OPEN
+#define MY_GTK_STOCK_CANCEL GTK_STOCK_CANCEL
+
+#endif
 
 void
 on_show_details_clicked(GtkButton *button, gpointer user_data)
@@ -161,7 +178,7 @@ on_enable_DNS_SRV_toggled(GtkButton *button, gpointer user_data)
 void on_check_cursor_prefetch_toggled(GtkButton *button, gpointer user_data)
 {
   SET_SENSITIVE(PREFETCH,
-                getBoolFieldData("cursor_prefetch_active"));
+                getBoolFieldData((gchar*)"cursor_prefetch_active"));
 }
 
 void on_test_clicked(GtkButton *button, gpointer user_data)
@@ -389,8 +406,8 @@ void on_file_button_clicked(GtkComboBox *widget, gpointer user_data)
   dialog = gtk_file_chooser_dialog_new ("Choose File",
                                         GTK_WINDOW(dsnEditDialog),
                                         GTK_FILE_CHOOSER_ACTION_OPEN,
-                                        GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-                                        GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+                                        MY_GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                        MY_GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
                                         NULL);
   if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
   {
@@ -409,8 +426,8 @@ void on_folder_button_clicked(GtkComboBox *widget, gpointer user_data)
   dialog = gtk_file_chooser_dialog_new ("Choose Directory",
                                         GTK_WINDOW(dsnEditDialog),
                                         GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                                        GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
-                                        GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
+                                        MY_GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL,
+                                        MY_GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT,
                                         NULL);
   if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
   {
@@ -580,7 +597,7 @@ int ShowOdbcParamsDialog(DataSource* params, HWND ParentWnd, BOOL isPrompt)
 
       msg_box= gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_CLOSE,
                                       "Failure to lookup driver entry at path '%s'('%s')",
-                                      (const char*)driver.lib, params->opt_DSN);
+                                      (const char*)driver.lib, (const char*)params->opt_DSN);
 
       gtk_dialog_run (GTK_DIALOG (msg_box));
       gtk_widget_hide(msg_box);
@@ -592,13 +609,13 @@ int ShowOdbcParamsDialog(DataSource* params, HWND ParentWnd, BOOL isPrompt)
     params->opt_DRIVER = driver.name;
   }
 
-  dummy= gtk_vbox_new(0,0);
+  dummy = MY_GTK_VBOX_NEW();
   g_object_ref_sink(G_OBJECT (dummy));
   dummy= gtk_image_new();
   g_object_ref_sink(G_OBJECT (dummy));
   dummy= gtk_frame_new(0);
   g_object_ref_sink(G_OBJECT (dummy));
-  dummy= gtk_table_new(0,0,0);
+  dummy = MY_GTK_TABLE_NEW();
   g_object_ref_sink(G_OBJECT (dummy));
   dummy= gtk_label_new(NULL);
   g_object_ref_sink(G_OBJECT (dummy));
@@ -606,7 +623,7 @@ int ShowOdbcParamsDialog(DataSource* params, HWND ParentWnd, BOOL isPrompt)
   g_object_ref_sink(G_OBJECT (dummy));
   dummy= gtk_spin_button_new(0, 0., 0);
   g_object_ref_sink(G_OBJECT (dummy));
-  dummy= gtk_hseparator_new();
+  dummy = MY_GTK_HSEPARATOR_NEW();
   g_object_ref_sink(G_OBJECT (dummy));
   dummy= gtk_combo_box_new();
   g_object_ref_sink(G_OBJECT (dummy));

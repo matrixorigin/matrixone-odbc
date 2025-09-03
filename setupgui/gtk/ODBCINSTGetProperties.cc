@@ -71,7 +71,7 @@ static const char *MYODBC_OPTIONS[][3] = {
   {"USE_MYCNF",         "C", "Read options from my.cnf"},
   {"SAFE",              "C", "Add some extra safety checks"},
   {"NO_TRANSACTIONS",   "C", "Disable transaction support"},
-  {"LOG_QUERY",         "C", "Log queries to %TEMP%\myodbc.sql"},
+  {"LOG_QUERY",         "C", "Log queries to %TEMP%/myodbc.sql"},
   {"NO_CACHE",          "C", "Don't cache results of forward-only cursors"},
   {"FORWARD_CURSOR",    "C", "Force use of forward-only cursors"},
   {"AUTO_RECONNECT",    "C", "Enable automatic reconnect"},

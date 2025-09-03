@@ -169,7 +169,7 @@ VOID OnWMNotify(WPARAM wParam, LPARAM lParam)
         switch (idCtrl) {
 #define SET_TIP(edit,tip)\
 			case IDC_EDIT_##edit: \
-                lpttt->lpszText = tip; \
+                lpttt->lpszText = (LPWSTR)tip; \
                 return;
 
 			SET_TIP(drvname, L"An unique name for this data source");

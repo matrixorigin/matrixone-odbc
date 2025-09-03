@@ -41,9 +41,21 @@
 #define SSL_TAB         6
 #define MISC_TAB        7
 
-#else
+#endif
+
+#include "MYODBC_MYSQL.h"
+#include "installer.h"
+#include "compiler.h"
+#include "unicode_transcode.h"
+#include <sql.h>
+#include <vector>
+#include <string>
+
+#ifndef _WIN32
+NO_WARNINGS_PUSH
 # include <gtk/gtk.h>
 # include <gdk/gdkkeysyms.h>
+NO_WARNINGS_POP
 
 /* Older versions of GDK have different macros for keys */
 
@@ -64,13 +76,6 @@
 # endif
 
 #endif
-
-#include "MYODBC_MYSQL.h"
-#include "installer.h"
-#include "unicode_transcode.h"
-#include <sql.h>
-#include <vector>
-#include <string>
 
 #ifdef __cplusplus
 extern "C" {
@@ -232,20 +237,20 @@ unsigned int getUnsignedFieldData(gchar *widget_name);
 void setUnsignedFieldData(gchar *widget_name, unsigned int param);
 
 #define READ_BOOL(UNUSED_PARAM, name) \
-  getBoolFieldData(#name)
+  getBoolFieldData((gchar*)#name)
 
 #define READ_BOOL_TAB(UNUSED_PARAM, name) \
   READ_BOOL(UNUSED_PARAM, name)
 
 #define SET_CHECKED(UNUSED_PARAM, name, state) \
-  setBoolFieldData(#name, state)
+  setBoolFieldData((gchar*)#name, state)
 
 #define SET_CHECKED_TAB(UNUSED_PARAM, name, state) \
   SET_CHECKED(UNUSED_PARAM, name, state)
 
 #define GET_STRING(name) \
   {                                                                \
-    SQLWCHAR *res = getStrFieldData(#name);                        \
+    SQLWCHAR *res = getStrFieldData((gchar*)#name);                 \
     if (res && *res)                                               \
       params->opt_##name = res;                                    \
     else                                                           \
@@ -256,20 +261,20 @@ void setUnsignedFieldData(gchar *widget_name, unsigned int param);
   GET_STRING(name)
 
 #define SET_STRING(name) \
-  setStrFieldData(#name, params->opt_##name)
+  setStrFieldData((gchar*)#name, params->opt_##name)
 
 #define SET_STRING_TAB(UNUSED_PARAM, name) \
   SET_STRING(name)
 
 #define SET_COMBO(name) \
-  setComboFieldData(#name, params->opt_##name)
+  setComboFieldData((gchar*)#name, params->opt_##name)
 
 #define SET_COMBO_TAB(UNUSED_PARAM, name) \
   SET_COMBO(name)
 
 #define GET_COMBO(name) \
   {                                                                \
-    SQLWCHAR *res = getComboFieldData(#name);                      \
+    SQLWCHAR *res = getComboFieldData((gchar*)#name);               \
     if (res && *res)                                               \
       params->opt_##name = res;                                    \
     else                                                           \
@@ -281,7 +286,7 @@ void setUnsignedFieldData(gchar *widget_name, unsigned int param);
 
 #define GET_UNSIGNED(name)                                \
   {                                                       \
-    auto v = getUnsignedFieldData(#name);                 \
+    auto v = getUnsignedFieldData((gchar*)#name);         \
     if (v)                                                \
       params->opt_##name = v;                             \
     else                                                  \
@@ -292,7 +297,7 @@ void setUnsignedFieldData(gchar *widget_name, unsigned int param);
   GET_UNSIGNED(name)
 
 #define SET_UNSIGNED(name) \
-  setUnsignedFieldData(#name, params->opt_##name)
+  setUnsignedFieldData((gchar*)#name, params->opt_##name)
 
 #define SET_UNSIGNED_TAB(UNUSED_PARAM, name) \
   SET_UNSIGNED(name)
