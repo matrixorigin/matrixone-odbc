@@ -129,58 +129,8 @@ IF(SYSCONFDIR)
   SET(DEFAULT_SYSCONFDIR "${SYSCONFDIR}")
 ENDIF()
 
-# Detect use of clang compiler with MSVC
 
-if(MSVC)
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CLANG ${CMAKE_CXX_COMPILER_VERSION} CACHE INTERNAL "")
-  endif()
-endif()
-
-#
-# Macro to enable C++14 for all targets in the current directory and below.
-#
-
-macro(enable_cxx14)
-
-  if((CMAKE_VERSION VERSION_LESS 3.1) OR (CMAKE_CXX_COMPILER_ID MATCHES "SunPro"))
-
-    # Note: cmake does not know how to enable C++14 for SunPro compiler
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
-
-  else()
-
-    # use C++14
-    set(CMAKE_CXX_STANDARD 14)
-    # error out if not supported
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    # do not use compiler specific extensions
-    set(CMAKE_CXX_EXTENSIONS OFF)
-
-  endif()
-
-endmacro()
-
-macro(enable_cxx17)
-
-  if((CMAKE_VERSION VERSION_LESS 3.8) OR (CMAKE_CXX_COMPILER_ID MATCHES "SunPro"))
-
-    # Note: cmake does not know how to enable C++17 for SunPro compiler
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-
-  else()
-
-    # use C++14
-    set(CMAKE_CXX_STANDARD 17)
-    # error out if not supported
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    # do not use compiler specific extensions
-    set(CMAKE_CXX_EXTENSIONS OFF)
-
-  endif()
-
-endmacro()
-
+include(${CMAKE_SOURCE_DIR}/cmake/compiler.cmake)
 enable_cxx17()
 
 
@@ -246,6 +196,10 @@ ENDIF(MYSQL_VERSION_ID GREATER 80002)
 IF(MYSQLCLIENT_STATIC_LINKING)
   ADD_DEFINITIONS(-DMYSQLCLIENT_STATIC_LINKING)
 ENDIF(MYSQLCLIENT_STATIC_LINKING)
+
+if(HAVE_DEPRECATED_BUILTINS)
+  add_definitions(-DHAVE_DEPRECATED_BUILTINS)
+endif()
 
 IF(MYSQL8)
   CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/config8.h.cmake ${CMAKE_SOURCE_DIR}/include/mysql-8.0/my_config.h)
