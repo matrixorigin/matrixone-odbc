@@ -167,7 +167,10 @@ SRC=`pwd`
 cd ..
 mkdir -p release
 
-export CFLAGS="%{optflags}"
+# Note: The format string warnings are not yet fixed in our unit tests which are built under `-Wno-format`. This collides with `-Werror=format-security` option (if present) leading to failed build. For now we remove the option from %{optflags}
+
+export CFLAGS="$(echo %{optflags} | sed -e 's/-Werror=format-security//g')"
+export CXXFLAGS="$CFLAGS"
 
 %{cmake_config} -DCMAKE_BUILD_TYPE=RelWithDebInfo -S ${SRC} -B release
 %{cmake_cmd} --build release --verbose

@@ -210,7 +210,11 @@ void print_installer_error()
   {
     if (SQLInstallerError(msgno, &errcode, errmsg, 256, NULL) != SQL_SUCCESS)
       return;
-    fprintf(stderr, "[ERROR] SQLInstaller error %d: %s\n", errcode, errmsg);
+
+    fprintf(
+      stderr, "[ERROR] SQLInstaller error %lu: %s\n",
+      (long unsigned)errcode, errmsg
+    );
   }
 }
 
@@ -228,7 +232,7 @@ void print_odbc_error(SQLHANDLE hnd, SQLSMALLINT type)
 
   if(SQL_SUCCEEDED(SQLGetDiagRec(type, hnd, 1, sqlstate, &nativeerr,
                                  errmsg, 1000, NULL)))
-    printf(": [%s] %d -> %s\n", sqlstate, nativeerr, errmsg);
+    printf(": [%s] %ld -> %s\n", sqlstate, (long)nativeerr, errmsg);
   printf("\n");
 }
 
@@ -392,7 +396,7 @@ int add_driver(Driver *driver, const SQLWCHAR *attrs)
     return 1;
   }
 
-  printf("Success: Usage count is %d\n", usage_count);
+  printf("Success: Usage count is %lu\n", (long unsigned)usage_count);
 
   return 0;
 }
@@ -411,7 +415,7 @@ int remove_driver(Driver *driver)
     return 1;
   }
 
-  printf("Success: Usage count is %d\n", usage_count);
+  printf("Success: Usage count is %lu\n", (long unsigned)usage_count);
 
   return 0;
 }

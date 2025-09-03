@@ -1,4 +1,4 @@
-# Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+# Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License, version 2.0,
@@ -392,7 +392,7 @@ if(MSVC AND NOT CLANG)
 
   else()
 
-    add_compile_options(/W1 /wd4133 /wd4047 /wd4313 /wd4197)
+    add_compile_options(/W1)
 
   endif()
 
@@ -442,10 +442,20 @@ else()
     # remove this option in MAINTAINER_MODE so that we see when new
     # warnings appear. Then proceed to `-w extra`.
 
+    # NOTE: Configuration: cmake & gcc
+    #       invalid-offsetof warning happens because of use of
+    #       offsetof() on non-standard class layout (DESC).
+    #       Fixing it will require major refactoring of DESC.
+
+    add_compile_options(
+      $<$<COMPILE_LANGUAGE:CXX>:-Wno-invalid-offsetof>
+      -Wformat  # Enable warnings about printf() format strings
+      -Werror=deprecated-declarations
+    )
+
   else()
 
     add_compile_options(
-      -w
       -Wno-error=implicit-function-declaration #(1)
     )
 

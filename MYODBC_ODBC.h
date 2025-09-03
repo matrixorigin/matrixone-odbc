@@ -40,6 +40,18 @@
 # endif
 # include <sql.h>
 # include <sqlext.h>
+
+// Remove some UnixODBC package defs to avoid conflicts with MySQL defs
+
+#undef HAVE_LIBCRYPT
+#undef PACKAGE
+#undef PACKAGE_BUGREPORT
+#undef PACKAGE_NAME
+#undef PACKAGE_STRING
+#undef PACKAGE_TARNAME
+#undef PACKAGE_VERSION
+#undef VERSION
+
 # ifdef USE_IODBC
 #  include <iodbcinst.h>
 # else
@@ -59,12 +71,18 @@
 #else
 # include <windows.h>
 # ifndef RC_INVOKED
-#  pragma pack(1)
+#  pragma pack(push, 1)
 # endif
 
 # include <sql.h>
 # include <sqlext.h>
 # include <odbcinst.h>
+#endif
+
+#ifdef _WIN32
+# ifndef RC_INVOKED
+#  pragma pack(pop)
+# endif
 #endif
 
 #endif /* !MYODBC_ODBC_H */

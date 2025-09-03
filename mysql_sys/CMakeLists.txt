@@ -46,6 +46,24 @@ ENDIF()
 
 SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if(GCC OR CLANG)
+
+  # my_thread.cc:170:1: error: function declared 'noreturn' should not return [-Werror,-Winvalid-noreturn]
+  # my_access.cc(72,61): error : '&&' within '||' [-Werror,-Wlogical-op-parentheses]
+  # my_lib.cc(214,7): error : variable 'handle' is used uninitialized whenever 'if' condition is true [-Werror,-Wsometimes-uninitialized]
+  # my_winfile.cc(212,62): error : suggest braces around initialization of subobject [-Werror,-Wmissing-braces]
+  # my_winfile.cc(156,6): error : unused function 'IsValidDescr' [-Werror,-Wunused-function]
+  # my_time.cc:1431:13: warning: 'sprintf' is deprecated: This function is provided for compatibility reasons only.  Due to security concerns inherent in the design of sprintf(3), it is highly recommended that you use snprintf(3) instead. [-Wdeprecated-declarations]
+
+  add_compile_options(
+    -Wno-invalid-noreturn -Wno-logical-op-parentheses
+    -Wno-sometimes-uninitialized -Wno-missing-braces -Wno-unused-function
+    -Wno-deprecated-declarations
+  )
+
+endif()
+
+
 ADD_LIBRARY(mysql_sys ${SYS_SOURCES})
 set_target_properties(mysql_sys PROPERTIES FOLDER "Misc")
 

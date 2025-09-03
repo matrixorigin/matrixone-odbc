@@ -71,6 +71,11 @@ IF(WIN32)
   ADD_DEFINITIONS(-DNOMINMAX)
 ENDIF()
 
+if(GCC OR CLANG)
+  # Note: Strings library uses `sprintf()` which is being deprecated
+  add_compile_options(-Wno-deprecated-declarations)
+endif()
+
 IF(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND
     CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "4.0")
   ADD_COMPILE_FLAGS(dtoa.cc COMPILE_FLAGS "-fno-strict-aliasing")

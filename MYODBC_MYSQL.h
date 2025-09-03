@@ -32,8 +32,14 @@
 #define DONT_DEFINE_VOID
 
 #define my_bool bool
+
+#ifndef TRUE
 #define TRUE 1
+#endif
+
+#ifndef FALSE
 #define FALSE 0
+#endif
 
 #define WIN32_LEAN_AND_MEAN
 

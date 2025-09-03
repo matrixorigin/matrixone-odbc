@@ -33,12 +33,18 @@ SET(myodbc-util_SRCS stringutil.cc
                   stringutil.h
                   unicode_transcode.cc
                   installer.cc
-                  installer.h)
+                  installer.h
+                  compiler.h)
 
 IF(NOT WIN32)
   SET(myodbc-util_SRCS ${myodbc-util_SRCS}
                       odbcinstw.cc)
 ENDIF(NOT WIN32)
+
+if(GCC OR CLANG)
+  # installer.cc defines few "constants" that might not be used currently
+  # add_compile_options(-Wno-unused-variable)
+endif()
 
 ADD_LIBRARY(myodbc-util STATIC ${myodbc-util_SRCS})
 

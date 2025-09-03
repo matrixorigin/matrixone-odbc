@@ -402,7 +402,7 @@ int Win64CompareLibs(const SQLWCHAR *lib1, const SQLWCHAR *lib2)
   SQLWCHAR *llib1, *llib2;
 
   /* perform necessary transformations */
-  if (llib1= (SQLWCHAR*)wcsstr(lib1, L"Program Files (x86)"))
+  if ((llib1= (SQLWCHAR*)wcsstr(lib1, L"Program Files (x86)")))
   {
     llib1= remove_x86(lib1, llib1);
     free1= 1;
@@ -410,7 +410,7 @@ int Win64CompareLibs(const SQLWCHAR *lib1, const SQLWCHAR *lib2)
   else
     llib1 = (SQLWCHAR*)lib1;
 
-  if (llib2 = (SQLWCHAR*)wcsstr(lib2, L"Program Files (x86)"))
+  if ((llib2 = (SQLWCHAR*)wcsstr(lib2, L"Program Files (x86)")))
   {
     llib2= remove_x86(lib2, llib2);
     free2= 1;
@@ -994,7 +994,10 @@ int DataSource::add() {
         if (SQLInstallerError(msgno, &errcode, errmsg, 256, NULL) !=
             SQL_SUCCESS)
           return rc;
-        fprintf(stderr, "[ERROR] SQLInstaller error %d: %s\n", errcode, errmsg);
+        fprintf(stderr,
+          "[ERROR] SQLInstaller error %lu: %s\n",
+          (unsigned long)errcode, errmsg
+        );
       }
       return rc;
   }
