@@ -117,7 +117,9 @@ endif()
 
 include(CheckCXXCompilerFlag)
 
-if(NOT MSVC)
+if(MSVC)
+  check_cxx_compiler_flag("/Zc:preprocessor" COMPILER_SUPPORTS_ZC_PREPROCESSOR)
+else()
   check_cxx_compiler_flag("-Wdeprecated-builtins" HAVE_DEPRECATED_BUILTINS)
 endif()
 

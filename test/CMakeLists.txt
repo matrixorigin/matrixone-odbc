@@ -45,6 +45,11 @@ if(GCC OR CLANG)
   # Note: Warnings could be fixed but that has low priority at the moment
   # (in tests)
   add_compile_options(-Wno-format)
+
+  if(CLANG)
+    # Note: We need {x} scalar initializers for my_meta_data test
+    add_compile_options(-Wno-braced-scalar-init)
+  endif()
 endif()
 
 
@@ -76,16 +81,29 @@ endif()
 ENABLE_TESTING()
 
 IF(NOT WIN32)
+
   SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${ODBC_LINK_FLAGS}")
+
+ELSE()
+
+  if(COMPILER_SUPPORTS_ZC_PREPROCESSOR)
+    # Note: This is required by my_meta_data and might be used by other tests
+    add_compile_options(/Zc:preprocessor /bigobj)
+  endif()
+
 ENDIF(NOT WIN32)
 
-FOREACH(FN my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
-    my_crash.c my_curext.c my_cursor.c my_datetime.c my_desc.c
-    my_dyn_cursor.c my_error.c my_info.c my_keys.c my_param.c
-    my_prepare.c my_relative.c my_result1.c my_result2.c my_scroll.c
-    my_setup.c my_tran.c my_types.c my_unicode.c my_unixodbc.c
-    my_use_result.c my_bug13766.c my_pooling.c my_auth.cc my_data.cc
-    my_catalog3.cc my_options.cc my_param2.cc my_result3.cc)
+
+FOREACH(FN
+  my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
+  my_crash.c my_curext.c my_cursor.c my_datetime.c my_desc.c
+  my_dyn_cursor.c my_error.c my_info.c my_keys.c my_param.c
+  my_prepare.c my_relative.c my_result1.c my_result2.c my_scroll.c
+  my_setup.c my_tran.c my_types.c my_unicode.c my_unixodbc.c
+  my_use_result.c my_bug13766.c my_pooling.c my_auth.cc my_data.cc
+  my_catalog3.cc my_options.cc my_param2.cc my_result3.cc
+  my_meta_data.cc
+)
 
   GET_FILENAME_COMPONENT(T ${FN} NAME_WE)
 
