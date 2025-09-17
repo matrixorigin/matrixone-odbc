@@ -33,7 +33,7 @@
   The main module of Power BI Data extension for MySQL with
   DirectQuery support.
 
-  This Data Dxtension allows Power BI Desktop users to process data
+  This Data Extension allows Power BI Desktop users to process data
   using DirectQuery technology with MySQL Server. The Data Extension
   utilizes MySQL Connector/ODBC for connecting to MySQL Server.
 */
@@ -44,12 +44,19 @@ section MySQLDQ;
 /*
   When set to true, additional trace information will be written out
   to the User log. This should be set to false before release.
-  Tracing is done through a call to Diagnostics.LogValue().
-  When EnableTraceOutput is set to false, the call becomes a
-  no-op and simply returns the original value.
+  When EnableTraceOutput is set to false, the `LogMsg` function used
+  for tracing becomes a no-op.
 */
 
-EnableTraceOutput = true;
+EnableTraceOutput = false;
+
+/*
+  Additional switch for enabling/disabling verbose traces from
+  the SQLGetTypeInfo() hook. Has effect only when `EnableTraceOutput`
+  is true.
+*/
+
+TraceTypeInfo = true;
 
 /*
   When false enables the 'View Native Query' context menu item on a query
@@ -65,9 +72,17 @@ Config_HideNativeQuery = not EnableTraceOutput;
 
 Config_UseParameterBindings = true;
 
+
+// Note: The .version.pqm file is generated during cmake configuration step.
+
 MySQLDQInfo = Extension.LoadFunction("MySQLDQ.version.pqm");
 
-ODBCDriver = "MySQL ODBC " & MySQLDQInfo[Version] & " Unicode Driver";  // FIXME: Hardcoded driver name?
+/*
+  We use the default name of the MySQL ODBC driver under which it is registered
+  by our installer.
+*/
+
+ODBCDriver = "MySQL ODBC " & MySQLDQInfo[Version] & " Unicode Driver";
 DefaultMySQLPort = 3306;
 DefaultMySQLHost = "localhost";
 
@@ -124,9 +139,9 @@ Database_FieldCaption = Extension.LoadString("Database_FieldCaption");
   to to the server and return data source catalog (see `Catalog_description`
   below).
 
-  Also normalizes type and column information for compatibility with Power BI.
-  Optionally filters results to a specified database and handles error
-  reporting and diagnostics.
+  Also normalizes type and column information for compatibility with Power BI
+  using hooks defined below. Optionally filters results to a specified database
+  and handles error reporting and diagnostics.
 */
 
 Usage1 =
@@ -215,7 +230,7 @@ let
   ]
   else [],
 
-  SqlCapabilities = Diagnostics.LogValue("SqlCapabilities_Options",
+  SqlCapabilities = LogMsg("SqlCapabilities_Options: #{0}",
   [
     LimitClauseKind = LimitClauseKind.LimitOffset,
     SupportsTop = false,
@@ -224,7 +239,7 @@ let
   ]
   & ParamBindings),
 
-  SQLGetInfo = Diagnostics.LogValue("SQLGetInfo_Options",
+  SQLGetInfo = LogMsg("SQLGetInfo_Options: #{0}",
   [
     SQL_SQL_CONFORMANCE = ODBC[SQL_SC][SQL_SC_SQL92_FULL],
     SQL_CONVERT_FUNCTIONS = ODBC[SQL_FN_CVT][SQL_FN_CVT_CAST]
@@ -249,13 +264,12 @@ let
 
       CredentialConnectionString = ConnectionOpts[Credentials],
 
-      OnError = OnError,
-
       SqlCapabilities = SqlCapabilities,
       SQLGetInfo = SQLGetInfo,
 
-      // Note: These are used for type mangling -- see below
+      // Hooks
 
+      OnError = OnError,
       SQLColumns = MySQLColumns,
       SQLGetTypeInfo = MySQLGetTypeInfo
   ])
@@ -274,8 +288,19 @@ in
     OdbcDataSource;
 
 
+/*
+  Parse connection string and return record with fields:
+
+  Credentials  -- user credentials extracted from the connection string
+    (`UID`, `PWD`)
+
+  Options -- record with extracted connection options including target
+    `Server`, `Port` and `Driver` (ODBC driver name).
+*/
+
 ParseConnectionString = (connstr as text, db) =>
 let
+
   tokens = Text.Split(connstr, ";"),
   server = tokens{0},
 
@@ -283,7 +308,7 @@ let
 
   /*
     To process the connection string properly we use a trick to convert
-    it to URI and then use the standard parts for validation.
+    it to URI and then use the standard URI parts for validation.
   */
 
   parts = Uri.Parts("http://" & server),
@@ -301,29 +326,31 @@ let
     If port is not specified the default value is 80, this needs to be replaced by MySQL default port.
   */
 
-  Port =
+  port =
     if parts[Port] = 80 and not Text.EndsWith(server, ":80")
     then
       DefaultMySQLPort
     else
       parts[Port],
 
-  Host = parts[Host],
+  host = parts[Host],
 
-  Database = if db <> null and db <> "" then db else server_db,
+  db_name = if db <> null and db <> "" then db else server_db,
+  db_record =
+    if null = db_name then [] else [ Database = db_name],
 
-  Credential = Extension.CurrentCredential(),
+  cred = Extension.CurrentCredential(),
 
-  CredentialRecord =
-    if (Credential[AuthenticationKind]?) = "UsernamePassword"
+  cred_record =
+    if (cred[AuthenticationKind]?) = "UsernamePassword"
     then
-      [ UID = Credential[Username], PWD = Credential[Password] ]
+      [ UID = cred[Username], PWD = cred[Password] ]
     else
       // Currently only UsernamePassword authentication is supported
       error Extension.LoadString("Error_UidPwdRequired"),
 
-  SSLRecord =
-    if (Credential[EncryptConnection]? = true)
+  ssl_opts =
+    if (cred[EncryptConnection]? = true)
     then
       [SSLMODE = "REQUIRED"]
     else
@@ -333,127 +360,166 @@ in
   [
     Options = [
       Driver = ODBCDriver,
-      Server = Host,
-      Port = Port,
+      Server = host,
+      Port = port,
       ApplicationIntent = "readonly"
     ]
-    & SSLRecord
-    & (if Database <> null then [Database = Database] else []),
+    & ssl_opts & db_record,
 
-    Credentials = CredentialRecord
+    Credentials = cred_record
   ]
- ;
+;
 
 
 /*
-  MapMySQLType() does mapping of MySQL types.
-  Fixing of the type names is required because they will be used in
-  CAST(... AS TYPENAME) expressions inside SQL queries to the server.
-  MySQL Server does not support TYPENAME being 'integer', 'int', 'varchar',
-  'enum' and 'set'. Therefore, such types have to be replaced by nearest
-  matching type supported for CAST().
+  Given a meta-data record, such as from MySQLColumns(), return updates that
+  should be applied to the meta-data or null if no updates are needed.
+
+  We update reported type names because PBI mashup engine often constructs
+  SQL queries with CAST() clauses using reported type names. This could lead
+  to incorrect queries because MySQL has limited set of types that can be used
+  with CAST(). For that reason we change reported names of types such CHAR
+  instead of VARCHAR, for example.
 */
 
-MapMySQLType = (MySQLType) =>
-if
-  List.Contains({"integer", "int"}, MySQLType)
-then
-  [ TYPE_NAME = "signed" ]
-else if
-  List.Contains({"varchar", "enum", "set"}, MySQLType)
-then
-  [ TYPE_NAME = "char", DATA_TYPE = ODBC[SQL_TYPE][WVARCHAR] ]
-else if
-  "float" = MySQLType
-then
-  [ TYPE_NAME = "double", DATA_TYPE = ODBC[SQL_TYPE][DOUBLE] ]
-else
-  null;
-
-
-/*
-  Power BI Desktop will attempt to get type information using SQLGetTypeInfo(),
-  which returns MySQL types not supported by Power BI Desktop.
-  The function MySQLGetTypeInfo() should act as an intermediate
-  layer mapping unsupported MySQL types to closest supported types.
-*/
-
-MySQLGetTypeInfo = (types) =>
+md_fixes = (md as record) as nullable record =>
 let
 
-  FixTypeNames = (row) as record =>
-  let
-    ty = MapMySQLType(row[TYPE_NAME])
-  in
-    if null <> ty
-    then
-      row & [ TYPE_NAME = ty[TYPE_NAME], LOCAL_TYPE_NAME = ty[TYPE_NAME] ]
-    else
-      row
-  ,
-  FixedRows = Table.TransformRows(types, each FixTypeNames(_)),
-  TypeInfo = Table.FromRecords(FixedRows)
+  ty_id = md[DATA_TYPE],
+  ty_name = md[TYPE_NAME],
 
-  // Note: Printing diagnostics using side effects
-  ,
-  _ignore = if true <> EnableTraceOutput then null
+  fixes0 =
+  if
+    Text.Contains(ty_name, "int")
+  then
+    /*
+      Note: The only integer types allowed in a CAST() expression
+      are SIGNED INTEGER and UNSIGNED INTEGER where INTEGER part is optional.
+    */
+    [
+      TYPE_NAME =
+      if Text.Contains(ty_name, "unsigned") then "unsigned" else "signed"
+    ]
+
+  else if
+    /*
+      Note: Doing similar renaming for TEXT type and similar seems to
+      not be needed and also leads to other issues.
+    */
+    List.Contains({"long varchar", "varchar", "enum", "set"}, ty_name)
+  then
+    /*
+      Note: The only string type allowed in a CAST() expression is CHAR.
+    */
+    [ TYPE_NAME = "char", DATA_TYPE = ODBC[SQL_TYPE][WVARCHAR] ]
+
+  else if
+    "float" = ty_name
+  then
+    [ TYPE_NAME = "double", DATA_TYPE = ODBC[SQL_TYPE][DOUBLE] ]
+
   else
-    Table.TransformRows(TypeInfo,
-      each Diagnostics.LogValue("SQLGetTypeInfo " & _[TYPE_NAME], _)
-    )
-
-in
-  TypeInfo;
-
-/*
-  Power BI Desktop will attempt to get column information using SQLColumns(),
-  which returns MySQL types not supported by Power BI Desktop.
-  The function MySQLColumns() should act as an intermediate
-  layer mapping unsupported MySQL types to closest supported types.
-*/
-
-MySQLColumns = (catalogName, schemaName, tableName, columnName, source) =>
-let
+    null
+  ,
 
   /*
-    Power BI will match the results from the call to MySQLGetTypeInfo() against
-    the column type names returned by SQLColumns().
-    For this reason the types must be fixed in a similar fashion.
+    Note: Do not apply the changes if the changed name is identical
+    to the original one.
   */
 
-  FixColumns = (row) as record =>
-  let
-    ty = MapMySQLType(row[TYPE_NAME])
-  in
-    if ty <> null
-    then
-      row
-      & [TYPE_NAME = ty[TYPE_NAME]]
-      & ( if null <> ty[DATA_TYPE]?  then [DATA_TYPE = ty[DATA_TYPE]]  else [] )
-    else
-      row
-  ,
-  TransformedRows = Table.TransformRows(source, each FixColumns(_)),
-
-  // get an empty table with the original column data types
-  EmptyTableWithColumnTypes = Table.FirstN(source, 0),
-
-  Columns = Table.InsertRows(EmptyTableWithColumnTypes, 0, TransformedRows),
-
-  // Note: Printing diagnostics using side effects
-
-  _ignore = if true <> EnableTraceOutput then null
+  fixes =
+  if null = fixes0 or md[TYPE_NAME] = fixes0[TYPE_NAME]?
+  then null
   else
-    let
-      _i1 = Diagnostics.LogValue("SQLColumns.TableName", tableName),
-      _i2 = Diagnostics.LogValue("SQLColumns.ColumnName", columnName)
-    in
-      Table.TransformRows(Columns,
-        each Diagnostics.LogValue("SQLColumns", _)
-      )
+    /*
+      Note: Ensure that LOCAL_TYPE_NAME is the same as TYPE_NAME after
+      the changes. This assumes that fixes always contain TYPE_NAME field.
+    */
+    fixes0 & [ LOCAL_TYPE_NAME = fixes0[TYPE_NAME] ]
 
 in
-  Columns;
+  fixes
+;
+
+
+/*
+  The SQLGetTypeInfo() hook. It mangles reported type names as implemented
+  by `md_fixes` function.
+*/
+
+MySQLGetTypeInfo = (type_info) =>
+let
+
+  fix_names = (ti as record) as record =>
+  let
+
+    fixes0 = md_fixes(ti),
+
+    fixes =
+      if null = fixes0 then null
+      else
+        // Note: For GetTypeInfo do not change the reported type id
+        if Record.HasFields(fixes0, "DATA_TYPE")
+        then Record.RemoveFields(fixes0, "DATA_TYPE")
+        else fixes0
+    ,
+
+    fixed = ti & (fixes ?? []),
+
+    traced = if not TraceTypeInfo then fixed
+      else
+        LogMsg(
+          "SQLGetTypeInfo for [ NAME = #{1}, TYPE = #{2}, ID = #{3}] -> #{4}",
+          fixed,
+          {
+            ti[TYPE_NAME], ti[DATA_TYPE], sql_type_name(ti[DATA_TYPE]),
+            fixes
+          }
+        )
+
+  in
+    traced
+  ,
+
+  fixed_rows = Table.TransformRows(type_info, fix_names),
+  fixed = Table.FromRecords(fixed_rows)
+
+in
+  if not TraceTypeInfo then fixed
+  else
+    // Note: Add header to distinguish different invocations in the trace.
+    LogMsg("SQLGetTypeInfo()", () => fixed, {}, true)
+;
+
+
+/*
+  The SQLColumns() hook. Applies changes implemented by `md_fixes` to the
+  original column meta-data before returning it to PBI.
+*/
+
+MySQLColumns = (catalogName, schemaName, tableName, columnName, md) =>
+let
+
+  fix_md = (md) as record =>
+  let
+    fixes = md_fixes(md),
+    fixed = md & (fixes ?? [])
+  in
+    LogMsg(
+      "SQLColumns for #{1}.#{2} (#{3}):#(lf)#{0}",
+      fixed, {md[TABLE_NAME], md[COLUMN_NAME], md[TYPE_NAME]}
+    )
+  ,
+
+  fixed_rows = Table.TransformRows(md, fix_md),
+
+  // get an empty table with the original column data types
+  empty = Table.FirstN(md, 0),
+  fixed = Table.InsertRows(empty, 0, fixed_rows)
+
+in
+  fixed
+;
 
 
 // ----------------------------------------------------------------------------
@@ -538,18 +604,55 @@ OnError = (errorRecord as record) =>
 // helper function to create bitfield values.
 
 ODBC = Extension.LoadFunction("OdbcConstants.pqm");
+ODBCTypes = Record.ToTable(ODBC[SQL_TYPE]);
 
 /*
-  Note: Use the `LogValue` function from Diagnostics module if logging is enabled.
+  Return name of SQL_TYPE constant corresponding to the given numeric
+  type id value. This is used for diagnostic messages.
 */
 
-Diagnostics = Extension.LoadFunction("Diagnostics.pqm");
+sql_type_name = (type_id) as text =>
+let
+  names =  Table.SelectRows(ODBCTypes, each [Value] = type_id),
+  name = names{0}[Name]
+in
+  name
+;
 
-Diagnostics.LogValue = if (EnableTraceOutput)
-  then
-    Diagnostics[LogValue]
+/*
+  Usage:
+
+    LogMsg(fmt, val, args)              // <1>
+    LogMsg(fmt, () => val, args, true)  // <2>
+    LogMsg(fmt, val)                    // <3>
+
+  This evaluates to `val` but also puts a message in the trace log formatted
+  using format string `fmt` with the value passed as the first format argument
+  (accessed as `#{0}` in the format string) and `args` as additional format
+  arguments if any (accessed as `#{1}`, #{2}` etc. in the format string).
+  Invocation <3> is without any additional format arguments.
+
+  Note: The value is evaluated before constructing the trace message
+  -- if value evaluation produces other trace messages they will appear
+  in the log before the main one. To change that use invocation <2> which
+  first outputs the main message and then evaluates the value.
+*/
+
+LogMsg = (fmt, val, optional extra, optional wait) =>
+  if not EnableTraceOutput then val
   else
-    (prefix, value) => value;
+    let
+      to_txt = (v) as text => try Diagnostics[ValueToText](v) otherwise "<!?>",
+      args0 = (if wait ?? false then {} else {val}) & (extra ?? {}),
+      args = List.Transform(args0, to_txt),
+      msg = Text.Format(
+        fmt, (if wait ?? false then {"<delayed>"} else {}) & args
+      )
+    in
+      Diagnostics.Trace(TraceLevel.Information, msg, val, wait)
+;
+
+Diagnostics = Extension.LoadFunction("Diagnostics.pqm");
 
 
 /*
