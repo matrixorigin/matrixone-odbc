@@ -87,25 +87,43 @@ IF(NOT WIN32)
 ELSE()
 
   if(COMPILER_SUPPORTS_ZC_PREPROCESSOR)
-    # Note: This is required by my_meta_data and might be used by other tests
+    # Note: This is required only by my_meta_data test but with time might
+    # be used by other tests
     add_compile_options(/Zc:preprocessor /bigobj)
   endif()
 
 ENDIF(NOT WIN32)
 
 
-FOREACH(FN
-  my_basics.c my_blob.c my_bulk.c my_catalog1.c my_catalog2.c
-  my_crash.c my_curext.c my_cursor.c my_datetime.c my_desc.c
-  my_dyn_cursor.c my_error.c my_info.c my_keys.c my_param.c
-  my_prepare.c my_relative.c my_result1.c my_result2.c my_scroll.c
-  my_setup.c my_tran.c my_types.c my_unicode.c my_unixodbc.c
-  my_use_result.c my_bug13766.c my_pooling.c my_auth.cc my_data.cc
-  my_catalog3.cc my_options.cc my_param2.cc my_result3.cc
-  my_meta_data.cc
+set(TESTS
+  my_auth my_data my_catalog3 my_options my_param2 my_result3
 )
 
-  GET_FILENAME_COMPONENT(T ${FN} NAME_WE)
+if(COMPILER_SUPPORTS_ZC_PREPROCESSOR)
+  list(APPEND TESTS my_meta_data)
+endif()
+
+set(TESTS_C
+  my_basics my_blob my_bulk my_catalog1 my_catalog2
+  my_crash my_curext my_cursor my_datetime my_desc
+  my_dyn_cursor my_error my_info my_keys my_param
+  my_prepare my_relative my_result1 my_result2 my_scroll
+  my_setup my_tran my_types my_unicode my_unixodbc
+  my_use_result my_bug13766 my_pooling
+)
+
+
+FOREACH(T IN LISTS TESTS TESTS_C)
+
+  set(FN "${T}.cc")
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${FN}")
+    set(FN "${T}.c")
+  endif()
+
+  if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${FN}")
+    message(SEND_ERROR "Could not find sources for test: ${T}")
+    continue()
+  endif()
 
   IF(WIN32)
     ADD_EXECUTABLE(${T} ${FN} odbctap.h)
@@ -165,7 +183,7 @@ FOREACH(FN
     set_property(TARGET ${T} APPEND PROPERTY INSTALL_RPATH "$ORIGIN")
   endif()
 
-ENDFOREACH(FN)
+ENDFOREACH()
 
 # Adding testsuites for testing driver without DM. May be useful to test behaviors that normally are initiated by DM only
 # Separate testsuites for ansi and unicode driver are created - we can't use same test for both since there is no DM to convert

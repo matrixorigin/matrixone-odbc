@@ -116,9 +116,24 @@ endif()
 #
 
 include(CheckCXXCompilerFlag)
+include(CheckCXXSourceCompiles)
 
 if(MSVC)
-  check_cxx_compiler_flag("/Zc:preprocessor" COMPILER_SUPPORTS_ZC_PREPROCESSOR)
+
+  #
+  # Note: We don't test for /Zc:preprocessor using check_cxx_compiler_flag()
+  # because even if compiler does support the flag the standard library headers
+  # might break on older Windows SDK versions. By compiling sample code we make
+  # sure that all works well together.
+  #
+
+  set(CMAKE_REQUIRED_FLAGS "/Zc:preprocessor")
+  check_cxx_source_compiles(
+    "#include <windows.h> int main() { return 0; }"
+    COMPILER_SUPPORTS_ZC_PREPROCESSOR
+  )
+  set(CMAKE_REQUIRED_FLAGS)
+
 else()
   check_cxx_compiler_flag("-Wdeprecated-builtins" HAVE_DEPRECATED_BUILTINS)
 endif()
