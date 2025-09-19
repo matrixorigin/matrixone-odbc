@@ -1,0 +1,3 @@
+[
+  Version = "@CONNECTOR_MAJOR@.@CONNECTOR_MINOR@"
+]

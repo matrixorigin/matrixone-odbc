@@ -1,5 +1,5 @@
 ﻿<!-- *****************************************************************************************
- Copyright (c) 2007, 2024, Oracle and/or its affiliates.
+ Copyright (c) 2007, 2025, Oracle and/or its affiliates.
 
  This program is free software; you can redistribute it and/or modify
  it under the terms of the GNU General Public License, version 2.0, as
@@ -78,7 +78,7 @@
     -->
 
     <CustomAction Id="NewerVersionInstalled" Error="A newer version of this product is already installed." />
-
+    <CustomAction Id="FolderExists" Script="vbscript" Execute="immediate" ScriptSourceFile="FolderExists.vbs" />
     <!-- *****************************************************************************************
       Upgrade Information
     -->
@@ -132,6 +132,20 @@
       <CustomAction Id="DwordToNumber" Script="vbscript" ScriptSourceFile="DwordToNumber.vbs" />
       <Launch Condition="Installed OR (VS14REDISTX86_64_MAJOR = $(var.min_vs14_major) AND VS14REDISTX86_64_MINOR &gt;= $(var.min_vs14_minor)) OR (VS14REDISTX86_32_MAJOR = $(var.min_vs14_major) AND VS14REDISTX86_32_MINOR &gt;= $(var.min_vs14_minor))" Message="This application requires Visual Studio $(var.redist_ver_required) x86 Redistributable version $(var.min_vs14_major).$(var.min_vs14_minor). Please install the Redistributable then run this installer again." />
     <?endif?>
+
+    <!--
+      The property ID is the same as the directory ID for installing PBI.
+      If the registry value exists the PBI install dir will be set to
+      the contents of the registry value allowing to do a seamless upgrade.
+      In this case "Typical" install will include PBI extension as well as
+      "Complete".
+      If the registry value is not found the PBI install directory is set
+      to default and "Typical" install won't include PBI extension.
+    -->
+    <Property Id="PBIEXINSTALLDIR">
+      <RegistrySearch Id="FIND_PBI_REGISTRY2" Root="HKLM" Key="SOFTWARE\MySQL AB\Connector ODBC" Name="PBI_path" Type="raw" Bitness="always64" />
+    </Property>
+
     <InstallExecuteSequence>
       <Custom Action="DwordToNumber" Before="LaunchConditions" />
     </InstallExecuteSequence>
@@ -176,9 +190,9 @@
     -->
 
     <?if $(var.odbc_64bit) = 1 ?>
-    <Feature Id="ODBC" Title="MySQL Connector/ODBC $(var.odbc_ver_long) 64-bit drivers" Level="1" Description="Installs the MySQL ODBC $(var.odbc_ver_long) 64-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
+    <Feature Id="ODBC" Title="MySQL Connector/ODBC $(var.odbc_ver_long) 64-bit drivers" Level="1" AllowAbsent="no"  Display="expand" Description="Installs the MySQL ODBC $(var.odbc_ver_long) 64-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
     <?else?>
-    <Feature Id="ODBC" Title="MySQL Connector/ODBC $(var.odbc_ver_long) 32-bit drivers" Level="1" Description="Installs the MySQL ODBC $(var.odbc_ver_long) 32-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
+    <Feature Id="ODBC" Title="MySQL Connector/ODBC $(var.odbc_ver_long) 32-bit drivers" Level="1" AllowAbsent="no" Description="Installs the MySQL ODBC $(var.odbc_ver_long) 32-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
     <?endif?>
       <ComponentRef Id="RegKeys" />
       <ComponentRef Id="driver" />
@@ -187,6 +201,12 @@
       <ComponentRef Id="ssl" />
       <ComponentRef Id="dependencies" />
       <ComponentRef Id="plugins" />
+
+      <Feature Id="PBIExtension" Description="Installs the Power BI data extension with DirectQuery support for MySQL. Requires Power BI Desktop application to be installed." Title="Power BI data extension for MySQL" Level="10" ConfigurableDirectory="PBIEXINSTALLDIR" Display="expand">
+        <Level Value="1" Condition="PBIEXINSTALLDIR"/>
+        <ComponentRef Id="ComponentPBIExtension" />
+      </Feature>
+
     <?if $(var.odbc_64bit) = 1 ?>
     </Feature>
     <?else?>

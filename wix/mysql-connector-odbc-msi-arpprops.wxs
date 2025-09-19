@@ -38,6 +38,11 @@
   <!--Property Id="ARPHELPTELEPHONE" Value="URL where one can find support phone numbers" /-->
   <Property Id="ARPAUTHORIZEDCDFPREFIX" Value="http://dev.mysql.com/doc/refman/en/connector-odbc-info.html" />
   <Property Id="ARPSIZE" Value="3" />
+  <Property Id="INSTALLSUMMARY" Value="Install Summary:"/>
+  <Property Id="SUMMARYDRIVER" Value=" "/>
+  <Property Id="SUMMARYPBI" Value=" "/>
+  <Property Id="NAMEDRIVER" Value="MySQL Connector/ODBC $(var.odbc_ver_short)$(var.odbc_license_suffix) ($(var.odbc_arch))"/>
+  <Property Id="NAMEPBI" Value="Power BI extension for MySQL"/>
 
   <!--
   <Property Id="ARPNOMODIFY" Value="0" />
