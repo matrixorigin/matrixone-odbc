@@ -1,6 +1,6 @@
 Licensing Information User Manual
 
-MySQL Connector/ODBC 9.4.0 Community
+MySQL Connector/ODBC 9.5.0 Community
      __________________________________________________________________
 
 Introduction
@@ -8,18 +8,18 @@ Introduction
    This License Information User Manual contains Oracle's product license
    and other licensing information, including licensing information for
    third-party software which may be included in this distribution of
-   MySQL Connector/ODBC 9.4.0 Community.
+   MySQL Connector/ODBC 9.5.0 Community.
 
-   Last updated: June 2025
+   Last updated: September 2025
 
 Licensing Information
 
-   This release of MySQL Connector/ODBC 9.4.0 Community is brought to you
+   This release of MySQL Connector/ODBC 9.5.0 Community is brought to you
    by the MySQL team at Oracle. This software is released under version 2
    of the GNU General Public License (GPLv2), as set forth below, with the
    following additional permissions:
 
-   This distribution of MySQL Connector/ODBC 9.4.0 Community is designed
+   This distribution of MySQL Connector/ODBC 9.5.0 Community is designed
    to work with certain software (including but not limited to OpenSSL)
    that is licensed under separate terms, as designated in a particular
    file or component or in the license documentation. Without limiting
@@ -564,6 +564,37 @@ without express or implied warranty of any kind.
 These notices must be retained in any copies of any part of this
 documentation and/or software.
 */
+
+   ======================================================================
+   ======================================================================
+
+Data Connectors
+
+MIT License
+
+    Copyright (c) Microsoft Corporation.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to dea
+l
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in a
+ll
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM
+,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN TH
+E
+    SOFTWARE
 
    ======================================================================
    ======================================================================
