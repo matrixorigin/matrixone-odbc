@@ -639,7 +639,8 @@ in
 */
 
 LogMsg = (fmt, val, optional extra, optional wait) =>
-  if not EnableTraceOutput then val
+  if not EnableTraceOutput then
+    if wait ?? false then val() else val
   else
     let
       to_txt = (v) as text => try Diagnostics[ValueToText](v) otherwise "<!?>",
