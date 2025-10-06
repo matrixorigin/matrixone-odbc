@@ -274,7 +274,9 @@ DWORD WINAPI win32_alarm(LPVOID arg)
 
 void mem_debug_init()
 {
-#ifdef _WIN32
+// FIXME: _CrtSetDbgFlag() macro expands to no-op and then we have unused-variable warning
+
+#if 0 //def _WIN32
   int dbg = _CrtSetDbgFlag(_CRTDBG_REPORT_FLAG);
   dbg |= _CRTDBG_ALLOC_MEM_DF;
   dbg |= _CRTDBG_CHECK_ALWAYS_DF;

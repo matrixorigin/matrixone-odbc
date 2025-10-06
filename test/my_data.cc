@@ -1019,7 +1019,6 @@ DECLARE_TEST(t_wl16171_vector)
 
   is_num(16, float_buf_orig.size());
 
-  SQLHSTMT hstmt2 = nullptr;
   char char_buf[64];
 
   try

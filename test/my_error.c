@@ -596,7 +596,6 @@ DECLARE_TEST(t_bug14285620)
   {
     char sqlstate[30], message[255];
     SQLINTEGER native_error= 0;
-    SQLSMALLINT text_len= 0;
     /* try with the NULL pointer for Message */
     expect_stmt(hstmt, SQLGetDiagRec(SQL_HANDLE_STMT, hstmt, 1, SC(sqlstate),
                                     &native_error, NULL, 0, &cblen), SQL_SUCCESS);
@@ -745,7 +744,6 @@ DECLARE_TEST(t_cleartext_password)
   SQLINTEGER  err_code= 0;
   char        err_msg[SQL_MAX_MESSAGE_LENGTH]= {0};
   SQLSMALLINT err_len= 0;
-  unsigned int major1= 0, minor1= 0, build1= 0;
 
   if (!mysql_min_version(hdbc, "5.5.16", 6) )
   {

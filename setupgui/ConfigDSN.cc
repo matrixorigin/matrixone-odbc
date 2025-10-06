@@ -77,11 +77,13 @@ BOOL Driver_Prompt(HWND hWnd, SQLWCHAR *instr, SQLUSMALLINT completion,
     if (outlen)
       *outlen = (SQLSMALLINT)len;
 
+    assert(outmax >= 0);
+
     if (outstr == nullptr || outmax == 0)
     {
       copy_len = 0;
     }
-    else if (len > outmax)
+    else if (len > (size_t)outmax)
     {
       /* truncated, up to caller to see outmax < *outlen */
       copy_len = outmax;

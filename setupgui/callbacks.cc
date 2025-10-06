@@ -51,8 +51,6 @@ SQLWSTRING mytest(HWND hwnd, DataSource *params)
   SQLWSTRING msg;
   SQLWCHAR tmpbuf[1024];
 
-  SQLHENV hEnv = nullptr;
-  SQLHDBC hDbc = nullptr;
   /*
     In case of file data source we do not want it to be created
     when clicking the Test button

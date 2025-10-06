@@ -108,7 +108,6 @@ SQLRETURN Connect(SQLHDBC *hDbc, SQLHENV *hEnv, DataSource *params)
 
 void ShowDiagnostics(SQLRETURN nReturn, SQLSMALLINT nHandleType, SQLHANDLE h)
 {
-  BOOL        bDiagnostics= FALSE;
   SQLSMALLINT nRec= 1;
   SQLWCHAR     szSQLState[6];
   SQLINTEGER  nNative;
@@ -135,7 +134,6 @@ void ShowDiagnostics(SQLRETURN nReturn, SQLSMALLINT nHandleType, SQLHANDLE h)
 
       /*add2list(errorMsgs, szMessage);*/
 
-      bDiagnostics= TRUE;
       nRec++;
 
       *szSQLState= '\0';

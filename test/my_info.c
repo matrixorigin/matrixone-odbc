@@ -205,7 +205,6 @@ DECLARE_TEST(t_get_all_info)
 
     int i= 0;
     char buf[512], conn[4096] = { 0 };
-    SQLUSMALLINT pf_exists = 0;
     SQLHDBC hdbc1;
     SQLHSTMT hstmt1;
 
@@ -240,7 +239,6 @@ DECLARE_TEST(t_get_all_info)
     for (i = 0; i < sizeof(stmt_opt) / sizeof(SQLUSMALLINT); ++i)
     {
       SQLINTEGER str_len_ptr = 0;
-      SQLULEN data1 = 0;
       SQLUINTEGER data2 = 0;
       SQLPOINTER p = 0;
       size_t size = 0;

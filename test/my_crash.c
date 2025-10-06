@@ -127,7 +127,6 @@ DECLARE_TEST(t_bug18805392)
 DECLARE_TEST(t_bug19148246)
 {
   SQLBIGINT val = 0;
-  SQLLEN  StrLen = 0;
 
   ok_stmt(hstmt, SQLPrepare(hstmt, SC_NTS("SELECT ?")));
 
@@ -362,7 +361,6 @@ DECLARE_TEST(t_bug17854697)
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\
                       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  char buf[1024]= {0};
 
   /* lets check all catalog functions */
   expect_stmt(hstmt, SQLColumnPrivileges(hstmt, SC_NTS(any_name), NULL, 0,
@@ -457,7 +455,7 @@ DECLARE_TEST(t_bug17841121)
 {
   SQLHSTMT hstmt1;
   SQLHANDLE expard;
-  SQLINTEGER imp_result= 0, exp_result= 0;
+  SQLINTEGER exp_result= 0;
   int i= 0, *num, attempts_left= 20;
 
   do
@@ -511,7 +509,6 @@ DECLARE_TEST(t_bug17841121)
 */
 DECLARE_TEST(t_bookmark_update_zero_rec)
 {
-  SQLLEN len= 0;
   SQLUSMALLINT rowStatus[4];
   SQLULEN numRowsFetched;
   SQLINTEGER nData[4];
@@ -596,17 +593,9 @@ DECLARE_TEST(t_bug18325878)
 #undef RCNT
 #endif
 #define RCNT 8
-  char TmpBuff[1024] = {0};
   SQLUINTEGER j = 0;
   SQLUINTEGER k = 0;
   SQLUINTEGER uintval[RCNT] = {0};
-#ifdef USE_SQLPARAMOPTIONS_SQLULEN_PTR
-  SQLULEN lval[RCNT] = {0};
-# define PARAMTYPE SQLULEN
-#else
-  SQLUINTEGER lval[RCNT] = {0};
-# define PARAMTYPE SQLUINTEGER
-#endif
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug18325878");
   ok_sql(hstmt, "CREATE TABLE t_bug18325878 (id int)");
@@ -863,9 +852,7 @@ DECLARE_TEST(t_bug18286118)
   const char* colname2 = ") Specialname (";
   char tmpBuff[2048] = {0};
   SQLSMALLINT col_count= 0;
-  SQLLEN nLen= 0;
   SQLRETURN sqlrc= SQL_SUCCESS;
-  int i= 0;
   is_num(OK, alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1, NULL,
                                       NULL, NULL, NULL,
                                       ""));
@@ -1030,15 +1017,8 @@ DECLARE_TEST(t_bug18796005)
  */
 DECLARE_TEST(t_bug32813838)
 {
-  struct {
-    SQLINTEGER id;
-    char name[16];
-  } rows[25];
-  size_t row_size= (sizeof(rows) / 25);
-  SQLULEN bind_offset= 20 * row_size;
-  SQLHANDLE ipd = NULL;
   SQLHANDLE apd = NULL;
-  SQLLEN ipd_oct_len = 0, apd_oct_len = 0;
+  SQLLEN apd_oct_len = 0;
 
   SQLExecDirect(hstmt, SC_NTS("DROP TABLE t_bug32813838"));
   ok_sql(hstmt, "CREATE TABLE IF NOT EXISTS t_bug32813838 (id int,"

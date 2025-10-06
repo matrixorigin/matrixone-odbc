@@ -82,7 +82,6 @@ DECLARE_TEST(t_bug35316630_sqlstatistics) {
 
     odbc::table tab(hstmt, nullptr, tab_name, fields);
 
-    SQLSMALLINT ttype = 300;
     SQLLEN len = 0;
     struct expected_vals {
       const char *tab_name;
@@ -106,7 +105,6 @@ DECLARE_TEST(t_bug35316630_sqlstatistics) {
          0},
     };
 
-    int step = 0;
     int rnum_exp_array[][2] = {
       // INDEX_TYPE, ROWS_NUMBER
       {SQL_INDEX_ALL, 5},
@@ -117,7 +115,6 @@ DECLARE_TEST(t_bug35316630_sqlstatistics) {
       int rnum = 0;
       ok_stmt(hstmt, SQLStatistics(hstmt, nullptr, 0, nullptr, 0,
         SC_NTS(tab_name.c_str()), rnum_exp[0], SQL_QUICK));
-      ++step;
 
       while (SQL_SUCCESS == SQLFetch(hstmt)) {
         SQLSMALLINT num_val = 0;
@@ -227,7 +224,7 @@ DECLARE_TEST(t_bug37250400_mysql_escape) {
     odbc::table t(hstmt, "bug37250400_mysql_escape",
       "id_col int primary key auto_increment, vc_col varchar(32)");
 
-    auto fetch_test = [&hstmt, &t] (unsigned idx) {
+    auto fetch_test = [&hstmt] (unsigned idx) {
       int rnum = 0;
       odbc::xbuf buf(128);
       while (SQL_SUCCESS == SQLFetch(hstmt)) {

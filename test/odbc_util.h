@@ -36,6 +36,7 @@
 #include <iostream>
 #include <vector>
 #include <optional>
+#include <cassert>
 
 #define X(s) odbc::xstring(s)
 
@@ -787,7 +788,7 @@ SQLLEN num_result_rows(SQLHSTMT hstmt)
 
 const char* _my_fetch_data(SQLHSTMT hstmt, xbuf &buf, SQLUSMALLINT icol,
                           SQLSMALLINT target_type,
-                          bool print_data = true, int len = 128)
+                          bool print_data = true, size_t len = 128)
 {
     SQLLEN nLen;
 
@@ -809,12 +810,14 @@ const char* _my_fetch_data(SQLHSTMT hstmt, xbuf &buf, SQLUSMALLINT icol,
 const char* my_fetch_str(SQLHSTMT hstmt, xbuf &buf, SQLUSMALLINT icol,
                          bool print_data = true, int len = 128)
 {
+  assert(len >= 0);
   return _my_fetch_data(hstmt, buf, icol, SQL_C_CHAR, print_data, len);
 }
 
 const char* my_fetch_data(SQLHSTMT hstmt, xbuf &buf, SQLUSMALLINT icol,
                           bool print_data = true, int len = 128)
 {
+  assert(len >= 0);
   return _my_fetch_data(hstmt, buf, icol, SQL_C_BINARY, print_data, len);
 }
 

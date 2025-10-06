@@ -110,7 +110,6 @@ DECLARE_TEST(t_bug32763378)
     odbc::table tab(hstmt, "bug32763378", "A VARCHAR(10) UNIQUE, B VARCHAR(10)");
     odbc::stmt_prepare(hstmt, "INSERT INTO " + tab.table_name + " VALUES(?,?)");
 
-    SQLLEN rows_fetched = 0;
     char buffers[2][10];
     SQLLEN lengths[2] = { 0, 0 };
     memset(buffers, 0, sizeof(buffers));
@@ -163,9 +162,7 @@ DECLARE_TEST(t_bug30578291_in_param)
 
     odbc::stmt_prepare(hstmt, "SELECT * FROM " + tab.table_name + " WHERE 'Z' > ?");
 
-    SQLLEN rows_fetched = 0;
     char buffers[2][10];
-    SQLLEN lengths[2] = { 0, 0 };
     memset(buffers, 0, sizeof(buffers));
     odbc::xbuf buff(128);
     buff.setval("A");
@@ -434,7 +431,6 @@ DECLARE_TEST(t_bug36841317)
 
     int c1_param = 100;
     int c1_data = 0, c2_data = 0, c3_data = 0;
-    SQLLEN rows_fetched = 0;
     SQLLEN lengths[4] = { 0, 0, 0, 0 };
     odbc::xbuf buff(100);
 

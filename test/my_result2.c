@@ -969,7 +969,6 @@ DECLARE_TEST(t_bug11766437)
 */
 DECLARE_TEST(t_varbookmark)
 {
-  SQLLEN len= 0;
   char abookmark[20];
   SQLLEN outlen;
   SQLUSMALLINT rowStatus[11];

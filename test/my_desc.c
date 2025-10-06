@@ -542,7 +542,6 @@ DECLARE_TEST(t_set_null_use_implicit)
 DECLARE_TEST(t_free_stmt_with_exp_desc)
 {
   SQLHANDLE expard, hstmt1;
-  SQLINTEGER imp_result= 0, exp_result= 0;
 
   ok_con(hdbc, SQLAllocHandle(SQL_HANDLE_DESC, hdbc, &expard));
   ok_con(hdbc, SQLAllocHandle(SQL_HANDLE_STMT, hdbc, &hstmt1));

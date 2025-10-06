@@ -42,7 +42,6 @@ DECLARE_TEST(my_columns_null)
 
   for (int i = 0; i < 2; ++i)
   {
-    int idx = 0;
     DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
     alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
       NULL, NULL, NULL, NULL, conn_opt[i]);
@@ -90,7 +89,6 @@ DECLARE_TEST(my_drop_table)
 DECLARE_TEST(my_table_dbs)
 {
   char       database[100];
-  SQLRETURN  rc;
   SQLINTEGER nrows= 0 ;
   SQLLEN lenOrNull, rowCount= 0;
 
@@ -344,7 +342,6 @@ DECLARE_TEST(t_sqlprocedures)
 
 DECLARE_TEST(t_catalog)
 {
-  SQLRETURN rc;
   char         name[MYSQL_NAME_LEN+1];
   SQLSMALLINT  ncols, len;
 
@@ -366,7 +363,6 @@ DECLARE_TEST(t_catalog)
 
   for (int j = 0; j < 2; ++j)
   {
-    int idx = 0;
     DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
     alloc_basic_handles_with_opt(&henv1, &hdbc1, &hstmt1,
       NULL, NULL, NULL, NULL, conn_opt[j]);

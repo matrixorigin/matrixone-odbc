@@ -1372,10 +1372,7 @@ DECLARE_TEST(t_bug32135124)
 */
 DECLARE_TEST(t_bug32537000)
 {
-  char buf[80]= {0};
-  SQLLEN buflen= 0;
   SQLINTEGER rowcnt= 3;
-  SQLINTEGER row_offset1= 5;
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
   SQLHSTMT hstmt2;
 

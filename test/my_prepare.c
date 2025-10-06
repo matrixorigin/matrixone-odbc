@@ -1078,7 +1078,6 @@ DECLARE_TEST(t_bug29871)
 */
 DECLARE_TEST(t_bug67340)
 {
-  const char* param = "1";
   char       data[255] = "abcdefg";
   SQLLEN     paramlen = 7;
   int        i, stmt_count = 0;
@@ -1184,8 +1183,6 @@ DECLARE_TEST(t_bug68243)
   DECLARE_BASIC_HANDLES(henv1, hdbc1, hstmt1);
   char c1 = 1, c2= 0;
   int id= 1;
-
-  SQLLEN paramlen= 0;
 
   ok_stmt(hstmt, SQLExecDirect(hstmt,
     SC_NTS("drop table if exists bug68243")));

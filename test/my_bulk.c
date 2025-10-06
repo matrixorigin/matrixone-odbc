@@ -399,7 +399,6 @@ DECLARE_TEST(t_bulk_insert_bookmark)
 */
 DECLARE_TEST(t_bookmark_update)
 {
-  SQLLEN len= 0;
   SQLUSMALLINT rowStatus[4];
   SQLULEN numRowsFetched;
   SQLINTEGER nData[4], i;
@@ -485,7 +484,6 @@ DECLARE_TEST(t_bookmark_update)
 */
 DECLARE_TEST(t_bookmark_delete)
 {
-  SQLLEN len= 0;
   SQLUSMALLINT rowStatus[4];
   SQLULEN numRowsFetched;
   SQLINTEGER nData[4];

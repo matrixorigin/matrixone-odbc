@@ -242,8 +242,6 @@ void print_odbc_error(SQLHANDLE hnd, SQLSMALLINT type)
  */
 int list_driver_details(Driver *driver)
 {
-  SQLWCHAR buf[50000];
-  SQLWCHAR *entries= buf;
   int rc;
 
   /* lookup the driver */
@@ -313,7 +311,7 @@ SQLInstallDriverExW(const MyODBC_LPCWSTR lpszDriver, const MyODBC_LPCWSTR lpszPa
   const SQLWCHAR *pos;
   SQLINTEGER len;
   BOOL rc;
-  char *driver, *pathin, *pathout;
+  char *driver, *pathin, *pathout = nullptr;
   WORD out;
 
   if (!pcbPathOut)
@@ -573,7 +571,6 @@ int list_datasource_details(DataSource *ds)
         }
 
         std::cout << "        " << out_str;
-        optionBool *bool_opt = (optionBool *)v.second;
         break;
       }
     }

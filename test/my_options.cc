@@ -390,7 +390,6 @@ do { \
   auto get_rand_name = []()
   {
     srand((unsigned int)time(NULL)); // use current time as seed for random generator
-    int random_variable = rand();
     static const char hexdigit[17] = "0123456789abcdef";
     char buf[17];
     for(int i = 0; i < 16; ++i)
@@ -725,7 +724,6 @@ int run_func_tests(test_params &par)
       for(SQLUSMALLINT v : cat_vals)
       {
         *pbuf = 0;
-        SQLSMALLINT str_len_ptr = sizeof(info_buf);
         ok_stmt(hdbc1, SQLGetInfo(hdbc1, v, info_buf, sizeof(info_buf),
                                   nullptr));
         std::cout << "[" << *pbuf << "]";
@@ -756,7 +754,6 @@ int run_func_tests(test_params &par)
       for(SQLUSMALLINT v : schema_vals)
       {
         *pbuf = 0;
-        SQLSMALLINT str_len_ptr = sizeof(info_buf);
         ok_stmt(hdbc1, SQLGetInfo(hdbc1, v, info_buf, sizeof(info_buf),
                                   nullptr));
         std::cout << "[" << *pbuf << "]";

@@ -38,7 +38,6 @@ DECLARE_TEST(my_param_data)
   int   i, rcnt, c1 = 1, c2 = 4096;
   T_LOB c3, *pt;
   c3.length = c2;
-  SQLRETURN rc = 0;
   SQLLEN c1_len_or_ind = 0, c2_len_or_ind = 0, c3_len_or_ind = 0;
 
   unsigned char *org_data[10];
@@ -136,7 +135,6 @@ DECLARE_TEST(t_bug31373948)
   unsigned long rnum = 0;
   SQLLEN idLenOrInd = 0;
   SQLLEN largeLenOrInd = 0;
-  SQLRETURN rcc = 0;
 
   ok_sql(hstmt, "DROP TABLE IF EXISTS t_bug31373948");
   ok_sql(hstmt, "CREATE TABLE t_bug31373948 (id int primary key auto_increment,"\
@@ -197,7 +195,6 @@ DECLARE_TEST(t_bug31373948)
 
 DECLARE_TEST(t_bug30428851)
 {
-  SQLRETURN rc = 0;
 #define NROW 2
   SQLINTEGER par = NROW;
   int i = 0;
@@ -1139,7 +1136,6 @@ DECLARE_TEST(t_bug56804)
 {
 #define PARAMSET_SIZE		10
 
-  SQLINTEGER	len 	= 1;
   int i;
 
   SQLINTEGER	c1[PARAMSET_SIZE]=      {0, 1, 2, 3, 4, 5, 1, 7, 8, 9};
@@ -1928,9 +1924,9 @@ DECLARE_TEST(t_odbc_inoutstream_params)
 
   expect_stmt(hstmt, SQLParamData(hstmt, &token), SQL_NEED_DATA);
 
-  for (c=0; c < strlen(inout); ++c)
+  for (size_t i=0; i < strlen(inout); ++i)
   {
-    ok_stmt(hstmt, SQLPutData(hstmt, &inout[c], 1));
+    ok_stmt(hstmt, SQLPutData(hstmt, &inout[i], 1));
   }
   /* After sending last chunk on next SQLParamData the query is supposed to be executed. If we did
      not have a resultset, SQLParamData would return SQL_PARAM_DATA_AVAILABLE*/
@@ -1996,9 +1992,8 @@ DECLARE_TEST(t_odbc_inoutstream_params)
    required to get out stream token */
 DECLARE_TEST(t_inoutstream17842966)
 {
-  SQLLEN      len= 0, len2= SQL_LEN_DATA_AT_EXEC(16), bytes, chunk_size;
+  SQLLEN      len= 0, bytes, chunk_size;
   char        blobValue[50], chunk[8], *ptr= blobValue, c, inout[32];
-  SQLINTEGER  intParam= 4;
   SQLPOINTER  token;
   SQLRETURN   rc;
 
@@ -2136,7 +2131,6 @@ DECLARE_TEST(t_bug28175772)
 
 DECLARE_TEST(t_sp_return)
 {
-  char sql_select[100] = { 0 };
   SQLLEN iSize = SQL_NTS, iSize1 = SQL_NTS;
   char val1[200] = { 0 }, val2[200] = { 0 };
   SQLLEN len = 0;
@@ -2429,7 +2423,6 @@ DECLARE_TEST(t_wl15967)
   };
 
   int p_select = 1;
-  SQLINTEGER v_param = 0, v_select = 0;
   SQLUINTEGER v1_int = 0;
   SQLLEN len1 = 0, len2 = 0, len3 = 0, len4 = 0;
 
@@ -2487,7 +2480,6 @@ DECLARE_TEST(t_wl15967)
 
   while(p_select < 4)
   {
-    v_select = 0;
     char v2_char[32];
     TIMESTAMP_STRUCT v3_ts;
     char v4_char[32];

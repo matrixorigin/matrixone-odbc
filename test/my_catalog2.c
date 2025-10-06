@@ -366,8 +366,6 @@ DECLARE_TEST(t_bug50195)
 
 DECLARE_TEST(t_sqlprocedurecolumns)
 {
-  SQLRETURN rc= 0;
-  char szName[255]= {0};
 
   typedef struct
   {
@@ -392,7 +390,7 @@ DECLARE_TEST(t_sqlprocedurecolumns)
     char *c19_is_nullable;
   }sqlproccol;
 
-  int total_params= 0, iter= 0;
+  int iter= 0;
 
   sqlproccol data_to_check[] = {
     /*cat    schem  proc_name                  col_name     col_type         data_type    type_name */
@@ -1166,7 +1164,6 @@ DECLARE_TEST(t_bug69448)
 */
 DECLARE_TEST(t_bug69554)
 {
-  int num_rows= 0;
   SQLHSTMT hstmt1;
 
   ok_con(hdbc, SQLAllocStmt(hdbc, &hstmt1));

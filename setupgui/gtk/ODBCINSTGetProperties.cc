@@ -106,9 +106,10 @@ int ODBCINSTGetProperties(HODBCINSTPROPERTY propertyList)
     /* Reset everything to zero */
     memset(propertyList, 0, sizeof(ODBCINSTPROPERTY));
 
-    /* copy the option name */
-    strncpy( propertyList->szName, MYODBC_OPTIONS[i][0],
-             strlen(MYODBC_OPTIONS[i][0]));
+    /* copy the option name (leave space for null terminator)*/
+    strncpy(
+      propertyList->szName, MYODBC_OPTIONS[i][0], sizeof(propertyList->szName)-1
+    );
 
     /* We make the value always empty by default */
     propertyList->szValue[0]= '\0';

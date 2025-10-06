@@ -83,8 +83,12 @@ static SQLWCHAR W_CANNOT_FIND_DRIVER[]= {'C', 'a', 'n', 'n', 'o', 't', ' ',
                                          'd', 'r', 'i', 'v', 'e', 'r', 0};
 
 static SQLWCHAR W_DSN[]= {'D', 'S', 'N', 0};
+
 static SQLWCHAR W_DRIVER[] = {'D', 'R', 'I', 'V', 'E', 'R', 0};
+#if USE_IODBC
+  // iODBC wants "Driver", not "DRIVER"
 static SQLWCHAR W_Driver[] = {'D', 'r', 'i', 'v', 'e', 'r', 0};
+#endif
 static SQLWCHAR W_DESCRIPTION[] =
   {'D', 'E', 'S', 'C', 'R', 'I', 'P', 'T', 'I', 'O', 'N', 0};
 static SQLWCHAR W_SERVER[]= {'S', 'E', 'R', 'V', 'E', 'R', 0};

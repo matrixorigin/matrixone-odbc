@@ -46,11 +46,7 @@
 #include <chrono>
 
 static DataSource *pParams = NULL;
-static gchar*      pCaption= NULL;
 static int         OkPressed= 0;
-
-static int         mod= 1;
-static BOOL        flag= FALSE;
 static BOOL        BusyIndicator= FALSE;
 
 /*
@@ -62,10 +58,7 @@ static BOOL        cs_popped_up= FALSE;
 
 /* Whether we are in SQLDriverConnect() prompt mode (used to disable fields) */
 static BOOL        g_isPrompt;
-/* Variable to keep IDC of control where default value were put. It's reset if
-   user changes value. Used to verify if we can reset that control's value.
-   It won't work if for more than 1 field, but we have only one in visible future. */
-static long        controlWithDefValue= 0;
+
 static GtkWidget  *dsnEditDialog;
 static GtkWidget  *show_details;
 static GtkWidget  *hide_details;
@@ -207,7 +200,6 @@ on_database_popup (GtkComboBox *widget,
                    GdkEvent  *event,
                    gpointer   user_data)
 {
-  GtkTreeIter iter;
   std::vector<SQLWSTRING> dbs;
 
   /* Active item is to be set only once! */
@@ -325,7 +317,6 @@ on_charset_popup (GtkComboBox *widget,
                    GdkEvent  *event,
                    gpointer   user_data)
 {
-  GtkTreeIter iter;
   std::vector<SQLWSTRING> css;
 
   /* Active item is to be set only once! */
@@ -537,7 +528,6 @@ void setSensitive(gchar *widget_name, gboolean state)
 
 unsigned int getUnsignedFieldData(gchar *widget_name)
 {
-  int len= 0;
   GtkSpinButton *widget= GTK_SPIN_BUTTON(gtk_builder_get_object (builder,
                                                                  widget_name));
   assert(widget);
@@ -547,7 +537,6 @@ unsigned int getUnsignedFieldData(gchar *widget_name)
 
 void setUnsignedFieldData(gchar *widget_name, unsigned int param)
 {
-  int len= 0;
   GtkSpinButton *widget= GTK_SPIN_BUTTON(gtk_builder_get_object (builder,
                                                                  widget_name));
   assert(widget);
@@ -569,8 +558,6 @@ int ShowOdbcParamsDialog(DataSource* params, HWND ParentWnd, BOOL isPrompt)
   GtkEntry   *entry;
   GError     *error= NULL;
   GdkPixbuf  *pixbuf;
-  SQLINTEGER len= SQL_NTS;
-  int i = 0;
 
   db_popped_up= FALSE;
   cs_popped_up= FALSE;
