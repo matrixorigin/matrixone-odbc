@@ -207,6 +207,7 @@ void DESCREC::par_struct::add_param_data(const char *chunk,
 DESCREC *desc_get_rec(DESC *desc, int recnum, my_bool expand)
 {
   DESCREC *rec= NULL;
+  assert(recnum >= 0);
 
   /*
     The only bookmark use the driver supports is SQL_UB_VARIABLE.
@@ -239,14 +240,14 @@ DESCREC *desc_get_rec(DESC *desc, int recnum, my_bool expand)
     /* expand if needed */
     if (expand)
     {
-      for (size_t i = desc->rcount(); expand && i <= recnum; ++i)
+      for (size_t i = desc->rcount(); expand && i <= (size_t)recnum; ++i)
       {
         desc->records2.emplace_back(desc->desc_type, desc->ref_type);
         rec = &desc->records2.back();
         rec->reset_to_defaults();
       }
     }
-    if (recnum < desc->rcount())
+    if ((size_t)recnum < desc->rcount())
       rec = &desc->records2[recnum];
   }
 
@@ -262,10 +263,10 @@ DESCREC *desc_get_rec(DESC *desc, int recnum, my_bool expand)
  */
 int desc_find_dae_rec(DESC *desc)
 {
-  int i;
   DESCREC *rec;
   SQLLEN *octet_length_ptr;
-  for (i= 0; i < desc->rcount(); ++i)
+
+  for (int i= 0; (size_t)i < desc->rcount(); ++i)
   {
     rec= desc_get_rec(desc, i, FALSE);
     assert(rec);
@@ -289,13 +290,16 @@ int desc_find_dae_rec(DESC *desc)
  */
 DESCREC * desc_find_outstream_rec(STMT *stmt, uint *recnum, uint *res_col_num)
 {
-  int i, start= recnum != NULL ? *recnum + 1 : 0;
+  int start= recnum != NULL ? *recnum + 1 : 0;
   DESCREC *rec;
   uint column= *res_col_num;
 
 /* No streams in iODBC */
 #ifndef USE_IODBC
-  for (i= start; i < stmt->ipd->rcount(); ++i)
+
+  assert(start >= 0);
+
+  for (int i= start; (size_t)i < stmt->ipd->rcount(); ++i)
   {
     rec= desc_get_rec(stmt->ipd, i, FALSE);
     assert(rec);
@@ -595,7 +599,7 @@ MySQLGetDescField(SQLHDESC hdesc, SQLSMALLINT recnum, SQLSMALLINT fldid,
     src_struct= desc;
   else
   {
-    if (recnum < 1 || recnum > desc->rcount())
+    if (recnum < 1 || (size_t)recnum > desc->rcount())
       return set_desc_error(desc, "07009",
                 "Invalid descriptor index",
                 MYERR_07009);

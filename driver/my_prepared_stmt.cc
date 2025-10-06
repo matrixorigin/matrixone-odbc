@@ -91,7 +91,7 @@ BOOL ssps_get_out_params(STMT *stmt)
     MYSQL_ROW values= NULL;
     DESCREC   *iprec, *aprec;
     uint      counter= 0;
-    int       i, out_params;
+    int       out_params;
 
     /*Since OUT parameters can be completely different - we have to free current
       bind and bind new */
@@ -138,7 +138,7 @@ BOOL ssps_get_out_params(STMT *stmt)
 
       if (out_params)
       {
-        for (i= 0;
+        for (size_t i= 0;
              i < myodbc_min(stmt->ipd->rcount(), stmt->apd->rcount()) && counter < stmt->field_count();
              ++i)
         {

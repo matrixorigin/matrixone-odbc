@@ -180,7 +180,7 @@ struct MY_PARSED_QUERY
 typedef struct parser
 {
   const char        *pos;
-  int               bytes_at_pos;
+  uint              bytes_at_pos;
   int               ctype;
   const MY_STRING   *quote;  /* If quote was open - pointer to the quote char */
   MY_PARSED_QUERY   *query;

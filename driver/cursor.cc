@@ -1641,6 +1641,9 @@ SQLRETURN SQL_API my_SQLSetPos(SQLHSTMT hstmt, SQLSETPOSIROW irow,
     if ( !result )
         return stmt->set_error(MYERR_S1010,NULL,0);
 
+    // Note: We need to compare with signed long value below.
+    assert(irow <= std::numeric_limits<long>::max());
+
     /* With mysql_use_reslt we cannot do anything but move cursor
        forward. additional connection?
        besides http://msdn.microsoft.com/en-us/library/windows/desktop/ms713507%28v=vs.85%29.aspx
@@ -1657,7 +1660,7 @@ SQLRETURN SQL_API my_SQLSetPos(SQLHSTMT hstmt, SQLSETPOSIROW irow,
         return stmt->set_error( MYERR_S1109,NULL, 0);
       }
       /* We can't go back with forwrd only cursor */
-      else if (irow < stmt->current_row)
+      else if ((long)irow < stmt->current_row)
       {
         /* Same HY109 Invalid cursor position*/
         return stmt->set_error( MYERR_S1109,NULL, 0);

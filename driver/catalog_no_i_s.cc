@@ -174,52 +174,6 @@ static MYSQL_RES *server_list_dbkeys(STMT *stmt,
     return mysql_store_result(mysql);
 }
 
-/*
-@type    : internal
-@purpose : returns a table privileges result, NULL on error. Uses mysql pk_db tables
-*/
-static MYSQL_RES *table_privs_raw_data( STMT *      stmt,
-                                        SQLCHAR *   catalog,
-                                        SQLSMALLINT catalog_len,
-                                        SQLCHAR *   table,
-                                        SQLSMALLINT table_len)
-{
-  DBC *dbc= stmt->dbc;
-  MYSQL *mysql= dbc->mysql;
-  char   tmpbuff[1024];
-  std::string query;
-  size_t cnt = 0;
-
-  query.reserve(1024);
-  query = "SELECT Db,User,Table_name,Grantor,Table_priv "
-          "FROM mysql.tables_priv WHERE Table_name LIKE '";
-
-  cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-    (char*)table, table_len);
-  query.append(tmpbuff, cnt);
-
-  query.append("' AND Db = ");
-
-  if (catalog_len)
-  {
-    query.append("'");
-    cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-      (char*)catalog, catalog_len);
-    query.append(tmpbuff, cnt);
-    query.append("'");
-  }
-  else
-    query.append("DATABASE()");
-
-  query.append(" ORDER BY Db, Table_name, Table_priv, User");
-
-  MYLOG_DBC_QUERY(dbc, query.c_str());
-  if (exec_stmt_query(stmt, query.c_str(), query.length(), FALSE))
-    return NULL;
-
-  return mysql_store_result(mysql);
-}
-
 
 #define MY_MAX_TABPRIV_COUNT 21
 #define MY_MAX_COLPRIV_COUNT 3
@@ -248,61 +202,6 @@ const uint SQLTABLES_PRIV_FIELDS = (uint)array_elements(SQLTABLES_priv_values);
 SQLColumnPrivileges
 ****************************************************************************
 */
-/*
-@type    : internal
-@purpose : returns a column privileges result, NULL on error
-*/
-static MYSQL_RES *column_privs_raw_data(STMT *      stmt,
-                                        SQLCHAR *   catalog,
-                                        SQLSMALLINT catalog_len,
-                                        SQLCHAR *   table,
-                                        SQLSMALLINT table_len,
-                                        SQLCHAR *   column,
-                                        SQLSMALLINT column_len)
-{
-  DBC   *dbc = stmt->dbc;
-  MYSQL *mysql = dbc->mysql;
-
-  char tmpbuff[1024];
-  std::string query;
-  size_t cnt = 0;
-
-  query.reserve(1024);
-
-  query = "SELECT c.Db, c.User, c.Table_name, c.Column_name,"
-          "t.Grantor, c.Column_priv, t.Table_priv "
-          "FROM mysql.columns_priv AS c, mysql.tables_priv AS t "
-          "WHERE c.Table_name = '";
-
-  cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-    (char*)table, table_len);
-  query.append(tmpbuff, cnt);
-
-  query.append("' AND c.Db = ");
-  if (catalog_len)
-  {
-    query.append("'");
-    cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-      (char*)catalog, catalog_len);
-    query.append(tmpbuff, cnt);
-    query.append("'");
-  }
-  else
-    query.append("DATABASE()");
-
-  query.append("AND c.Column_name LIKE '");
-  cnt = myodbc_escape_string(stmt, tmpbuff, sizeof(tmpbuff),
-    (char*)column, column_len);
-  query.append(tmpbuff, cnt);
-
-  query.append("' AND c.Table_name = t.Table_name "
-               "ORDER BY c.Db, c.Table_name, c.Column_name, c.Column_priv");
-
-  if (exec_stmt_query(stmt, query.c_str(), query.length(), FALSE))
-    return NULL;
-
-  return mysql_store_result(mysql);
-}
 
 
 const char *SQLCOLUMNS_priv_values[] =

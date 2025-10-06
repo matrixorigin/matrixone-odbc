@@ -1123,7 +1123,7 @@ SQLRETURN SQL_API MySQLGetTypeInfo(SQLHSTMT hstmt, SQLSMALLINT fSqlType)
         atoi(el[1]) != fSqlType && atoi(el[15]) != fSqlType)
       continue;
 
-    for (int idx = 0; idx < SQL_GET_TYPE_INFO_FIELDS; ++idx)
+    for (size_t idx = 0; idx < SQL_GET_TYPE_INFO_FIELDS; ++idx)
     {
       data[idx] = el[idx];
     }

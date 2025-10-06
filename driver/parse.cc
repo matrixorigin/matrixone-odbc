@@ -560,9 +560,8 @@ BOOL is_escape(MY_PARSER *parser)
 
 const MY_STRING * is_quote(MY_PARSER *parser)
 {
-  int i;
 
-  for (i=0; i < sizeof(parser->syntax->quote)/sizeof(MY_STRING); ++i)
+  for (size_t i=0; i < sizeof(parser->syntax->quote)/sizeof(MY_STRING); ++i)
   {
     if (parser->bytes_at_pos == parser->syntax->quote[i].bytes
       && memcmp(parser->pos, parser->syntax->quote[i].str,
@@ -696,9 +695,7 @@ BOOL open_quote(MY_PARSER *parser, const MY_STRING * quote)
 
 BOOL is_query_separator(MY_PARSER *parser)
 {
-  int i;
-
-  for (i=0; i < sizeof(parser->syntax->query_sep)/sizeof(MY_STRING); ++i)
+  for (size_t i=0; i < sizeof(parser->syntax->query_sep)/sizeof(MY_STRING); ++i)
   {
     if (parser_compare(parser, &parser->syntax->query_sep[i]))
     {

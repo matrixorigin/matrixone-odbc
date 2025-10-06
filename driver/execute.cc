@@ -576,7 +576,7 @@ SQLRETURN convert_c_type2str(STMT *stmt, SQLSMALLINT ctype, DESCREC *iprec,
       {
         DATE_STRUCT *date= (DATE_STRUCT*) *res;
         if (stmt->dbc->ds.opt_MIN_DATE_TO_ZERO && !date->year
-          && (date->month == date->day == 1))
+          && (date->month == 1) && (date->day == 1))
         {
           *length = myodbc_snprintf(buff, buff_max, "0000-00-00");
         }
@@ -609,7 +609,7 @@ SQLRETURN convert_c_type2str(STMT *stmt, SQLSMALLINT ctype, DESCREC *iprec,
         TIMESTAMP_STRUCT *time= (TIMESTAMP_STRUCT*) *res;
 
         if (stmt->dbc->ds.opt_MIN_DATE_TO_ZERO &&
-            !time->year && (time->month == time->day == 1))
+            !time->year && (time->month == 1) && (time->day == 1))
         {
           *length = myodbc_snprintf(buff, buff_max, "0000-00-00 %02d:%02d:%02d",
                                     time->hour, time->minute, time->second);
@@ -1657,7 +1657,7 @@ static SQLRETURN select_dae_param_desc(STMT *stmt, DESC **apd, unsigned int *par
 static SQLRETURN find_next_dae_param(STMT *stmt,  SQLPOINTER *token)
 {
   unsigned int i, param_count;
-  DESC *apd;
+  DESC *apd = nullptr;  // Note: avoid compile warning
 
   PUSH_ERROR(select_dae_param_desc(stmt, &apd, &param_count));
 
@@ -1698,7 +1698,12 @@ static SQLRETURN find_next_dae_param(STMT *stmt,  SQLPOINTER *token)
 
 static SQLRETURN execute_dae(STMT *stmt)
 {
-  SQLRETURN rc;
+  /*
+    TODO: We ignore stmt->dae_type that is not recognized -- review
+    if this is what shouold really happen.
+  */
+
+  SQLRETURN rc = SQL_SUCCESS;
   std::string query;
 
   switch (stmt->dae_type)

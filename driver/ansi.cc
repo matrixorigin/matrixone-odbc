@@ -436,7 +436,9 @@ SQLGetDiagField(SQLSMALLINT handle_type, SQLHANDLE handle,
     size_t len = strlen((char *)value);
 
     /* We set the error only when the result is intented to be returned */
-    if (info && len > info_max - 1)
+    assert(!info || info_max > 1);
+
+    if (info && len > (size_t)info_max - 1)
       rc = dbc->set_error(MYERR_01004, NULL, 0);
 
     if (info_len)
@@ -512,7 +514,9 @@ SQLGetDiagRecImpl(SQLSMALLINT handle_type, SQLHANDLE handle,
       We set the error only when the result is intented to be returned
       and message_max is greaater than 0
     */
-    if (message && message_max && len > message_max - 1)
+    assert(!value || !value_max || value_max > 1);
+
+    if (message && message_max && len > (size_t)message_max - 1)
       rc = dbc->set_error(MYERR_01004, NULL, 0);
 
     if (message_len)
@@ -551,7 +555,9 @@ SQLGetInfo(SQLHDBC hdbc, SQLUSMALLINT type, SQLPOINTER value,
       MSSQL implementation does not return the truncation warning if the
       value is not NULL and value_max is 0
      */
-    if (value && value_max && len > value_max - 1)
+    assert(!value || !value_max || value_max > 1);
+
+    if (value && value_max && len > (size_t)value_max - 1)
       rc = dbc->set_error(MYERR_01004, NULL, 0);
 
     if (value && value_max > 1)

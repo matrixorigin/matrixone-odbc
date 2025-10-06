@@ -171,7 +171,9 @@ sql_get_bookmark_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
   SQLLEN    tmp;
   SQLRETURN result= SQL_SUCCESS;
 
-  if (cbValueMax < sizeof(long))
+  assert(cbValueMax >= 0);  // Note: conversion to unsigned
+
+  if ((size_t)cbValueMax < sizeof(long))
   {
     return stmt->set_error("HY090", "Invalid string or buffer length", 0);
   }
@@ -213,7 +215,7 @@ sql_get_bookmark_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
                                 pcbValue, NULL, value, length);
       if (SQL_SUCCEEDED(ret))
       {
-        copy_bytes= myodbc_min((unsigned long)length, cbValueMax);
+        copy_bytes= myodbc_min(length, (size_t)cbValueMax);
         result_end= (SQLCHAR *)rgbValue + copy_bytes;
         if (result_end)
           *result_end= 0;
@@ -1546,12 +1548,17 @@ SQLRETURN SQL_API SQLGetData(SQLHSTMT      StatementHandle,
 
     if (stmt->out_params_state == OPS_STREAMS_PENDING)
     {
-      /* http://msdn.microsoft.com/en-us/library/windows/desktop/ms715441%28v=vs.85%29.aspx
-          "07009 Invalid descriptor index ...The Col_or_Param_Num value was not equal to the
-          ordinal of the parameter that is available."
-          Returning error if requested parameter number is different from the last call to
-          SQLParamData */
-      if (sColNum != stmt->current_param)
+      /*
+        http://msdn.microsoft.com/en-us/library/windows/desktop/ms715441%28v=vs.85%29.aspx
+          "07009 Invalid descriptor index ...The Col_or_Param_Num value was not equal to the ordinal of the parameter that is available."
+          Returning error if requested parameter number is different from the last call to SQLParamData()
+
+        Note: Conversion to int to have the same signedess as sColNum
+      */
+
+      assert(stmt->current_param > std::numeric_limits<int>::max());
+
+      if (sColNum != (int)stmt->current_param)
       {
         return stmt->set_error("07009", "The parameter number value was not equal to \
                                             the ordinal of the parameter that is available.",
@@ -1559,7 +1566,9 @@ SQLRETURN SQL_API SQLGetData(SQLHSTMT      StatementHandle,
       }
       else
       {
-        /* In getdatat column we keep out parameter column number in the result */
+        /*
+          In getdata column we keep out parameter column number in the result
+        */
         sColNum= stmt->getdata.column;
       }
 
@@ -1570,7 +1579,9 @@ SQLRETURN SQL_API SQLGetData(SQLHSTMT      StatementHandle,
       }
     }
 
-    if (sColNum != stmt->getdata.column)
+    assert(stmt->getdata.column > std::numeric_limits<int>::max());
+
+    if (sColNum != (int)stmt->getdata.column)
     {
       /* New column. Reset old offset */
       stmt->reset_getdata_position();
@@ -1907,11 +1918,10 @@ static SQLRETURN
 fill_fetch_buffers(STMT *stmt, MYSQL_ROW values, uint rownum)
 {
   SQLRETURN res= SQL_SUCCESS, tmp_res;
-  int i;
   ulong length= 0;
   DESCREC *irrec, *arrec;
 
-  for (i= 0; i < myodbc_min(stmt->ird->rcount(), stmt->ard->rcount()); ++i, ++values)
+  for (size_t i= 0; i < myodbc_min(stmt->ird->rcount(), stmt->ard->rcount()); ++i, ++values)
   {
     irrec= desc_get_rec(stmt->ird, i, FALSE);
     arrec= desc_get_rec(stmt->ard, i, FALSE);

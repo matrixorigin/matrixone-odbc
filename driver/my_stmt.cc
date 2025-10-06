@@ -614,7 +614,9 @@ void scroller_create(STMT * stmt, const char *query, SQLULEN query_len)
      copy of the query */
   char *limptr = stmt->scroller.query + (limit.begin - query);
   limit.begin = limptr;
-  strncpy(limptr, " LIMIT ", 7);
+
+  // Note: Also copying the null terminator to avoid compile warning.
+  strncpy(limptr, " LIMIT ", 8);
 
   /* That is where we will update offset */
   stmt->scroller.offset_pos = limptr + 7;

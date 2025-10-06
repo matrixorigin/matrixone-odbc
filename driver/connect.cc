@@ -1715,7 +1715,7 @@ SQLRETURN DBC::execute_query(const char* query,
     DO_LOCK_DBC();
   }
 
-  if (query_length == SQL_NTS)
+  if (query_length == (SQLULEN)SQL_NTS)
   {
     query_length = strlen(query);
   }

@@ -881,18 +881,20 @@ SQLSMALLINT get_sql_data_type_from_str(const char *mysql_type_name)
 SQLSMALLINT compute_sql_data_type(STMT *stmt, SQLSMALLINT sql_type,
   char octet_length, size_t col_size)
 {
+  unsigned odbc_ver = stmt->dbc->env->odbc_ver;
+
   switch(sql_type)
   {
     case SQL_TIMESTAMP:
-      if (stmt->dbc->env->odbc_ver == SQL_OV_ODBC3)
+      if (odbc_ver == SQL_OV_ODBC3)
         sql_type = SQL_TYPE_TIMESTAMP;
       break;
     case SQL_TYPE_DATE:
-      if (stmt->dbc->env->odbc_ver < SQL_OV_ODBC3)
+      if (odbc_ver < SQL_OV_ODBC3)
         sql_type = SQL_DATE;
       break;
     case SQL_TIME:
-      if (stmt->dbc->env->odbc_ver == SQL_OV_ODBC3)
+      if (odbc_ver == SQL_OV_ODBC3)
         sql_type = SQL_TYPE_TIME;
       break;
     case SQL_CHAR:
