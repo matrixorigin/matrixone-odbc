@@ -399,8 +399,11 @@ MySQLSetConnectAttr(SQLHDBC hdbc, SQLINTEGER Attribute,
         if (level)
         {
           SQLRETURN rc;
-          sprintf(buff,"SET SESSION TRANSACTION ISOLATION LEVEL %s",
-                  level);
+          snprintf(
+            buff, sizeof(buff),
+            "SET SESSION TRANSACTION ISOLATION LEVEL %s",
+            level
+          );
           if (SQL_SUCCEEDED(rc = dbc->execute_query(buff, SQL_NTS, TRUE)))
           {
             dbc->txn_isolation = (int)((size_t)ValuePtr);

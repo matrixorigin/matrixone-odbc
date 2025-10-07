@@ -109,8 +109,8 @@ static my_bool check_table_type(const SQLCHAR *TableType,
     */
 
     type= strstr(table_type,",");
-    sprintf(req_type_quoted,"'%s'",req_type);
-    sprintf(req_type_quoted1,"`%s`",req_type);
+    snprintf(req_type_quoted, sizeof(req_type_quoted), "'%s'", req_type);
+    snprintf(req_type_quoted1, sizeof(req_type_quoted1), "`%s`", req_type);
     while ( type )
     {
         while ( isspace(*(table_type)) ) ++table_type;

@@ -1202,7 +1202,10 @@ SQLRETURN DBC::connect(DataSource *dsrc)
 
     if (transactions_supported())
     {
-      sprintf(buff, "SET SESSION TRANSACTION ISOLATION LEVEL %s", level);
+      snprintf(
+        buff, sizeof(buff), "SET SESSION TRANSACTION ISOLATION LEVEL %s", level
+      );
+
       if (execute_query(buff, SQL_NTS, true) != SQL_SUCCESS)
       {
         return SQL_ERROR;
@@ -1471,10 +1474,12 @@ SQLRETURN SQL_API MySQLDriverConnect(SQLHDBC hdbc, SQLHWND hwnd,
     if (!ds.opt_DRIVER)
     {
       char szError[1024];
-      sprintf(szError,
-              "Could not determine the driver name; "
-              "could not lookup setup library. DSN=(%s)\n",
-              (const char*)ds.opt_DSN);
+      snprintf(
+        szError, sizeof(szError),
+        "Could not determine the driver name; "
+        "could not lookup setup library. DSN=(%s)\n",
+        (const char*)ds.opt_DSN
+      );
       rc= dbc->set_error("HY000", szError, 0);
       goto error;
     }
@@ -1497,8 +1502,11 @@ SQLRETURN SQL_API MySQLDriverConnect(SQLHDBC hdbc, SQLHWND hwnd,
     if (driver.lookup())
     {
       char sz[1024];
-      sprintf(sz, "Could not find driver '%s' in system information.",
-              (const char*)ds.opt_DRIVER);
+      snprintf(
+        sz, sizeof(sz),
+        "Could not find driver '%s' in system information.",
+        (const char*)ds.opt_DRIVER
+      );
 
       rc= dbc->set_error("IM003", sz, 0);
       goto error;
@@ -1521,7 +1529,7 @@ SQLRETURN SQL_API MySQLDriverConnect(SQLHDBC hdbc, SQLHWND hwnd,
     if (!(hModule= LoadLibrary(driver.setup_lib)))
     {
       char sz[1024];
-      sprintf(sz, "Could not load the setup library '%s'.",
+      snprintf(sz, sizeof(sz), "Could not load the setup library '%s'.",
               (const char *)driver.setup_lib);
       rc= dbc->set_error("HY000", sz, 0);
       goto error;

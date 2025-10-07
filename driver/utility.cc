@@ -1175,7 +1175,7 @@ SQLLEN fill_display_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 {
   /* See comment for fill_transfer_oct_len_buff()*/
   SQLLEN size= get_display_size(stmt, field);
-  sprintf(buff, "%lld", (long long)size);
+  snprintf(buff, 20, "%lld", (long long)size);
 
   return size;
 }
@@ -1192,9 +1192,7 @@ SQLLEN fill_display_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 SQLLEN fill_transfer_oct_len_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 {
   SQLLEN len= get_transfer_octet_length(stmt, field);
-
-  sprintf(buff, "%lld", (long long)len);
-
+  snprintf(buff, 20, "%lld", (long long)len);
   return len;
 }
 
@@ -1210,7 +1208,7 @@ SQLLEN fill_transfer_oct_len_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 SQLULEN fill_column_size_buff(char *buff, STMT *stmt, MYSQL_FIELD *field)
 {
   SQLULEN size= get_column_size(stmt, field);
-  sprintf(buff, "%llu", (unsigned long long)size);
+  snprintf(buff, 20, "%llu", (unsigned long long)size);
   return size;
 }
 
@@ -2377,11 +2375,14 @@ FILE *init_query_log(void)
 
     if (buffsize)
     {
-      sprintf(filename + buffsize - 1, "\\%s", DRIVER_QUERY_LOGFILE);
+      snprintf(
+        filename + buffsize - 1, sizeof(filename) - buffsize,
+        "\\%s", DRIVER_QUERY_LOGFILE
+      );
     }
     else
     {
-      sprintf(filename, "c:\\%s", DRIVER_QUERY_LOGFILE);
+      snprintf(filename, sizeof(filename), "c:\\%s", DRIVER_QUERY_LOGFILE);
     }
 
     if ( (query_log= fopen(filename, "a+")) )
