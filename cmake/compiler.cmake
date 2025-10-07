@@ -136,6 +136,8 @@ if(MSVC)
 
 else()
   check_cxx_compiler_flag("-Wdeprecated-builtins" HAVE_DEPRECATED_BUILTINS)
+  check_cxx_compiler_flag("-Wformat-truncation" HAVE_FORMAT_TRUNCATION)
+  check_cxx_compiler_flag("-Wformat-security" HAVE_FORMAT_SECURITY)
 endif()
 
 

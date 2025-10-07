@@ -201,6 +201,10 @@ if(HAVE_DEPRECATED_BUILTINS)
   add_definitions(-DHAVE_DEPRECATED_BUILTINS)
 endif()
 
+if(HAVE_FORMAT_TRUNCATION)
+  add_definitions(-DHAVE_FORMAT_TRUNCATION)
+endif()
+
 IF(MYSQL8)
   CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/config8.h.cmake ${CMAKE_SOURCE_DIR}/include/mysql-8.0/my_config.h)
   INCLUDE_DIRECTORIES(include/mysql-8.0)
@@ -436,35 +440,39 @@ if(MSVC AND NOT CLANG)
 
 else()
 
-  if(FIX_WARNINGS OR WERROR)
+  if(MAINTAINER_MODE)
 
-    # TODO: Fix the compile warnings generated without `-w`. Once done,
-    # remove this option in MAINTAINER_MODE so that we see when new
-    # warnings appear. Then proceed to `-w extra`.
-
-    # NOTE: Configuration: cmake & gcc
-    #       invalid-offsetof warning happens because of use of
-    #       offsetof() on non-standard class layout (DESC).
-    #       Fixing it will require major refactoring of DESC.
+    # Extra warning levels for maintainer mode
+    # Note: -Wformat and -Werror=format-security is used by RPM build tools
 
     add_compile_options(
-      $<$<COMPILE_LANGUAGE:CXX>:-Wno-invalid-offsetof>
-      -Wformat  # Enable warnings about printf() format strings
+      -Wall -Wformat  # Enable warnings about printf() format strings
       -Werror=deprecated-declarations
     )
 
-  else()
-
-    add_compile_options(
-      -Wno-error=implicit-function-declaration #(1)
-    )
-
-    # (1) -- this warning was turned into error in clang, see discussion
-    # at [1]
-    #
-    # [1] https://discourse.llvm.org/t/configure-script-breakage-with-the-new-werror-implicit-function-declaration/65213/3
+    if(HAVE_FORMAT_SECURITY)
+      add_compile_options(-Werror=format-security)
+    endif()
 
   endif()
+
+  # NOTE: Configuration: cmake & gcc
+  #       invalid-offsetof warning happens because of use of
+  #       offsetof() on non-standard class layout (DESC).
+  #       Fixing it will require major refactoring of DESC.
+
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-invalid-offsetof>)
+
+  # TODO: Review/remove this suppression -- seems not needed any more
+  #
+  # add_compile_options(
+  #   -Wno-error=implicit-function-declaration #(1)
+  # )
+
+  # (1) -- this warning was turned into error in clang, see discussion
+  # at [1]
+  #
+  # [1] https://discourse.llvm.org/t/configure-script-breakage-with-the-new-werror-implicit-function-declaration/65213/3
 
 endif()
 

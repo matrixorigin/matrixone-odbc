@@ -41,11 +41,6 @@ IF(NOT WIN32)
                       odbcinstw.cc)
 ENDIF(NOT WIN32)
 
-if(GCC OR CLANG)
-  # installer.cc defines few "constants" that might not be used currently
-  # add_compile_options(-Wno-unused-variable)
-endif()
-
 ADD_LIBRARY(myodbc-util STATIC ${myodbc-util_SRCS})
 
 TARGET_LINK_LIBRARIES(myodbc-util ${ODBCINSTLIB})

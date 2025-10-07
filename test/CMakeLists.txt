@@ -40,16 +40,34 @@ ENDIF(EXPOSE_TOFIX_TESTS)
 
 
 if(GCC OR CLANG)
+
   # Note: We have tests for deprecated ODBC APIs such as `SQLSetStmtOption()`
+
   add_compile_options(-Wno-deprecated-declarations)
-  # Note: Warnings could be fixed but that has low priority at the moment
-  # (in tests)
-  add_compile_options(-Wno-format)
+
+  # Note: Warnings in tests should be fixed but that has low priority at the moment
+
+  add_compile_options(
+    -Wno-format
+    -Wno-sequence-point  # my_auth.cc
+    -Wno-sign-compare
+    -Wno-unused-function
+    -Wno-array-bounds
+    -Wno-unused-variable  # my_basics.c
+  )
 
   if(CLANG)
+
     # Note: We need {x} scalar initializers for my_meta_data test
     add_compile_options(-Wno-braced-scalar-init)
+
+  else()
+
+    # GCC specific -- should be fixed eventually
+    add_compile_options(-Wno-stringop-truncation)
+
   endif()
+
 endif()
 
 
