@@ -56,6 +56,11 @@ if(GCC OR CLANG)
     -Wno-unused-variable  # my_basics.c
   )
 
+  if(HAVE_FORMAT_SECURITY)
+    add_compile_options(-Wno-format-security)
+  endif()
+
+
   if(CLANG)
 
     # Note: We need {x} scalar initializers for my_meta_data test
