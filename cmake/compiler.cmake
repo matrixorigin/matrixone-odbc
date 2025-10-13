@@ -129,7 +129,7 @@ if(MSVC)
 
   set(CMAKE_REQUIRED_FLAGS "/Zc:preprocessor")
   check_cxx_source_compiles(
-    "#include <windows.h> int main() { return 0; }"
+    "#include <windows.h>\n int main() { return 0; }"
     COMPILER_SUPPORTS_ZC_PREPROCESSOR
   )
   set(CMAKE_REQUIRED_FLAGS)
