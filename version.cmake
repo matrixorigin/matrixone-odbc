@@ -40,7 +40,7 @@ SET(CONNECTOR_QUALITY "GA")
 
 # Note: To be used in copyright notes of generated files
 
-set(COPYRIGHT_YEAR 2025)
+set(COPYRIGHT_YEAR 2026)
 
 
 # ----------------------------------------------------------------------
