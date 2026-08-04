@@ -17,6 +17,17 @@ Baseline: MySQL Connector/ODBC 9.7.0
 - Force Unicode-driver binaries to select `utf8mb4` in libmysqlclient before
   the handshake, even when a driver manager enters through an ANSI connection
   function, so wide SQL and MatrixOne's UTF-8 parser use the same encoding.
+- Normalize MatrixOne's uppercase `information_schema.columns.DATA_TYPE`
+  values before ODBC type lookup, including MatrixOne `BOOL` as `SQL_BIT`.
+- Treat a non-NULL character set as multibyte when MatrixOne's
+  `information_schema.CHARACTER_SETS` join has no `MAXLEN`, preserving
+  `SQL_WCHAR`, `SQL_WVARCHAR`, and `SQL_WLONGVARCHAR` in the Unicode driver.
+- Bind MatrixOne prepared FLOAT/DOUBLE results to native floating-point buffers
+  so incorrect zero-decimal COM_STMT metadata cannot round fractional values.
+- Sort `SQLStatistics` rows according to the ODBC contract instead of relying
+  on the server-specific `SHOW KEYS` order.
+- Add a public-API, ANSI/Unicode deep compatibility suite with issue-linked
+  expected failures and run it against a pinned MatrixOne release in CI.
 - Update installer, archive, and package registration names while retaining
   the internal `myodbc*` libraries for a small and comparable code delta.
 - Give the Windows MSI separate upgrade/component identities and a separate
@@ -28,8 +39,8 @@ Baseline: MySQL Connector/ODBC 9.7.0
 ## Deliberate non-changes
 
 - No MatrixOne-specific protocol fork.
-- No speculative SQL rewriting or type mapping changes before a failing test
-  demonstrates the need.
+- No speculative SQL rewriting or type mapping changes without a failing test
+  and a reduced MatrixOne reproducer.
 - No JDBC bridge. Power BI's connector path is ODBC-native.
 - No upstream copyright or license removal.
 

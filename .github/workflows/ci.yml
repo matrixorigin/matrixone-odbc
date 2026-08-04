@@ -99,6 +99,7 @@ jobs:
           file build-linux/lib/libmyodbc9w.so
           file build-linux/lib/libmyodbc9a.so
           file build-linux/test/mo_odbc_smoke
+          file build-linux/test/mo_odbc_deep
           ldd build-linux/lib/libmyodbc9w.so
           unzip -t build-linux/pbi/MatrixOne.mez
 
@@ -112,6 +113,7 @@ jobs:
             build-linux/lib/libmyodbc9w.so
             build-linux/lib/libmyodbc9a.so
             build-linux/test/mo_odbc_smoke
+            build-linux/test/mo_odbc_deep
             build-linux/pbi/MatrixOne.mez
             build-linux/INFO_BIN
 
@@ -174,14 +176,24 @@ jobs:
           echo "MatrixOne did not become ready within 180 seconds" >&2
           exit 1
 
-      - name: Register the Unicode driver
+      - name: Register the Unicode and ANSI drivers
         run: |
           ODBC_SYSTEM_DIR="${RUNNER_TEMP}/odbc"
           mkdir -p "${ODBC_SYSTEM_DIR}"
           cat > "${ODBC_SYSTEM_DIR}/odbcinst.ini" <<EOF
+          [ODBC Drivers]
+          MatrixOne ODBC 9.7 Unicode Driver = Installed
+          MatrixOne ODBC 9.7 ANSI Driver = Installed
+
           [MatrixOne ODBC 9.7 Unicode Driver]
           Description = MatrixOne ODBC 9.7 Unicode Driver
           Driver = ${GITHUB_WORKSPACE}/build-linux/lib/libmyodbc9w.so
+          Threading = 0
+          UsageCount = 1
+
+          [MatrixOne ODBC 9.7 ANSI Driver]
+          Description = MatrixOne ODBC 9.7 ANSI Driver
+          Driver = ${GITHUB_WORKSPACE}/build-linux/lib/libmyodbc9a.so
           Threading = 0
           UsageCount = 1
           EOF
@@ -201,6 +213,16 @@ jobs:
           MO_ODBC_CONNECTION_STRING: DRIVER={MatrixOne ODBC 9.7 Unicode Driver};SERVER=127.0.0.1;DATABASE=mo_odbc_smoke;UID=root;PWD=wrong;SSLMODE=DISABLED
           MO_ODBC_EXPECT_SQLSTATE: "28000"
         run: ./build-linux/test/mo_odbc_smoke
+
+      - name: Run deep Unicode compatibility suite
+        env:
+          MO_ODBC_CONNECTION_STRING: DRIVER={MatrixOne ODBC 9.7 Unicode Driver};SERVER=127.0.0.1;UID=root;PWD=111;SSLMODE=DISABLED
+        run: ./build-linux/test/mo_odbc_deep
+
+      - name: Run deep ANSI compatibility suite
+        env:
+          MO_ODBC_CONNECTION_STRING: DRIVER={MatrixOne ODBC 9.7 ANSI Driver};SERVER=127.0.0.1;UID=root;PWD=111;SSLMODE=DISABLED
+        run: ./build-linux/test/mo_odbc_deep
 
       - name: Stop MatrixOne
         if: always()
@@ -265,6 +287,7 @@ jobs:
           file build-macos/lib/libmyodbc9w.so | grep arm64
           file build-macos/lib/libmyodbc9a.so | grep arm64
           file build-macos/test/mo_odbc_smoke | grep arm64
+          file build-macos/test/mo_odbc_deep | grep arm64
           otool -L build-macos/lib/libmyodbc9w.so
           unzip -t build-macos/pbi/MatrixOne.mez
 
@@ -278,5 +301,6 @@ jobs:
             build-macos/lib/libmyodbc9w.so
             build-macos/lib/libmyodbc9a.so
             build-macos/test/mo_odbc_smoke
+            build-macos/test/mo_odbc_deep
             build-macos/pbi/MatrixOne.mez
             build-macos/INFO_BIN

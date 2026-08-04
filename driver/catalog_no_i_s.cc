@@ -849,12 +849,37 @@ statistics_no_i_s(SQLHSTMT hstmt,
     data.first_row();
     size_t rnum = 0;
 
+    std::vector<MYSQL_ROW> index_rows;
     while ((mysql_row = mysql_fetch_row(mysql_res))) {
       SQLSMALLINT non_unique = (mysql_row[1][0] == '1' ? 1 : 0);
 
       // Skip non-unique indexes if only unique are requested
       if (fUnique == SQL_INDEX_UNIQUE && non_unique)
         continue;
+
+      index_rows.push_back(mysql_row);
+    }
+
+    // SQLStatistics result sets are ordered by NON_UNIQUE, TYPE,
+    // INDEX_QUALIFIER, INDEX_NAME, and ORDINAL_POSITION. SHOW KEYS happens to
+    // use that order on MySQL, but MatrixOne does not, so enforce the public
+    // ODBC contract in the driver.
+    std::sort(index_rows.begin(), index_rows.end(),
+      [](MYSQL_ROW left, MYSQL_ROW right) {
+        const int left_non_unique = left[1][0] == '1' ? 1 : 0;
+        const int right_non_unique = right[1][0] == '1' ? 1 : 0;
+        if (left_non_unique != right_non_unique)
+          return left_non_unique < right_non_unique;
+        const int name_order = std::strcmp(left[2], right[2]);
+        if (name_order != 0)
+          return name_order < 0;
+        return std::strtol(left[3], nullptr, 10) <
+               std::strtol(right[3], nullptr, 10);
+      });
+
+    for (MYSQL_ROW index_row : index_rows) {
+      mysql_row = index_row;
+      SQLSMALLINT non_unique = (mysql_row[1][0] == '1' ? 1 : 0);
 
       CAT_SCHEMA_SET(data[0], data[1], db);
       /* TABLE_NAME */

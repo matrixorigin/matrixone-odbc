@@ -9,14 +9,16 @@ required status checks in a GitHub ruleset.
 - `Source hygiene` rejects whitespace errors in changed lines and parses the
   Power BI and WiX XML inputs.
 - `Linux build + MatrixOne smoke` builds both ODBC drivers and `MatrixOne.mez`,
-  starts MatrixOne v4.1.4, and runs the dedicated positive and negative ODBC
-  smoke paths. The MatrixOne archive is pinned by release and SHA-256.
+  starts MatrixOne v4.1.4, runs the positive and negative ODBC smoke paths, and
+  runs the 13-case deep compatibility suite through both the Unicode and ANSI
+  drivers. Known server defects are executable XFAILs linked to MatrixOne
+  issues. The MatrixOne archive is pinned by release and SHA-256.
 - `macOS ARM64 build` verifies that the driver, smoke executable, and Power BI
   connector build on the architecture used for local development.
 
-The Linux and macOS jobs upload driver libraries, the smoke executable, and
-`MatrixOne.mez` for 14 days. A failed Linux smoke test uploads the MatrixOne log
-for seven days.
+The Linux and macOS jobs upload driver libraries, the smoke and deep-test
+executables, and `MatrixOne.mez` for 14 days. A failed Linux compatibility run
+uploads the MatrixOne log for seven days.
 
 ## Merge policy
 

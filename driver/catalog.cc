@@ -855,19 +855,19 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
   ocat.add_column("DATA_TYPE");
   ocat.add_column("COLUMN_TYPE as TYPE_NAME");
   ocat.add_column("IF(ISNULL(CHARACTER_MAXIMUM_LENGTH),"
-    "  CASE DATA_TYPE"
+    "  CASE LOWER(DATA_TYPE)"
     "  WHEN 'bit' THEN CAST((NUMERIC_PRECISION + 7) / 8 AS UNSIGNED)"
     "  WHEN 'json' THEN 1073741823"
     "  ELSE NUMERIC_PRECISION"
     "  END,"
-    "  CASE DATA_TYPE"
+    "  CASE LOWER(DATA_TYPE)"
     "  WHEN 'vector' THEN CAST((CHARACTER_MAXIMUM_LENGTH / 4) AS UNSIGNED)"
     "  ELSE CHARACTER_MAXIMUM_LENGTH"
     "  END) as "
     "COLUMN_SIZE");
-  ocat.add_column("CASE DATA_TYPE"
+  ocat.add_column("CASE LOWER(DATA_TYPE)"
     "  WHEN 'json' THEN 4294967295"
-    "  WHEN 'decimal' THEN NUMERIC_PRECISION + NUMERIC_SCALE + IF(COLUMN_TYPE LIKE '%unsigned', 1, 2) "
+    "  WHEN 'decimal' THEN NUMERIC_PRECISION + NUMERIC_SCALE + IF(LOWER(COLUMN_TYPE) LIKE '%unsigned', 1, 2) "
     "  ELSE CHARACTER_OCTET_LENGTH"
     "  END as "
     "BUFFER_LENGTH");
@@ -879,14 +879,18 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
   ocat.add_column("IF(ISNULL(COLUMN_DEFAULT), 'NULL', IF(ISNULL(NUMERIC_PRECISION), CONCAT('''', COLUMN_DEFAULT, ''''),COLUMN_DEFAULT)) as COLUMN_DEF");
   ocat.add_column("0 as SQL_DATA_TYPE");
   ocat.add_column("NULL as SQL_DATA_TYPE_SUB");
-  ocat.add_column("CASE DATA_TYPE"
+  ocat.add_column("CASE LOWER(DATA_TYPE)"
     "  WHEN 'json' THEN 4294967295"
     "  ELSE CHARACTER_OCTET_LENGTH"
     "  END as "
     "CHAR_OCTET_LENGTH");
   ocat.add_column("ORDINAL_POSITION");
   ocat.add_column("IF(EXTRA LIKE '%auto_increment%', 'YES', IS_NULLABLE) AS IS_NULLABLE");
-  ocat.add_column("IF(DATA_TYPE like 'json', 4, MAXLEN) as CHAR_SIZE");
+  // MatrixOne currently exposes CHARACTER_SET_NAME but leaves
+  // information_schema.CHARACTER_SETS empty. Fall back to a multibyte width
+  // for character columns so the Unicode driver still returns SQL_W* types.
+  ocat.add_column("IF(LOWER(DATA_TYPE) LIKE 'json', 4, "
+    "IFNULL(MAXLEN, IF(c.CHARACTER_SET_NAME IS NULL, 1, 4))) as CHAR_SIZE");
   ocat.set_join("LEFT JOIN information_schema.CHARACTER_SETS cs ON c.CHARACTER_SET_NAME = cs.CHARACTER_SET_NAME");
 
   ocat.set_order_by("ORDINAL_POSITION");

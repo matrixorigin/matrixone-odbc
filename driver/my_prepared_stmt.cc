@@ -428,7 +428,8 @@ typedef struct tagBST
 
 /* {{{ allocate_buffer_for_field() -I- */
 static st_buffer_size_type
-allocate_buffer_for_field(const MYSQL_FIELD * const field, BOOL outparams)
+allocate_buffer_for_field(const MYSQL_FIELD * const field, BOOL outparams,
+                          bool native_floating_point)
 {
   st_buffer_size_type result(NULL, 0, field->type);
 
@@ -456,8 +457,16 @@ allocate_buffer_for_field(const MYSQL_FIELD * const field, BOOL outparams)
     */
     case MYSQL_TYPE_DOUBLE:
     case MYSQL_TYPE_FLOAT:
-      result.size=24;
-      result.type = MYSQL_TYPE_STRING;
+      if (native_floating_point)
+      {
+        result.size= field->type == MYSQL_TYPE_DOUBLE
+          ? sizeof(double) : sizeof(float);
+      }
+      else
+      {
+        result.size=24;
+        result.type = MYSQL_TYPE_STRING;
+      }
       break;
 
     case MYSQL_TYPE_LONGLONG:
@@ -923,6 +932,9 @@ int STMT::ssps_bind_result()
 {
   const size_t num_fields = field_count();
   unsigned int        i;
+  const bool matrixone_server =
+    dbc && dbc->mysql && dbc->mysql->server_version &&
+    strstr(dbc->mysql->server_version, "MatrixOne") != nullptr;
 
   if (num_fields == 0)
   {
@@ -947,7 +959,8 @@ int STMT::ssps_bind_result()
     {
       MYSQL_FIELD    *field= mysql_fetch_field_direct(result, i);
       st_buffer_size_type p= allocate_buffer_for_field(field,
-                                                      IS_PS_OUT_PARAMS(this));
+                                                      IS_PS_OUT_PARAMS(this),
+                                                      matrixone_server);
 
       result_bind[i].buffer_type  = p.type;
       result_bind[i].buffer       = p.buffer;
