@@ -831,6 +831,7 @@ SQLRETURN wcopy_bit_result(STMT *stmt,
 
 std::map<std::string, int> sql_data_types_map = {
   { "bit", SQL_BIT },
+  { "bool", SQL_BIT },
   { "decimal", SQL_DECIMAL },
   { "char", SQL_CHAR },
   { "tinyint", SQL_TINYINT },
@@ -866,16 +867,22 @@ std::map<std::string, int> sql_data_types_map = {
 
 SQLSMALLINT get_sql_data_type_from_str(const char *mysql_type_name)
 {
-  try
-  {
-    return sql_data_types_map.at(mysql_type_name);
-  }
-  catch(const std::out_of_range&)
-  {
+  if (!mysql_type_name)
     return SQL_UNKNOWN_TYPE;
+
+  // MySQL exposes lower-case DATA_TYPE values in information_schema, while
+  // MatrixOne currently exposes upper-case values. SQL type names are ASCII
+  // identifiers, so normalize them before the catalog type lookup. This also
+  // keeps SQLColumns robust to servers that use mixed case.
+  std::string normalized(mysql_type_name);
+  for (char &character : normalized)
+  {
+    character = static_cast<char>(
+      std::tolower(static_cast<unsigned char>(character)));
   }
-  // Keep compiler happy
-  return SQL_UNKNOWN_TYPE;
+
+  auto type = sql_data_types_map.find(normalized);
+  return type == sql_data_types_map.end() ? SQL_UNKNOWN_TYPE : type->second;
 }
 
 SQLSMALLINT compute_sql_data_type(STMT *stmt, SQLSMALLINT sql_type,
@@ -4229,4 +4236,3 @@ const char get_identifier_quote(STMT *stmt)
   }
   return empty;
 }
-

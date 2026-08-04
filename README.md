@@ -17,11 +17,12 @@ This repository currently produces:
 
 ## Current scope
 
-The first cut deliberately stays small: it changes user-visible branding,
-default port, packaging registration names, Power BI data-source identity,
-authentication SQLSTATE mapping, and the Unicode transport charset. MySQL wire
-protocol, the broader ODBC API implementation, type mapping, and internal
-`myodbc*` library names remain close to upstream. See
+The fork stays deliberately narrow: it changes user-visible branding, default
+port, packaging registration names, Power BI data-source identity,
+authentication SQLSTATE mapping, Unicode transport, and only the catalog or
+prepared-result compatibility paths demonstrated by MatrixOne regressions.
+MySQL wire protocol and internal `myodbc*` library names remain close to
+upstream. See
 [MATRIXONE_CHANGES.md](MATRIXONE_CHANGES.md).
 
 ## Build on macOS ARM64
@@ -65,11 +66,17 @@ Leaving `PORT` out of that string intentionally verifies the MatrixOne default
 of `6001`. Current results are recorded in
 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
+For the Unicode/ANSI 13-case suite covering metadata, descriptors, prepared
+values, transactions, streaming, diagnostics, concurrency, timeout, and
+cancellation, follow [docs/TESTING.md](docs/TESTING.md). Known MatrixOne defects
+remain visible as issue-linked XFAILs.
+
 ## Continuous integration
 
 Every pull request builds the driver and `MatrixOne.mez` on Linux and macOS
 ARM64. The Linux job also starts a pinned MatrixOne release and runs the ODBC
-smoke test, including the expected authentication failure path. See
+smoke test, the expected authentication failure path, and the deep suite with
+both public driver variants. See
 [docs/CI.md](docs/CI.md) for check names, artifact retention, and the recommended
 merge ruleset.
 

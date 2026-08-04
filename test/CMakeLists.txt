@@ -281,6 +281,20 @@ ELSE()
   TARGET_LINK_LIBRARIES(mo_odbc_smoke ${ODBC_LINK_FLAGS} ${ODBCINSTLIB})
 ENDIF()
 
+# A deeper MatrixOne compatibility suite covering metadata, type mapping,
+# parameters, transactions, streaming, SQLSTATEs, concurrency, and query
+# control through public ODBC APIs. Like the smoke test, it requires a running
+# MatrixOne service and is invoked explicitly by integration CI.
+ADD_EXECUTABLE(mo_odbc_deep mo_odbc_deep.cc)
+add_dependencies(mo_odbc_deep myodbc-w myodbc-a)
+set_target_properties(mo_odbc_deep PROPERTIES FOLDER Tests)
+IF(WIN32)
+  TARGET_LINK_LIBRARIES(mo_odbc_deep ${ODBCLIB} ${ODBCINSTLIB})
+ELSE()
+  TARGET_LINK_LIBRARIES(mo_odbc_deep ${ODBC_LINK_FLAGS} ${ODBCINSTLIB}
+                        ${CMAKE_THREAD_LIBS_INIT})
+ENDIF()
+
 
 #
 # Custom command and target generate_test_config_files to generate
