@@ -1,0 +1,281 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+jobs:
+  source-hygiene:
+    name: Source hygiene
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check changed lines
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          git config core.whitespace trailing-space,space-before-tab,cr-at-eol
+          if [[ -n "${BASE_SHA}" ]] &&
+             [[ ! "${BASE_SHA}" =~ ^0+$ ]] &&
+             git cat-file -e "${BASE_SHA}^{commit}"; then
+            git diff --check "${BASE_SHA}..${HEAD_SHA}"
+          else
+            git show --check --format=fuller "${HEAD_SHA}"
+          fi
+
+      - name: Validate XML inputs
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          for path in (
+              "pbi/resources.resx",
+              "wix/mysql-connector-odbc-msi-arpprops.wxs",
+              "wix/mysql_odbc.wxs.in",
+              "wix/mysql_odbc_fragment.wxs",
+          ):
+              ET.parse(path)
+              print(f"valid XML: {path}")
+          PY
+
+  linux-smoke:
+    name: Linux build + MatrixOne smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install build and runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            cmake \
+            curl \
+            default-mysql-client \
+            file \
+            libmysqlclient-dev \
+            ninja-build \
+            unixodbc-dev \
+            unzip
+          mysql_config --version
+          odbc_config --version || true
+
+      - name: Configure
+        run: |
+          cmake -S . -B build-linux -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DDISABLE_GUI=1 \
+            -DMYSQL_DIR=/usr \
+            -DMYSQL_CONFIG_EXECUTABLE=/usr/bin/mysql_config \
+            -DMYSQLCLIENT_STATIC_LINKING=0 \
+            -DWITH_PBI=1 \
+            -DWITH_UNIXODBC=1
+
+      - name: Build
+        run: cmake --build build-linux
+
+      - name: Verify Linux artifacts
+        run: |
+          file build-linux/lib/libmyodbc9w.so
+          file build-linux/lib/libmyodbc9a.so
+          file build-linux/test/mo_odbc_smoke
+          ldd build-linux/lib/libmyodbc9w.so
+          unzip -t build-linux/pbi/MatrixOne.mez
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: matrixone-odbc-linux-x86_64
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            build-linux/lib/libmyodbc9w.so
+            build-linux/lib/libmyodbc9a.so
+            build-linux/test/mo_odbc_smoke
+            build-linux/pbi/MatrixOne.mez
+            build-linux/INFO_BIN
+
+      - name: Cache MatrixOne release
+        id: cache-mo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/mo-release/mo-v4.1.4-linux-x86_64.zip
+          key: matrixone-v4.1.4-linux-x86_64-63a78ea8
+
+      - name: Download MatrixOne v4.1.4
+        if: steps.cache-mo.outputs.cache-hit != 'true'
+        env:
+          MO_URL: https://github.com/matrixorigin/matrixone/releases/download/v4.1.4/mo-v4.1.4-linux-x86_64.zip
+        run: |
+          mkdir -p "${RUNNER_TEMP}/mo-release"
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output "${RUNNER_TEMP}/mo-release/mo-v4.1.4-linux-x86_64.zip.part" \
+            "${MO_URL}"
+          mv "${RUNNER_TEMP}/mo-release/mo-v4.1.4-linux-x86_64.zip.part" \
+            "${RUNNER_TEMP}/mo-release/mo-v4.1.4-linux-x86_64.zip"
+
+      - name: Verify and start MatrixOne
+        run: |
+          MO_ARCHIVE="${RUNNER_TEMP}/mo-release/mo-v4.1.4-linux-x86_64.zip"
+          echo "63a78ea81f2f531932b6755e8f7740c8fc1e89e55f497859d4748ec2108ce67d  ${MO_ARCHIVE}" \
+            | sha256sum --check --strict
+
+          MO_RUNTIME="${RUNNER_TEMP}/mo-runtime"
+          MO_LOG="${RUNNER_TEMP}/matrixone.log"
+          unzip -q "${MO_ARCHIVE}" -d "${MO_RUNTIME}"
+          MO_BINARY="$(find "${MO_RUNTIME}" -type f -name mo-service -print -quit)"
+          test -n "${MO_BINARY}"
+          MO_HOME="$(dirname "${MO_BINARY}")"
+          MO_CONFIG="${MO_HOME}/etc/launch/launch.toml"
+          test -f "${MO_CONFIG}"
+          chmod +x "${MO_BINARY}"
+
+          (
+            cd "${MO_HOME}"
+            exec "${MO_BINARY}" -launch "${MO_CONFIG}"
+          ) >"${MO_LOG}" 2>&1 &
+          MO_PID=$!
+          echo "MO_PID=${MO_PID}" >> "${GITHUB_ENV}"
+          echo "MO_LOG=${MO_LOG}" >> "${GITHUB_ENV}"
+
+          for attempt in $(seq 1 90); do
+            if MYSQL_PWD=111 mysql --protocol=tcp --connect-timeout=2 \
+              -h 127.0.0.1 -P 6001 -u root -Nse 'select version()'; then
+              exit 0
+            fi
+            if ! kill -0 "${MO_PID}" 2>/dev/null; then
+              tail -200 "${MO_LOG}"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          tail -200 "${MO_LOG}"
+          echo "MatrixOne did not become ready within 180 seconds" >&2
+          exit 1
+
+      - name: Register the Unicode driver
+        run: |
+          ODBC_SYSTEM_DIR="${RUNNER_TEMP}/odbc"
+          mkdir -p "${ODBC_SYSTEM_DIR}"
+          cat > "${ODBC_SYSTEM_DIR}/odbcinst.ini" <<EOF
+          [MatrixOne ODBC 9.7 Unicode Driver]
+          Description = MatrixOne ODBC 9.7 Unicode Driver
+          Driver = ${GITHUB_WORKSPACE}/build-linux/lib/libmyodbc9w.so
+          Threading = 0
+          UsageCount = 1
+          EOF
+          echo "ODBCSYSINI=${ODBC_SYSTEM_DIR}" >> "${GITHUB_ENV}"
+          echo "ODBCINSTINI=odbcinst.ini" >> "${GITHUB_ENV}"
+
+      - name: Run MatrixOne ODBC smoke test
+        env:
+          MO_ODBC_CONNECTION_STRING: DRIVER={MatrixOne ODBC 9.7 Unicode Driver};SERVER=127.0.0.1;DATABASE=mo_odbc_smoke;UID=root;PWD=111;SSLMODE=DISABLED
+        run: |
+          MYSQL_PWD=111 mysql --protocol=tcp -h 127.0.0.1 -P 6001 -u root \
+            < test/mo_odbc_smoke.sql
+          ./build-linux/test/mo_odbc_smoke
+
+      - name: Verify authentication SQLSTATE
+        env:
+          MO_ODBC_CONNECTION_STRING: DRIVER={MatrixOne ODBC 9.7 Unicode Driver};SERVER=127.0.0.1;DATABASE=mo_odbc_smoke;UID=root;PWD=wrong;SSLMODE=DISABLED
+          MO_ODBC_EXPECT_SQLSTATE: "28000"
+        run: ./build-linux/test/mo_odbc_smoke
+
+      - name: Stop MatrixOne
+        if: always()
+        continue-on-error: true
+        run: |
+          if [[ -n "${MO_PID:-}" ]] && kill -0 "${MO_PID}" 2>/dev/null; then
+            kill -INT "${MO_PID}"
+            for attempt in $(seq 1 30); do
+              if ! kill -0 "${MO_PID}" 2>/dev/null; then
+                exit 0
+              fi
+              sleep 1
+            done
+            kill -TERM "${MO_PID}" || true
+          fi
+
+      - name: Upload MatrixOne log on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: matrixone-smoke-log
+          retention-days: 7
+          if-no-files-found: warn
+          path: ${{ env.MO_LOG }}
+
+  macos-arm64:
+    name: macOS ARM64 build
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install dependencies
+        run: |
+          brew install cmake mysql-client ninja unixodbc
+          brew list --versions cmake mysql-client ninja unixodbc zstd
+
+      - name: Configure
+        run: |
+          MYSQL_PREFIX="$(brew --prefix mysql-client)"
+          ODBC_PREFIX="$(brew --prefix unixodbc)"
+          ZSTD_PREFIX="$(brew --prefix zstd)"
+          cmake -S . -B build-macos -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DDISABLE_GUI=1 \
+            -DMYSQL_DIR="${MYSQL_PREFIX}" \
+            -DMYSQLCLIENT_STATIC_LINKING=0 \
+            -DMYSQL_LINK_FLAGS="-L${ZSTD_PREFIX}/lib" \
+            -DODBC_INCLUDES="${ODBC_PREFIX}/include" \
+            -DODBC_LIB_DIR="${ODBC_PREFIX}/lib" \
+            -DODBCINST_LIB_DIR="${ODBC_PREFIX}/lib" \
+            -DWITH_PBI=1 \
+            -DWITH_UNIXODBC=1
+
+      - name: Build
+        run: cmake --build build-macos
+
+      - name: Verify macOS artifacts
+        run: |
+          file build-macos/lib/libmyodbc9w.so | grep arm64
+          file build-macos/lib/libmyodbc9a.so | grep arm64
+          file build-macos/test/mo_odbc_smoke | grep arm64
+          otool -L build-macos/lib/libmyodbc9w.so
+          unzip -t build-macos/pbi/MatrixOne.mez
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: matrixone-odbc-macos-arm64
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            build-macos/lib/libmyodbc9w.so
+            build-macos/lib/libmyodbc9a.so
+            build-macos/test/mo_odbc_smoke
+            build-macos/pbi/MatrixOne.mez
+            build-macos/INFO_BIN

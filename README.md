@@ -1,5 +1,7 @@
 # MatrixOne ODBC
 
+[![CI](https://github.com/iamlinjunhong/matrixone-odbc/actions/workflows/ci.yml/badge.svg)](https://github.com/iamlinjunhong/matrixone-odbc/actions/workflows/ci.yml)
+
 MatrixOne ODBC is a thin, experimental fork of MySQL Connector/ODBC 9.7.0 for
 MatrixOne and Power BI DirectQuery compatibility work. It intentionally keeps
 the upstream MySQL client protocol and most internal library names unchanged so
@@ -62,6 +64,14 @@ export MO_ODBC_CONNECTION_STRING="DRIVER={MatrixOne ODBC 9.7 Unicode Driver};SER
 Leaving `PORT` out of that string intentionally verifies the MatrixOne default
 of `6001`. Current results are recorded in
 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+
+## Continuous integration
+
+Every pull request builds the driver and `MatrixOne.mez` on Linux and macOS
+ARM64. The Linux job also starts a pinned MatrixOne release and runs the ODBC
+smoke test, including the expected authentication failure path. See
+[docs/CI.md](docs/CI.md) for check names, artifact retention, and the recommended
+merge ruleset.
 
 ## Diagnostics
 
