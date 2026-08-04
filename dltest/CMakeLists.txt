@@ -33,7 +33,7 @@ set_target_properties(dltest PROPERTIES FOLDER Tests)
 set_target_properties(dltest PROPERTIES PDB_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/test/)
 
 add_version_info(dltest
-  "MySQL Connector/ODBC driver module tester."
+  "MatrixOne ODBC driver module tester."
   "Checks whether the driver can be correctly loaded at run-time."
 )
 

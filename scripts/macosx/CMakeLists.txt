@@ -42,7 +42,7 @@ SET(HTML_HEADER "<!DOCTYPE html PUBLIC \"-//w3c//dtd html 4.0 transitional//en\"
 <font face=\"Helvetica\">
 <pre class=\"programlisting\">
 <h2>Licensing Information User Manual</h2>
-<h3>MySQL Connector/ODBC ${CONNECTOR_MAJOR}.${CONNECTOR_MINOR}</h3>
+<h3>MatrixOne ODBC ${CONNECTOR_MAJOR}.${CONNECTOR_MINOR}</h3>
 <hr>
 ")
 

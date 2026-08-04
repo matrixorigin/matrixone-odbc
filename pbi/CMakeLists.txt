@@ -29,27 +29,27 @@
 
 ##########################################################################
 
-CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/pbi/MySQLDQ.version.pqm.in ${CMAKE_SOURCE_DIR}/pbi/MySQLDQ.version.pqm)
+CONFIGURE_FILE(${CMAKE_SOURCE_DIR}/pbi/MatrixOne.version.pqm.in ${CMAKE_SOURCE_DIR}/pbi/MatrixOne.version.pqm)
 
 set(PBI_FILES
     "Diagnostics.pqm"
-    "MySQLDQ.pq"
-    "MySQLDQ.version.pqm"
-    "MySQLDQ16.png"
-    "MySQLDQ20.png"
-    "MySQLDQ24.png"
-    "MySQLDQ32.png"
-    "MySQLDQ40.png"
-    "MySQLDQ48.png"
-    "MySQLDQ64.png"
-    "MySQLDQ80.png"
+    "MatrixOne.pq"
+    "MatrixOne.version.pqm"
+    "MatrixOne16.png"
+    "MatrixOne20.png"
+    "MatrixOne24.png"
+    "MatrixOne32.png"
+    "MatrixOne40.png"
+    "MatrixOne48.png"
+    "MatrixOne64.png"
+    "MatrixOne80.png"
     "OdbcConstants.pqm"
     "resources.resx"
 )
 
 # Output file names
-set(ZIP_OUTPUT "${CMAKE_BINARY_DIR}/pbi/MySQLDQ.zip")
-set(MEZ_OUTPUT "${CMAKE_BINARY_DIR}/pbi/MySQLDQ.mez")
+set(ZIP_OUTPUT "${CMAKE_BINARY_DIR}/pbi/MatrixOne.zip")
+set(MEZ_OUTPUT "${CMAKE_BINARY_DIR}/pbi/MatrixOne.mez")
 
 # We are not installing files anywhere.
 # They will have be picked up from the binary directory if required.

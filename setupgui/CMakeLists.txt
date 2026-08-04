@@ -108,7 +108,7 @@ set_property(
 )
 
 add_version_info(myodbc-setup
-  "MySQL Connector/ODBC driver setup library."
+  "MatrixOne ODBC driver setup library."
   "Provides driver configuration GUI."
 )
 

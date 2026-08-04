@@ -1,55 +1,82 @@
-# MySQL Connector/ODBC Driver
+# MatrixOne ODBC
 
-You can get the latest stable release from the [MySQL downloads](https://dev.mysql.com/downloads/connector/odbc/).
+MatrixOne ODBC is a thin, experimental fork of MySQL Connector/ODBC 9.7.0 for
+MatrixOne and Power BI DirectQuery compatibility work. It intentionally keeps
+the upstream MySQL client protocol and most internal library names unchanged so
+that failures remain easy to compare with the upstream driver.
 
-For detailed information please visit the official [MySQL Connector/ODBC documentation](https://dev.mysql.com/doc/connector-odbc/en/).
+This repository currently produces:
 
-Source packages are available from our [github releases page](https://github.com/mysql/mysql-connector-odbc/releases).
+- `myodbc9w` and `myodbc9a`: Unicode and ANSI ODBC driver libraries with the
+  registered names `MatrixOne ODBC 9.7 Unicode Driver` and
+  `MatrixOne ODBC 9.7 ANSI Driver`.
+- `MatrixOne.mez`: a Power BI custom connector using `Odbc.DataSource`, with
+  DirectQuery enabled and MatrixOne port `6001` as the default.
 
-## Licensing
+## Current scope
 
-Please refer to files README and LICENSE, available in this repository, and [Legal Notices in documentation](https://dev.mysql.com/doc/relnotes/connector-odbc/en/preface.html) for further details.
+The first cut deliberately stays small: it changes user-visible branding,
+default port, packaging registration names, Power BI data-source identity,
+authentication SQLSTATE mapping, and the Unicode transport charset. MySQL wire
+protocol, the broader ODBC API implementation, type mapping, and internal
+`myodbc*` library names remain close to upstream. See
+[MATRIXONE_CHANGES.md](MATRIXONE_CHANGES.md).
 
-## Download & Install
+## Build on macOS ARM64
 
-MySQL Connector/ODBC can be installed from pre-compiled packages that can be downloaded from the [MySQL downloads page](https://dev.mysql.com/downloads/connector/odbc/).
-The process of installing of Connector/ODBC from a binary distribution is described in [MySQL online manuals](https://dev.mysql.com/doc/connector-odbc/en/connector-odbc-installation.html)
+Prerequisites:
 
-### Building from sources
+```sh
+brew install cmake mysql-client unixodbc
+```
 
-MySQL Connector/ODBC can be installed from the source. Please select the relevant platform in [MySQL online manuals](https://dev.mysql.com/doc/connector-odbc/en/connector-odbc-installation.html)
+Configure and build:
 
-### GitHub Repository
+```sh
+cmake -S . -B build-arm64 \
+  -DWITH_UNIXODBC=1 \
+  -DMYSQL_DIR=/opt/homebrew/opt/mysql-client \
+  -DODBC_INCLUDES=/opt/homebrew/opt/unixodbc/include \
+  -DODBC_LIB_DIR=/opt/homebrew/opt/unixodbc/lib \
+  -DODBCINST_LIB_DIR=/opt/homebrew/opt/unixodbc/lib \
+  -DMYSQLCLIENT_STATIC_LINKING=0 \
+  -DMYSQL_LINK_FLAGS=-L/opt/homebrew/opt/zstd/lib \
+  -DWITH_PBI=1
+cmake --build build-arm64 --parallel
+```
 
-This repository contains the MySQL Connector/ODBC source code as per latest released version. You should expect to see the same contents here and within the latest released Connector/ODBC package.
+The Power BI extension is generated as `build-arm64/pbi/MatrixOne.mez`.
+Power BI Desktop testing requires Windows; the ODBC protocol, catalog metadata,
+and SQL paths can be exercised independently on macOS or Linux.
 
-## Usage Scenarios
+Build and run the MatrixOne-specific API test against a registered driver:
 
-The MySQL Connector/ODBC can be used in a variety of programming languages and applications.
-The most popular of them are:
+```sh
+cmake --build build-arm64 --target mo_odbc_smoke
+export MO_PASSWORD='your-password'
+mysql -h 127.0.0.1 -P 6001 -u root -p < test/mo_odbc_smoke.sql
+export MO_ODBC_CONNECTION_STRING="DRIVER={MatrixOne ODBC 9.7 Unicode Driver};SERVER=127.0.0.1;DATABASE=mo_odbc_smoke;UID=root;PWD=${MO_PASSWORD};SSLMODE=DISABLED"
+./build-arm64/test/mo_odbc_smoke
+```
 
-* C and C++ programming using ODBC API
-* C++ programming using ADODB objects
-* Visual Basic programming using ADODB objects
-* Java through JDBC/ODBC bridge
-* .NET platform with ADO.NET/ODBC bridge
-* PHP, Perl, Python, Ruby, Erlang.
-* Office applications through linked tables and Visual Basic integration
-* Multitude of other applications supporting ODBC
+Leaving `PORT` out of that string intentionally verifies the MatrixOne default
+of `6001`. Current results are recorded in
+[docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
+## Diagnostics
 
-## Documentation
+Use the layered workflow in [docs/POWER_BI.md](docs/POWER_BI.md). In short,
+first reproduce with the ODBC smoke test, then enable unixODBC or Windows ODBC
+tracing, and only then enable Power Query connector tracing. This identifies
+whether a failure belongs to connection setup, wire protocol, ODBC metadata,
+Power Query translation, or MatrixOne SQL semantics.
 
-* [MySQL](http://www.mysql.com/)
-* [Connector ODBC Developer Guide](https://dev.mysql.com/doc/connector-odbc/en/)
-* [ODBC API Reference MSDN](https://msdn.microsoft.com/en-us/ie/ms714562(v=vs.94))
+## Upstream and license
 
-## Questions/Bug Reports
+The baseline is MySQL Connector/ODBC tag `9.7.0`, commit
+`70150742aced011228424c39f9322993d9a468d2`. Original Oracle copyrights and
+license notices are retained. This derivative remains under GPL-2.0 with the
+Universal FOSS Exception; see [LICENSE.txt](LICENSE.txt).
 
-* [Discussion Forum](https://forums.mysql.com/list.php?37)
-* [Slack](https://mysqlcommunity.slack.com)
-* [Bugs](https://bugs.mysql.com)
-
-## Contributing
-
-Please see our [guidelines](CONTRIBUTING.md) for contributing to the driver.
+MySQL is a trademark of Oracle and/or its affiliates. MatrixOne ODBC is not an
+Oracle product and is not supported by Oracle.

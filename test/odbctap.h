@@ -169,7 +169,7 @@ const char * wstr4output(const wchar_t *wstr)
 #define _MY_NEWLINE "\n"
 #endif
 
-const char *mydriver= "{MySQL ODBC " MYODBC_STRSERIES " Driver}";
+const char *mydriver= "{MatrixOne ODBC " MYODBC_STRSERIES " Driver}";
 char mydrv_nobrackets[255] = {'\0'}; /* mydriver value will be copied here */
 const char *mydsn= "test";
 const char *myuid= "root";

@@ -30,16 +30,18 @@
 */
 
 /*
-  The main module of Power BI Data extension for MySQL with
+  MatrixOne modifications copyright (c) 2026 Matrix Origin.
+
+  The main module of the Power BI Data extension for MatrixOne with
   DirectQuery support.
 
-  This Data Extension allows Power BI Desktop users to process data
-  using DirectQuery technology with MySQL Server. The Data Extension
-  utilizes MySQL Connector/ODBC for connecting to MySQL Server.
+  This thin fork keeps the upstream MySQL Connector/ODBC protocol and
+  metadata implementation, while providing MatrixOne defaults and a
+  separately named Power BI data source.
 */
 
 [Version = "1.0.0"] // https://docs.microsoft.com/en-us/power-query/handlingversioning
-section MySQLDQ;
+section MatrixOne;
 
 /*
   When set to true, additional trace information will be written out
@@ -68,28 +70,27 @@ TraceTypeInfo = true;
 
 Config_HideNativeQuery = not EnableTraceOutput;
 
-// MySQL ODBC Driver supports parameter bindings
+// MatrixOne ODBC inherits parameter binding support from the upstream driver.
 
 Config_UseParameterBindings = true;
 
 
 // Note: The .version.pqm file is generated during cmake configuration step.
 
-MySQLDQInfo = Extension.LoadFunction("MySQLDQ.version.pqm");
+MatrixOneInfo = Extension.LoadFunction("MatrixOne.version.pqm");
 
 /*
-  We use the default name of the MySQL ODBC driver under which it is registered
-  by our installer.
+  Keep this name synchronized with the Windows and Unix driver registration.
 */
 
-ODBCDriver = "MySQL ODBC " & MySQLDQInfo[Version] & " Unicode Driver";
-DefaultMySQLPort = 3306;
-DefaultMySQLHost = "localhost";
+ODBCDriver = "MatrixOne ODBC " & MatrixOneInfo[Version] & " Unicode Driver";
+DefaultMatrixOnePort = 6001;
+DefaultMatrixOneHost = "localhost";
 
 
 // Data Source Kind description
 
-MySQLDQ =
+MatrixOne =
 [
   SupportsEncryption = true,
   Authentication = [ UsernamePassword = [] ],
@@ -100,22 +101,22 @@ MySQLDQ =
   TestConnection = (dataSourcePath) =>
     let
       json = Json.Document(dataSourcePath),
-      server = json[#"MySQL Server"]
+      server = json[#"MatrixOne Server"]
     in
-      { "MySQLDQ.Contents", server}
+      { "MatrixOne.Contents", server}
 ];
 
 
 // Data Source UI publishing description
 
-MySQLDQ.Publish =
+MatrixOne.Publish =
 [
   Beta = false,
   SupportsDirectQuery = true,     // enables direct query
   Category = "Database",
   LearnMoreUrl = "https://powerbi.microsoft.com/",
-  SourceImage = MySQLDQ.Icons,
-  SourceTypeImage = MySQLDQ.Icons,
+  SourceImage = MatrixOne.Icons,
+  SourceTypeImage = MatrixOne.Icons,
 
   ButtonText =
   {
@@ -130,7 +131,7 @@ Database_FieldCaption = Extension.LoadString("Database_FieldCaption");
 
 
 /*
-  Main function for connecting to a MySL server.
+  Main function for connecting to a MatrixOne server.
 
   See usage examples below.
 
@@ -147,13 +148,13 @@ Database_FieldCaption = Extension.LoadString("Database_FieldCaption");
 Usage1 =
 [
   Description = Text.Format(
-    "Returns MySQL tables and views from the MySQL database <code>company</code> on server <code>#{0}</code>.",
-    {DefaultMySQLHost}
+    "Returns MatrixOne tables and views from the database <code>company</code> on server <code>#{0}</code>.",
+    {DefaultMatrixOneHost}
   ),
 
   Code = Text.Format(
-    "MySQLDQ.Contents(""#{0}"", ""company"")",
-    {DefaultMySQLHost}
+    "MatrixOne.Contents(""#{0}"", ""company"")",
+    {DefaultMatrixOneHost}
   ),
 
   Result =
@@ -167,27 +168,27 @@ Usage1 =
 Usage2 =
 [
   Description = Text.Format(
-    "Returns databases on the specified MySQL server (#{0}) using the default
-     port #{1} to connect. Equivalent to <code>MySQLDQ.Contents(""#{0}:#{1}"")</code>.",
-    {DefaultMySQLHost, DefaultMySQLPort}
+    "Returns databases on the specified MatrixOne server (#{0}) using the default
+     port #{1} to connect. Equivalent to <code>MatrixOne.Contents(""#{0}:#{1}"")</code>.",
+    {DefaultMatrixOneHost, DefaultMatrixOnePort}
   ),
 
-  Code = Text.Format("MySQLDQ.Contents(""#{0}"")", {DefaultMySQLHost}),
+  Code = Text.Format("MatrixOne.Contents(""#{0}"")", {DefaultMatrixOneHost}),
 
   Result =
     "#table({""Name"",               ""Description"", ""Data"",   ""Kind""}, {
        {""company"",            null,          #table(), ""Table""},
        {""information_schema"", null,          #table(), ""Table""},
-       {""mysql"",              null,          #table(), ""View""}
+       {""system"",             null,          #table(), ""View""}
        })"
 ];
 
 Catalog_description = Text.Format("<p>Navigation Table:</p>
   <ul>
   <li>If <code>databasename</code> parameter is omitted it returns
-  a table of databases from the MySQL server <code>servername</code>.
+  a table of databases from the MatrixOne server <code>servername</code>.
   <li>When <code>databasename</code> parameter is specified it returns
-  a table containing tables and views from the MySQL database
+  a table containing tables and views from the MatrixOne database
       <code>databasename</code> on the server <code>servername</code>.
   </ul>
 
@@ -199,21 +200,21 @@ Catalog_description = Text.Format("<p>Navigation Table:</p>
       See details below.
   <li>As <code>'database'</code> in parameter <b>#{1}</b>.
       The same credentials for all databases can be used on the specified
-      <b>MySQL Server</b>.
+      <b>MatrixOne Server</b>.
   </ul>
   <p>The first parameter <b>#{0}</b> is identifying a data source in
       Power BI uniquely.</br>
   Different values of the parameter <b>#{0}</b> correspond to independent
   data sources that can have different credentials.</br>
 
-  MySQL Database with Direct Query support extension works with Basic authentication, which makes
+  MatrixOne Database with DirectQuery support works with Basic authentication, which makes
   possible to connect with different credentials to databases residing
-  on the same MySQL server.</p>",
+  on the same MatrixOne server.</p>",
   {Server_FieldCaption, Database_FieldCaption}
 );
 
 
-MySQLOdbc = (connstr as text, optional db) as table =>
+MatrixOneOdbc = (connstr as text, optional db) as table =>
 let
 
   ConnectionOpts = ParseConnectionString(connstr, db),
@@ -270,8 +271,8 @@ let
       // Hooks
 
       OnError = OnError,
-      SQLColumns = MySQLColumns,
-      SQLGetTypeInfo = MySQLGetTypeInfo
+      SQLColumns = MatrixOneColumns,
+      SQLGetTypeInfo = MatrixOneGetTypeInfo
   ])
 
 in
@@ -323,13 +324,13 @@ let
       error Extension.LoadString("Error_InvalidConnstr"),
 
   /*
-    If port is not specified the default value is 80, this needs to be replaced by MySQL default port.
+    If port is not specified Uri.Parts returns 80; replace it with the MatrixOne default port.
   */
 
   port =
     if parts[Port] = 80 and not Text.EndsWith(server, ":80")
     then
-      DefaultMySQLPort
+      DefaultMatrixOnePort
     else
       parts[Port],
 
@@ -372,14 +373,14 @@ in
 
 
 /*
-  Given a meta-data record, such as from MySQLColumns(), return updates that
+  Given a metadata record, such as from MatrixOneColumns(), return updates that
   should be applied to the meta-data or null if no updates are needed.
 
   We update reported type names because PBI mashup engine often constructs
   SQL queries with CAST() clauses using reported type names. This could lead
-  to incorrect queries because MySQL has limited set of types that can be used
-  with CAST(). For that reason we change reported names of types such CHAR
-  instead of VARCHAR, for example.
+  to incorrect queries because the MySQL-compatible protocol exposes type names
+  that are not always legal in CAST(). For that reason we normalize reported
+  names, for example CHAR instead of VARCHAR.
 */
 
 md_fixes = (md as record) as nullable record =>
@@ -447,7 +448,7 @@ in
   by `md_fixes` function.
 */
 
-MySQLGetTypeInfo = (type_info) =>
+MatrixOneGetTypeInfo = (type_info) =>
 let
 
   fix_names = (ti as record) as record =>
@@ -497,7 +498,7 @@ in
   original column meta-data before returning it to PBI.
 */
 
-MySQLColumns = (catalogName, schemaName, tableName, columnName, md) =>
+MatrixOneColumns = (catalogName, schemaName, tableName, columnName, md) =>
 let
 
   fix_md = (md) as record =>
@@ -527,15 +528,15 @@ in
 
 // Main entry point declaration.
 
-[DataSource.Kind="MySQLDQ", Publish="MySQLDQ.Publish"]
-shared MySQLDQ.Contents = Value.ReplaceType(MySQLOdbc, MySQLDatabaseType);
+[DataSource.Kind="MatrixOne", Publish="MatrixOne.Publish"]
+shared MatrixOne.Contents = Value.ReplaceType(MatrixOneOdbc, MatrixOneDatabaseType);
 
 
-// Meta-data information for the main entry point `MySQLOdbc`
+// Meta-data information for the main entry point `MatrixOneOdbc`
 
-MySQLDatabaseType = type function
+MatrixOneDatabaseType = type function
 (
-  #"MySQL Server" as (type text meta
+  #"MatrixOne Server" as (type text meta
   [
     Documentation.FieldCaption = Server_FieldCaption,
     Documentation.FieldDescription = Extension.LoadString("Server_FieldDescription"),
@@ -557,20 +558,20 @@ as table meta
 ];
 
 
-MySQLDQ.Icons =
+MatrixOne.Icons =
 [
   Icon16 = {
-    Extension.Contents("MySQLDQ16.png"),
-    Extension.Contents("MySQLDQ20.png"),
-    Extension.Contents("MySQLDQ24.png"),
-    Extension.Contents("MySQLDQ32.png")
+    Extension.Contents("MatrixOne16.png"),
+    Extension.Contents("MatrixOne20.png"),
+    Extension.Contents("MatrixOne24.png"),
+    Extension.Contents("MatrixOne32.png")
   },
 
   Icon32 = {
-    Extension.Contents("MySQLDQ32.png"),
-    Extension.Contents("MySQLDQ40.png"),
-    Extension.Contents("MySQLDQ48.png"),
-    Extension.Contents("MySQLDQ64.png")
+    Extension.Contents("MatrixOne32.png"),
+    Extension.Contents("MatrixOne40.png"),
+    Extension.Contents("MatrixOne48.png"),
+    Extension.Contents("MatrixOne64.png")
   }
 ];
 

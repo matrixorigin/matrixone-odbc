@@ -12,3 +12,6 @@ Uninstall.bat
 CMakeUserPresets.json
 VersionInfo.h
 .vscode
+build*/
+pbi/MatrixOne.version.pqm
+scripts/macosx/License.html.in

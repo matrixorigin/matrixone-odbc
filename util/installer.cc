@@ -916,7 +916,8 @@ void DataSource::reset() {
 #define SET_DEFAULT_BOOL_OPTION(X) opt_##X.set_default(false);
   BOOL_OPTIONS_LIST(SET_DEFAULT_BOOL_OPTION);
 
-  opt_PORT.set_default(3306);
+  // MatrixOne's MySQL-compatible listener defaults to port 6001.
+  opt_PORT.set_default(6001);
   opt_NO_SCHEMA = 1;
 }
 

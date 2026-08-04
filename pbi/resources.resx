@@ -118,7 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="ButtonHelp" xml:space="preserve">
-    <value>Connect to MySQL</value>
+    <value>Connect to MatrixOne</value>
   </data>
   <data name="Error_InvalidConnstr" xml:space="preserve">
     <value>Invalid connection string</value>
@@ -127,10 +127,10 @@
     <value>User name and Password are required</value>
   </data>
   <data name="ButtonTitle" xml:space="preserve">
-    <value>MySQL Database with DirectQuery Support</value>
+    <value>MatrixOne Database with DirectQuery Support</value>
   </data>
   <data name="DataSourceLabel" xml:space="preserve">
-    <value>MySQL Database with DirectQuery Support</value>
+    <value>MatrixOne Database with DirectQuery Support</value>
   </data>
   <data name="Database_FieldCaption" xml:space="preserve">
     <value>Database</value>
@@ -139,13 +139,13 @@
     <value>Empty database name allows browsing databases in Navigator.</value>
   </data>
   <data name="Server_FieldCaption" xml:space="preserve">
-    <value>MySQL Server</value>
+    <value>MatrixOne Server</value>
   </data>
   <data name="Server_FieldDescription" xml:space="preserve">
     <value>You can also enter a port number after a colon and a database name after a semicolon Example: servername:portnumber;databasename</value>
   </data>
   <data name="GetData_Title" xml:space="preserve">
-    <value>MySQL Server</value>
+    <value>MatrixOne Server</value>
   </data>
 
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />

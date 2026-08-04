@@ -1,7 +1,7 @@
 // Use this file to write queries to test your data connector
 let
-    //result = MySQLDQ.Contents("localhost")
-    connstr = "localhost:3307;tpc",
+    //result = MatrixOne.Contents("localhost")
+    connstr = "localhost:6001;tpc",
     tokens = Text.Split(connstr, ";"),
     result = List.First(tokens),
     db = null,

@@ -202,6 +202,10 @@ void translate_error(char *save_state, myodbc_errid errid, uint mysql_err)
 
     switch (mysql_err)
     {
+        case ER_DBACCESS_DENIED_ERROR:
+        case ER_ACCESS_DENIED_ERROR:
+            state= "28000"; /* Invalid authorization specification */
+            break;
         case ER_WRONG_VALUE_COUNT:
             state= "21S01";
             break;

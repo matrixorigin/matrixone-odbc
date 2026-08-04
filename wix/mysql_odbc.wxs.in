@@ -32,7 +32,7 @@
 
   <?include myodbc_version.wxs ?>
   <!-- *****************************************************************************************
-    Product MySQL Server
+    Product MatrixOne ODBC
   -->
   <!--
     SetVersion updates: Name, Id, Version. Do not change them manually.
@@ -41,11 +41,11 @@
   <?if $(var.odbc_64bit) = 1 ?>
     <?define odbc_platform="x64" ?>
     <?define odbc_arch="64-bit" ?>
-    <?define upgrade_code="FF073FBB-32E2-4052-B6B2-830C5ED4A809" ?>
+    <?define upgrade_code="0741D0F8-D27E-48E9-8D6C-70AC00A6E3AD" ?>
   <?else?>
     <?define odbc_platform="x86" ?>
     <?define odbc_arch="32-bit" ?>
-    <?define upgrade_code="7AEDB3F3-7B9D-4FE2-8D8F-3CE3DE6F5B6B" ?>
+    <?define upgrade_code="7D09497B-3D96-4C9A-990A-42120EB6BB71" ?>
   <?endif?>
 
   <?define redist_ver_required="2022" ?>
@@ -55,10 +55,10 @@
   <Package
     UpgradeCode="$(var.upgrade_code)"
     Codepage="utf-8"
-    Name="MySQL Connector/ODBC $(var.odbc_ver_short)$(var.odbc_license_suffix) ($(var.odbc_arch))"
+    Name="MatrixOne ODBC $(var.odbc_ver_short)$(var.odbc_license_suffix) ($(var.odbc_arch))"
     Version="$(var.odbc_ver_long)"
     Language="1033"
-    Manufacturer="Oracle Corporation"
+    Manufacturer="Matrix Origin"
     InstallerVersion="200"
     Scope="perMachine"
     ProductCode="@CONNECTOR_PKG_ID1@">
@@ -70,7 +70,7 @@
     SetVersion updates: Id. Do not change it manually.
   -->
 
-    <SummaryInformation Keywords="Installer,MSI,Database" Description="MySQL Connector/ODBC" Manufacturer="Oracle Corporation" />
+    <SummaryInformation Keywords="Installer,MSI,Database" Description="MatrixOne ODBC" Manufacturer="Matrix Origin" />
     <?include mysql-connector-odbc-msi-arpprops.wxs ?>
 
     <!-- *****************************************************************************************
@@ -143,7 +143,7 @@
       to default and "Typical" install won't include PBI extension.
     -->
     <Property Id="PBIEXINSTALLDIR">
-      <RegistrySearch Id="FIND_PBI_REGISTRY2" Root="HKLM" Key="SOFTWARE\MySQL AB\Connector ODBC" Name="PBI_path" Type="raw" Bitness="always64" />
+      <RegistrySearch Id="FIND_PBI_REGISTRY2" Root="HKLM" Key="SOFTWARE\Matrix Origin\MatrixOne ODBC" Name="PBI_path" Type="raw" Bitness="always64" />
     </Property>
 
     <InstallExecuteSequence>
@@ -165,13 +165,13 @@
 
     <?if $(var.odbc_64bit) = 1 ?>
       <StandardDirectory Id="ProgramFiles64Folder">
-      <Component Id="RegKeys" Guid="92FEC72B-EB44-4E4D-B301-A915C80D067B" DiskId="1" Bitness="always64">
+      <Component Id="RegKeys" Guid="6A69391F-B27B-4815-8AB7-B32DA7BDA3EE" DiskId="1" Bitness="always64">
     <?else?>
       <StandardDirectory Id="ProgramFilesFolder">
-      <Component Id="RegKeys" Guid="AECCA4A7-9405-466A-8393-4F0876DCD21A" DiskId="1" Bitness="always32">
+      <Component Id="RegKeys" Guid="99929224-7E19-49F8-A029-6966B2226E5B" DiskId="1" Bitness="always32">
     <?endif?>
-        <RegistryKey Id="MysqlKey" Root="HKLM" Key="SOFTWARE\MySQL AB\[ProductName]" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes" />
-        <RegistryValue Id="Version" Root="HKLM" Key="SOFTWARE\MySQL AB\[ProductName]" Name="Version" Type="string" Value="[ProductVersion]" />
+        <RegistryKey Id="MysqlKey" Root="HKLM" Key="SOFTWARE\Matrix Origin\[ProductName]" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes" />
+        <RegistryValue Id="Version" Root="HKLM" Key="SOFTWARE\Matrix Origin\[ProductName]" Name="Version" Type="string" Value="[ProductVersion]" />
     <!--Need these to make candle happy -->
     <?if $(var.odbc_64bit) = 1 ?>
       </Component>
@@ -190,9 +190,9 @@
     -->
 
     <?if $(var.odbc_64bit) = 1 ?>
-    <Feature Id="ODBC" Title="MySQL Connector/ODBC $(var.odbc_ver_long) 64-bit drivers" Level="1" AllowAbsent="no"  Display="expand" Description="Installs the MySQL ODBC $(var.odbc_ver_long) 64-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
+    <Feature Id="ODBC" Title="MatrixOne ODBC $(var.odbc_ver_long) 64-bit drivers" Level="1" AllowAbsent="no"  Display="expand" Description="Installs the MatrixOne ODBC $(var.odbc_ver_long) 64-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
     <?else?>
-    <Feature Id="ODBC" Title="MySQL Connector/ODBC $(var.odbc_ver_long) 32-bit drivers" Level="1" AllowAbsent="no" Description="Installs the MySQL ODBC $(var.odbc_ver_long) 32-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
+    <Feature Id="ODBC" Title="MatrixOne ODBC $(var.odbc_ver_long) 32-bit drivers" Level="1" AllowAbsent="no" Description="Installs the MatrixOne ODBC $(var.odbc_ver_long) 32-bit Unicode and ANSI drivers." ConfigurableDirectory="INSTALLDIR">
     <?endif?>
       <ComponentRef Id="RegKeys" />
       <ComponentRef Id="driver" />
@@ -202,7 +202,7 @@
       <ComponentRef Id="dependencies" />
       <ComponentRef Id="plugins" />
 
-      <Feature Id="PBIExtension" Description="Installs the Power BI data extension with DirectQuery support for MySQL. Requires Power BI Desktop application to be installed." Title="Power BI data extension for MySQL" Level="10" ConfigurableDirectory="PBIEXINSTALLDIR" Display="expand">
+      <Feature Id="PBIExtension" Description="Installs the Power BI data extension with DirectQuery support for MatrixOne. Requires Power BI Desktop application to be installed." Title="Power BI data extension for MatrixOne" Level="10" ConfigurableDirectory="PBIEXINSTALLDIR" Display="expand">
         <Level Value="1" Condition="PBIEXINSTALLDIR"/>
         <ComponentRef Id="ComponentPBIExtension" />
       </Feature>
@@ -213,7 +213,7 @@
     </Feature>
     <?endif?>
 
-    <!--Feature Id="Help" Title="MySQL Connector/ODBC $(var.odbc_ver_long) Documentation" Level="1" Description="Installs the MySQL ODBC driver help.">
+    <!--Feature Id="Help" Title="MatrixOne ODBC $(var.odbc_ver_long) Documentation" Level="1" Description="Installs the MatrixOne ODBC driver help.">
         <ComponentRef Id="help" />
     </Feature-->
 
@@ -243,8 +243,8 @@
     <Property Id="ProgressType1" Value="Installing" />
     <Property Id="ProgressType0" Value="install" />
 
-    <Property Id="QualifiedProductName" Value="MySQL Connector/ODBC $(var.odbc_ver_long)($(var.odbc_driver_type_suffix))" />
-    <Property Id="InstallationDirectory" Value="MySQL Connector-ODBC" />
+    <Property Id="QualifiedProductName" Value="MatrixOne ODBC $(var.odbc_ver_long)($(var.odbc_driver_type_suffix))" />
+    <Property Id="InstallationDirectory" Value="MatrixOne ODBC" />
 
     <Property Id="ReinstallFileVersion" Value="o" />
     <Property Id="RebootYesNo" Value="Yes" />

@@ -289,7 +289,12 @@ SQLRETURN DBC::set_charset_options(const char *charset)
 try
 {
   SQLRETURN rc = SQL_SUCCESS;
-  if (unicode)
+#ifdef MYODBC_UNICODEDRIVER
+  const bool unicode_transport = true;
+#else
+  const bool unicode_transport = unicode;
+#endif
+  if (unicode_transport)
   {
     if (charset && charset[0])
     {
@@ -297,7 +302,7 @@ try
       // and continue as normal.
       set_error("HY000",
         "CHARSET option is not supported by UNICODE version "
-        "of MySQL Connector/ODBC", 0);
+        "of MatrixOne ODBC", 0);
       rc = SQL_SUCCESS_WITH_INFO;
     }
     // For unicode driver always use UTF8MB4
@@ -311,9 +316,19 @@ try
   }
 
   set_charset(charset);
-  MY_CHARSET_INFO my_charset;
-  mysql_get_character_set_info(mysql, &my_charset);
-  cxn_charset_info = myodbc::get_charset(my_charset.number, MYF(0));
+  if (unicode_transport)
+  {
+    // SET NAMES does not update libmysqlclient's local charset descriptor.
+    // Pin the descriptor used by SQL*W conversions to the selected transport.
+    cxn_charset_info = myodbc::get_charset_by_csname(
+      transport_charset, MYF(MY_CS_PRIMARY), MYF(0));
+  }
+  else
+  {
+    MY_CHARSET_INFO my_charset;
+    mysql_get_character_set_info(mysql, &my_charset);
+    cxn_charset_info = myodbc::get_charset(my_charset.number, MYF(0));
+  }
 
   return rc;
 }
@@ -496,6 +511,21 @@ SQLRETURN DBC::connect(DataSource *dsrc)
 
   if (!mysql)
     return set_error("HY001", "Memory allocation error", MYERR_S1001);
+
+  /*
+    MatrixOne parses command packets as UTF-8. Select the Unicode transport
+    charset before the handshake so libmysqlclient's local conversion state
+    agrees with the later SET NAMES utf8mb4 command. Without this, wide SQL can
+    be converted to the client's latin1 default and arrive as invalid UTF-8.
+  */
+#ifdef MYODBC_UNICODEDRIVER
+  const bool unicode_transport = true;
+#else
+  const bool unicode_transport = unicode;
+#endif
+  if (unicode_transport && mysql_options(mysql, MYSQL_SET_CHARSET_NAME,
+                                         transport_charset))
+    return set_error("HY000", "Failed to set utf8mb4 transport charset", 0);
 
   flags = get_client_flags(dsrc);
 
@@ -792,7 +822,7 @@ SQLRETURN DBC::connect(DataSource *dsrc)
   // Set the connector identification attributes.
   std::string attr_list[][2] = {
     {"_connector_license", MYODBC_LICENSE},
-    {"_connector_name", "mysql-connector-odbc"},
+    {"_connector_name", "matrixone-odbc"},
     {"_connector_type", MYODBC_STRDRIVERTYPE},
     {"_connector_version", MYODBC_CONN_ATTR_VER}
   };

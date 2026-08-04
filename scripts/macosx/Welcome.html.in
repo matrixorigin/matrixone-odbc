@@ -15,7 +15,7 @@
     </td>
     <td>
       <b>
-	MySQL Connector/ODBC
+	MatrixOne ODBC
 	<br>
 	@VERSION@
       </b>
@@ -24,8 +24,8 @@
 </table>
 
 <p>
-  This is the installer for MySQL Connector/ODBC, which allows applications
-  to work with MySQL servers by using the cross-platform, database-agnostic
+  This is the installer for MatrixOne ODBC, which allows applications
+  to work with MatrixOne by using the cross-platform, database-agnostic
   ODBC interface.
 </p>
  

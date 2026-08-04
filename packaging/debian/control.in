@@ -19,10 +19,10 @@ Multi-Arch: same
 Depends: unixodbc (>= 2.3), ${misc:Depends}, ${shlibs:Depends}
 Suggests: libkrb5-3, libsasl2-2, libgssapi-krb5-2, libfido2-1, libssl3
 Conflicts: mysql-connector-odbc@NOT_PRODUCT_SUFFIX@
-Description: MySQL ODBC driver
- This package allows you to connect to MySQL database servers using
- ODBC, the Open Database Connectivity abstraction layer which is
- understood by a variety of database tools that cannot talk to MySQL
+Description: MatrixOne ODBC driver
+ This package allows you to connect to MatrixOne using ODBC over its
+ MySQL-compatible protocol. ODBC is an abstraction layer understood by
+ understood by a variety of database tools that cannot talk to MatrixOne
  databases directly.
 
 Package: mysql-connector-odbc@PRODUCT_SUFFIX@-test
@@ -32,9 +32,9 @@ Multi-Arch: same
 Depends: mysql-connector-odbc@PRODUCT_SUFFIX@ (= ${binary:Version}),
          ${misc:Depends}
 Conflicts: mysql-connector-odbc@NOT_PRODUCT_SUFFIX@-test
-Description: MySQL ODBC driver test files
+Description: MatrixOne ODBC driver test files
  This package installs a tool "dltest" and some executables to
- test the MySQL ODBC driver.
+ test the MatrixOne ODBC driver.
 
 Package: mysql-connector-odbc@PRODUCT_SUFFIX@-setup
 Section: libs
@@ -45,7 +45,7 @@ Depends: libgtk2.0-0 (>= 2.20.1) | libgtk-3-0 (>= 3.0.0),
          ${misc:Depends},
          ${shlibs:Depends}
 Conflicts: mysql-connector-odbc@NOT_PRODUCT_SUFFIX@-setup
-Description: MySQL ODBC driver setup GUI
+Description: MatrixOne ODBC driver setup GUI
  This package allows you use a graphical interface to specify
- This package is the setup library for the MySQL ODBC package, it
+ This package is the setup library for the MatrixOne ODBC package, it
  handles the optional GUI dialog for configuring the driver.

@@ -48,7 +48,7 @@ namespace telemetry
   )
   {
     auto tracer = trace::Provider::GetTracerProvider()->GetTracer(
-      "MySQL Connector/ODBC " MYODBC_STRDRIVERTYPE, MYODBC_CONN_ATTR_VER
+      "MatrixOne ODBC " MYODBC_STRDRIVERTYPE, MYODBC_CONN_ATTR_VER
     );
 
     trace::StartSpanOptions opts;

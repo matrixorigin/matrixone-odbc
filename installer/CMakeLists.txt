@@ -38,7 +38,7 @@ ENDIF(DL_INCLUDES)
 ADD_EXECUTABLE(myodbc-installer myodbc-installer.cc)
 
 add_version_info(myodbc-installer
-  "MySQL Connector/ODBC installer tool."
+  "MatrixOne ODBC installer tool."
   "Provides installer tool functionality."
 )
 

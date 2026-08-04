@@ -155,7 +155,7 @@ FOREACH(T IN LISTS TESTS TESTS_C)
   ENDIF(WIN32)
 
   add_version_info(${T}
-    "MySQL Connector/ODBC unit test."
+    "MatrixOne ODBC unit test."
     "Tests the driver functionality."
   )
 
@@ -231,7 +231,7 @@ IF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       ENDIF(WIN32)
 
       add_version_info(${T}
-        "MySQL Connector/ODBC unit test."
+        "MatrixOne ODBC unit test."
         "Tests the driver functionality."
       )
 
@@ -268,6 +268,18 @@ ENDIF(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 ENDIF(NOT skip_no_dm)
 
 TARGET_LINK_LIBRARIES(my_basics ${CMAKE_THREAD_LIBS_INIT})
+
+# A small MatrixOne-specific test that accepts a complete connection string in
+# MO_ODBC_CONNECTION_STRING. It is built by default but intentionally not added
+# to CTest because it requires a running MatrixOne service.
+ADD_EXECUTABLE(mo_odbc_smoke mo_odbc_smoke.c)
+add_dependencies(mo_odbc_smoke myodbc-w)
+set_target_properties(mo_odbc_smoke PROPERTIES FOLDER Tests)
+IF(WIN32)
+  TARGET_LINK_LIBRARIES(mo_odbc_smoke ${ODBCLIB} ${ODBCINSTLIB})
+ELSE()
+  TARGET_LINK_LIBRARIES(mo_odbc_smoke ${ODBC_LINK_FLAGS} ${ODBCINSTLIB})
+ENDIF()
 
 
 #

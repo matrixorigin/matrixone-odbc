@@ -871,7 +871,7 @@ int ShowOdbcParamsDialog(DataSource* params, HWND ParentWnd, BOOL isPrompt)
   InitStaticValues();
 
   pParams= params;
-  pCaption= (PWCHAR)L"MySQL Connector/ODBC Data Source Configuration";
+  pCaption= (PWCHAR)L"MatrixOne ODBC Data Source Configuration";
   g_isPrompt= isPrompt;
 
   /*

@@ -121,7 +121,7 @@ SET bindir=none
 GOTO :eof
 
 :lookup_deregister
-IF "%driver_name%" == "" FOR %%d IN (@CONNECTOR_DRIVER_TYPE@) DO CALL :driverLookup "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ %%d% Driver"
+IF "%driver_name%" == "" FOR %%d IN (@CONNECTOR_DRIVER_TYPE@) DO CALL :driverLookup "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ %%d% Driver"
 IF NOT "%driver_name%" == "" CALL :driverLookup "%driver_name%"
 
 IF %driver_found% == yes GOTO doSuccess

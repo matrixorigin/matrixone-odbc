@@ -100,7 +100,7 @@ WHILE(${DRIVER_INDEX} LESS ${DRIVERS_COUNT})
   ADD_LIBRARY(${DRIVER_NAME} MODULE ${DRIVER_SRCS})
 
   add_version_info(${DRIVER_NAME}
-   "MySQL Connector/ODBC ${DRIVER_TYPE} driver."
+   "MatrixOne ODBC ${DRIVER_TYPE} driver."
    "Provides core driver functionality."
   )
 

@@ -30,7 +30,7 @@
 
 ##############################################################################
 #
-#  Post Install file for MySQL Connector ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@
+#  Post Install file for MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@
 #
 ##############################################################################
 
@@ -112,11 +112,11 @@ do
   fi
 
   echo "Registering $driver_type driver..."
-  $bindir/myodbc-installer -a -d -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ $driver_type Driver" -t "Driver=$libdir/libmyodbc$suffix.so;"
+  $bindir/myodbc-installer -a -d -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ $driver_type Driver" -t "Driver=$libdir/libmyodbc$suffix.so;"
 
 # ----------------------------------------------------------------------
 # CREATE A SAMPLE DSN
 # ----------------------------------------------------------------------
   echo "Ensuring sample data source name (myodbc) exists..."
-  $bindir/myodbc-installer -a -s -c2 -n $dsn -t "Driver=MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ $driver_type Driver;SERVER=localhost;"
+  $bindir/myodbc-installer -a -s -c2 -n $dsn -t "Driver=MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ $driver_type Driver;SERVER=localhost;"
 done

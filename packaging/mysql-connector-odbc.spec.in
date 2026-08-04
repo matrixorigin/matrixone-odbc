@@ -34,8 +34,8 @@
 ##############################################################################
 
 %global mysql_vendor	 Oracle and/or its affiliates
-%global driver_name_w  MySQL ODBC @CONNECTOR_BASE_VERSION@ Unicode Driver
-%global driver_name_a  MySQL ODBC @CONNECTOR_BASE_VERSION@ ANSI Driver
+%global driver_name_w  MatrixOne ODBC @CONNECTOR_BASE_VERSION@ Unicode Driver
+%global driver_name_a  MatrixOne ODBC @CONNECTOR_BASE_VERSION@ ANSI Driver
 %global lib_base_name  libmyodbc@CONNECTOR_MAJOR@
 
 %if 0%{?commercial}
@@ -68,7 +68,7 @@
 #
 ##############################################################################
 
-Summary:	An ODBC @CONNECTOR_BASE_VERSION@ driver for MySQL - driver package
+Summary:	MatrixOne ODBC @CONNECTOR_BASE_VERSION@ driver package
 Name:		mysql-connector-odbc%{?product_suffix}
 Version:	@CONNECTOR_NODASH_VERSION@
 Release:	1%{?fedora:0}%{?commercial:.1}%{?dist}
@@ -99,14 +99,14 @@ Requires:       unixODBC >= 2.2.14
 
 %if 0%{?odbc_gui}
 %package setup
-Summary:	An ODBC @CONNECTOR_BASE_VERSION@ driver for MySQL - setup library
+Summary:	MatrixOne ODBC @CONNECTOR_BASE_VERSION@ setup library
 Group:		Application/Databases
 AutoReq:	no
 Requires:	%{name} = %{version}-%{release}
 %endif
 
 %package test
-Summary:	An ODBC @CONNECTOR_BASE_VERSION@ driver for MySQL - tests
+Summary:	MatrixOne ODBC @CONNECTOR_BASE_VERSION@ tests
 Group:		Application/Databases
 Requires:	%{name} = %{version}-%{release}
 
@@ -139,12 +139,12 @@ documentation and the manual for more information.
 
 %if 0%{?odbc_gui}
 %description setup
-The setup library for the MySQL ODBC package, handles the optional GUI
+The setup library for the MatrixOne ODBC package, handles the optional GUI
 dialog for configuring the driver.
 %endif
 
 %description test
-The test suite for MySQL ODBC.
+The test suite for MatrixOne ODBC.
 
 ##############################################################################
 #

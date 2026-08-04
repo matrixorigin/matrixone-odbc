@@ -61,7 +61,7 @@ const char usage[] =
 "|                                                                      \n"
 "| Description                                                          \n"
 "|                                                                      \n"
-"|    This program is for managing MySQL Connector/ODBC configuration   \n"
+"|    This program is for managing MatrixOne ODBC configuration   \n"
 "|    options at the command prompt. It can be used to register or      \n"
 "|    unregister an ODBC driver, and to create, edit, or remove DSN.    \n"
 "|                                                                      \n"
@@ -120,7 +120,7 @@ const char usage[] =
 "|                                                                      \n"
 #ifndef _WIN32
 "|    Register a Unicode driver (UNIX example)                          \n"
-"|    shell> myodbc-installer -d -a -n \"MySQL ODBC " MYODBC_STRSERIES " Unicode Driver\" \\ \n"
+"|    shell> myodbc-installer -d -a -n \"MatrixOne ODBC " MYODBC_STRSERIES " Unicode Driver\" \\ \n"
 "|              -t \"DRIVER=/path/to/driver/libmyodbc" MYODBC_STRMAJOR_VERSION "w.so;SETUP=/path/to/gui/libmyodbc" MYODBC_STRMAJOR_VERSION "S.so\"\n"
 "|                                                                      \n"
 "|      Note                                                            \n"
@@ -128,7 +128,7 @@ const char usage[] =
 "|           some 64-bit systems, and /usr/lib64 for most 64-bit systems\n"
 "|                                                                      \n"
 "|         * driver_name is libmyodbc" MYODBC_STRMAJOR_VERSION "a.so for the ANSI version and     \n"
-"|           libmyodbc" MYODBC_STRMAJOR_VERSION "w.so for the Unicode version of MySQL ODBC Driver\n"
+"|           libmyodbc" MYODBC_STRMAJOR_VERSION "w.so for the Unicode version of MatrixOne ODBC Driver\n"
 "|                                                                      \n"
 "|         * The SETUP parameter is optional; it provides location of   \n"
 "|           the GUI module (libmyodbc" MYODBC_STRMAJOR_VERSION "S.so) for DSN setup, which       \n"
@@ -136,17 +136,17 @@ const char usage[] =
 "|                                                                      \n"
 #else
 "|    Register a Unicode driver (Windows example)                       \n"
-"|    shell> myodbc-installer -d -a -n \"MySQL ODBC " MYODBC_STRSERIES " Unicode Driver\" \\ \n"
+"|    shell> myodbc-installer -d -a -n \"MatrixOne ODBC " MYODBC_STRSERIES " Unicode Driver\" \\ \n"
 "|              -t \"DRIVER=myodbc" MYODBC_STRMAJOR_VERSION "w.dll;SETUP=myodbc" MYODBC_STRMAJOR_VERSION "S.dll\"\n"
 "|                                                                      \n"
 "|      Note                                                            \n"
 "|         * driver_name is myodbc" MYODBC_STRMAJOR_VERSION "a.dll for the ANSI version and       \n"
-"|           myodbc" MYODBC_STRMAJOR_VERSION "w.dll for the Unicode version of MySQL ODBC Driver  \n"
+"|           myodbc" MYODBC_STRMAJOR_VERSION "w.dll for the Unicode version of MatrixOne ODBC Driver  \n"
 "|                                                                      \n"
 #endif
 "|    Add a new system data source name for Unicode driver              \n"
 "|    shell> myodbc-installer -s -a -c2 -n \"test\" \\                  \n"
-"|              -t \"DRIVER=MySQL ODBC " MYODBC_STRSERIES " Unicode Driver;SERVER=localhost;DATABASE=test;UID=myid;PWD=mypwd\"\n"
+"|              -t \"DRIVER=MatrixOne ODBC " MYODBC_STRSERIES " Unicode Driver;SERVER=localhost;DATABASE=test;UID=myid;PWD=mypwd\"\n"
 "|                                                                      \n"
 "|    List data source name attributes for 'test'                       \n"
 "|    shell> myodbc-installer -s -l -c2 -n \"test\"                    \n"
@@ -677,7 +677,7 @@ int add_datasource(DataSource *ds, const SQLWCHAR *attrs)
   {
     // We will not return the error code 1, just print a warning to stderr.
     fprintf(stderr, "[WARNING] The option AUTO_RECONNECT is not "
-      "supported by MySQL ODBC Driver version 8.3 and newer.\n");
+      "supported by MatrixOne ODBC Driver version 8.3 and newer.\n");
   }
 #endif
 

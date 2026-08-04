@@ -33,17 +33,17 @@ DEB_HOST_MULTIARCH="$(dpkg-architecture -qDEB_HOST_MULTIARCH)"
 
  set -e
 	echo "Unregistering Unicode driver using setup"
-    myodbc-installer -r -d -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ Unicode Driver"
+    myodbc-installer -r -d -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ Unicode Driver"
 
     myodbc-installer -a -d \
-      -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ Unicode Driver" \
+      -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ Unicode Driver" \
       -t "DRIVER=/usr/lib/${DEB_HOST_MULTIARCH}/odbc/libmyodbc@CONNECTOR_MAJOR@w.so"
 
 	echo "Unregistering ANSI driver using setup"
-	myodbc-installer -r -d -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ ANSI Driver"
+	myodbc-installer -r -d -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ ANSI Driver"
 
     myodbc-installer -a -d \
-      -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ ANSI Driver" \
+      -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ ANSI Driver" \
       -t "DRIVER=/usr/lib/${DEB_HOST_MULTIARCH}/odbc/libmyodbc@CONNECTOR_MAJOR@a.so"
 
    set +e

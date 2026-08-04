@@ -124,7 +124,7 @@ goto :doSuccess
 
 ECHO Registering %1 driver
 
-IF "%driver_name%" == "" SET name="MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ %1 Driver"
+IF "%driver_name%" == "" SET name="MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ %1 Driver"
 IF NOT "%driver_name%" == "" IF NOT @DRIVERS_COUNT@ == 1 SET name="%driver_name% %1"
 
 IF %1 == Unicode SET lib=%driver_lib%w.dll

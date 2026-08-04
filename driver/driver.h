@@ -109,8 +109,8 @@ using std::nullptr_t;
 #endif
 
 #define ODBC_DRIVER	  "ODBC " MYODBC_STRSERIES " Driver"
-#define DRIVER_NAME	  "MySQL ODBC " MYODBC_STRSERIES " Driver"
-#define DRIVER_NONDSN_TAG "DRIVER={MySQL ODBC " MYODBC_STRSERIES " Driver}"
+#define DRIVER_NAME	  "MatrixOne ODBC " MYODBC_STRSERIES " Driver"
+#define DRIVER_NONDSN_TAG "DRIVER={MatrixOne ODBC " MYODBC_STRSERIES " Driver}"
 
 #if defined(__APPLE__)
 

@@ -33,7 +33,7 @@
   <requires lib="gtk+" version="2.24"/>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="upper">65535</property>
-    <property name="value">3306</property>
+    <property name="value">6001</property>
     <property name="step_increment">1</property>
     <property name="page_increment">10</property>
   </object>
@@ -46,7 +46,7 @@
   <object class="GtkWindow" id="odbcdialog">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
-    <property name="title">MySQL Connector/ODBC Data Source</property>
+    <property name="title">MatrixOne ODBC Data Source</property>
     <property name="resizable">False</property>
     <property name="modal">True</property>
     <property name="window_position">center-on-parent</property>
@@ -2078,4 +2078,3 @@
     </child>
   </object>
 </interface>
-

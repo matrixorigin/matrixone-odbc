@@ -37,12 +37,12 @@ set -e
 
 echo "Registering Unicode driver from in file"
 /usr/bin/myodbc-installer -a -d \
-   -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ Unicode Driver" \
+   -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ Unicode Driver" \
    -t "DRIVER=/usr/lib/${DEB_HOST_MULTIARCH}/odbc/libmyodbc@CONNECTOR_MAJOR@w.so"
 
 echo "Registering ANSI driver from in file"
 /usr/bin/myodbc-installer -a -d \
-  -n "MySQL ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ ANSI Driver" \
+  -n "MatrixOne ODBC @CONNECTOR_MAJOR@.@CONNECTOR_MINOR@ ANSI Driver" \
   -t "DRIVER=/usr/lib/${DEB_HOST_MULTIARCH}/odbc/libmyodbc@CONNECTOR_MAJOR@a.so"
 
 set +e

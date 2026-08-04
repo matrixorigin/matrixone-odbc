@@ -50,8 +50,8 @@ BEGIN
     BEGIN
         BLOCK "040904E4"
         BEGIN
-            VALUE "CompanyName", "Oracle Corporation\0"
-            VALUE "ProductName", "MySQL Connector/ODBC\0"
+            VALUE "CompanyName", "Matrix Origin\0"
+            VALUE "ProductName", "MatrixOne ODBC\0"
             VALUE "ProductVersion", "@ODBC_VERSION@.0\0"
             VALUE "FileVersion", "@ODBC_VERSION@.0\0"
             VALUE "LegalCopyright", "Copyright (c) 1995, @COPYRIGHT_YEAR@, Oracle and/or its affiliates.\0"
