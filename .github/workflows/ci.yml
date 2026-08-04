@@ -243,13 +243,14 @@ jobs:
         run: |
           MYSQL_PREFIX="$(brew --prefix mysql-client)"
           ODBC_PREFIX="$(brew --prefix unixodbc)"
+          OPENSSL_PREFIX="$(brew --prefix openssl@3)"
           ZSTD_PREFIX="$(brew --prefix zstd)"
           cmake -S . -B build-macos -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DDISABLE_GUI=1 \
             -DMYSQL_DIR="${MYSQL_PREFIX}" \
             -DMYSQLCLIENT_STATIC_LINKING=0 \
-            -DMYSQL_LINK_FLAGS="-L${ZSTD_PREFIX}/lib" \
+            -DMYSQL_LINK_FLAGS="-L${ZSTD_PREFIX}/lib -L${OPENSSL_PREFIX}/lib" \
             -DODBC_INCLUDES="${ODBC_PREFIX}/include" \
             -DODBC_LIB_DIR="${ODBC_PREFIX}/lib" \
             -DODBCINST_LIB_DIR="${ODBC_PREFIX}/lib" \
