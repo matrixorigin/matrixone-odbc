@@ -1,8 +1,8 @@
 # Compatibility snapshot
 
-Tested on 2026-08-04 with:
+Tested on 2026-08-05 with:
 
-- MatrixOne `8.0.30-MatrixOne-v25908` (`mo-service`, Darwin ARM64)
+- MatrixOne `8.0.30-MatrixOne-v` at `ace13bf4b4` (`main`, Darwin ARM64)
 - MatrixOne ODBC based on MySQL Connector/ODBC `9.7.0`
 - Homebrew MySQL client `9.7.1` and unixODBC `2.3.14`
 - macOS ARM64
@@ -25,20 +25,23 @@ Tested on 2026-08-04 with:
 The deeper `mo_odbc_deep` suite passes through both registered driver variants:
 
 ```text
-Unicode: 9 passed, 4 expected MatrixOne failures, 0 failed
-ANSI:    9 passed, 4 expected MatrixOne failures, 0 failed
+Unicode: 10 passed, 6 expected MatrixOne failures, 0 failed
+ANSI:    10 passed, 6 expected MatrixOne failures, 0 failed
 ```
 
 In addition to the smoke paths, it verifies `SQLGetTypeInfo`, tables and views,
 Unicode-aware `SQLColumns`, primary and secondary index metadata,
-`SQLDescribeCol`, 20 SQL types, prepared Unicode/decimal/date/binary/NULL and
-FLOAT/DOUBLE values, commit/rollback, 64 KiB data-at-execution and chunked
+`SQLDescribeCol`, 20 SQL types, prepared Unicode/decimal/date/binary/NULL,
+FLOAT/DOUBLE and boolean values, VARBINARY-to-wide conversion, unquoted
+Unicode identifiers, commit/rollback, 64 KiB data-at-execution and chunked
 retrieval, SQLSTATE diagnostics, 72 reads over six concurrent connections,
-timeout, and cancellation. The four XFAILs are linked to
+timeout, and cancellation. The six XFAILs are linked to
 [matrixone#26648](https://github.com/matrixorigin/matrixone/issues/26648),
 [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678),
 [matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683), and
-[matrixone#26684](https://github.com/matrixorigin/matrixone/issues/26684).
+[matrixone#26684](https://github.com/matrixorigin/matrixone/issues/26684),
+[matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715), and
+[matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716).
 
 Driver compatibility fixes are covered for uppercase information-schema type
 names ([#26680](https://github.com/matrixorigin/matrixone/issues/26680)),
@@ -77,21 +80,16 @@ MySQL server feature as required MatrixOne functionality.
 
 ## Upstream Unicode suite observations
 
-The upstream `my_unicode` executable currently reports 9 passing tests, 2
-skips, and 9 failures against this local setup. The failures are grouped rather
-than treated as nine independent MatrixOne defects:
+The upstream `my_unicode` executable currently reports 10 passing tests, 2
+skips, and 8 failures against this local setup. The failures are grouped rather
+than treated as eight independent MatrixOne defects:
 
-- Seven use `SQLConnectW` with a DSN and then a non-ASCII identifier. On this
-  macOS/unixODBC path the command reaches MatrixOne with a replacement
-  character, while the Power BI-like `SQLDriverConnectW` path in the dedicated
-  smoke test sends Unicode SQL correctly. This needs a Windows driver-manager
-  run before deciding whether a driver fix is required.
-- One constructs the upstream short driver name
-  `MatrixOne ODBC 9.7 Driver`, which is intentionally not the registered public
-  name `MatrixOne ODBC 9.7 Unicode Driver`.
+- Seven use a valid unquoted BMP character in an identifier. The same SQL fails
+  through a native UTF-8 MySQL client, while the backtick-quoted control passes;
+  this is the MatrixOne tokenizer compatibility issue #26715.
 - One requests a VARBINARY value as `SQL_C_WCHAR`; the driver reports an
-  unknown character conversion failure. This is not used by the current Power
-  BI metadata hook but remains a compatibility case to decide explicitly.
+  unknown character conversion failure because the result metadata omits
+  MySQL `BINARY_FLAG` (#26716).
 
 ## Not yet validated
 

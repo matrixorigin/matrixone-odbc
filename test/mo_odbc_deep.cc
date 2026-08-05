@@ -792,6 +792,110 @@ void test_prepared_floating_point(SQLHDBC dbc) {
          "prepared DOUBLE lost precision: " + std::to_string(double_value));
 }
 
+void test_prepared_boolean(SQLHDBC dbc) {
+  execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.bool_params");
+  execute(dbc,
+          "CREATE TABLE mo_odbc_deep.bool_params "
+          "(id INT PRIMARY KEY, enabled BOOL)");
+  execute(dbc, "INSERT INTO mo_odbc_deep.bool_params VALUES (1, TRUE)");
+
+  Statement stmt(dbc);
+  const std::string sql =
+      "UPDATE mo_odbc_deep.bool_params SET enabled=? "
+      "WHERE id=? AND enabled=?";
+  check(SQLPrepare(stmt.handle(),
+                   reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+                   static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare boolean update");
+
+  SQLCHAR disabled = 0;
+  SQLCHAR enabled = 1;
+  SQLINTEGER id = 1;
+  SQLLEN value_len = 0;
+  SQLLEN id_len = 0;
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_BIT,
+                         SQL_BIT, 1, 0, &disabled, 0, &value_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter boolean value");
+  check(SQLBindParameter(stmt.handle(), 2, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &id, 0, &id_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter boolean id");
+  check(SQLBindParameter(stmt.handle(), 3, SQL_PARAM_INPUT, SQL_C_BIT,
+                         SQL_BIT, 1, 0, &enabled, 0, &value_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter boolean predicate");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute boolean update");
+  expect(scalar_int(dbc,
+                    "SELECT enabled FROM mo_odbc_deep.bool_params WHERE id=1") ==
+             0,
+         "prepared SQL_BIT update did not persist FALSE");
+}
+
+void test_varbinary_wide_conversion(SQLHDBC dbc) {
+  execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.binary_wide");
+  execute(dbc,
+          "CREATE TABLE mo_odbc_deep.binary_wide "
+          "(id INT PRIMARY KEY, payload VARBINARY(32))");
+  execute(dbc,
+          "INSERT INTO mo_odbc_deep.binary_wide VALUES (1, 0xabcdef)");
+
+  Statement stmt(dbc);
+  const std::string sql =
+      "SELECT payload FROM mo_odbc_deep.binary_wide WHERE id=1";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect VARBINARY select");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch VARBINARY row");
+
+  SQLWCHAR value[16] = {};
+  SQLLEN value_len = 0;
+  SQLRETURN rc = SQLGetData(stmt.handle(), 1, SQL_C_WCHAR, value,
+                            sizeof(value), &value_len);
+  if (!succeeded(rc)) {
+    const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+    if (!records.empty() && records.front().state == "HY000" &&
+        records.front().message.find(
+            "Unknown failure when converting character from server character "
+            "set") != std::string::npos) {
+      throw KnownIssue(
+          "matrixorigin/matrixone#26716: VARBINARY result metadata omits "
+          "BINARY_FLAG, so SQL_C_WCHAR conversion fails");
+    }
+    check(rc, SQL_HANDLE_STMT, stmt.handle(),
+          "SQLGetData VARBINARY as SQL_C_WCHAR");
+  }
+  const SQLWCHAR expected[] = {'A', 'B', 'C', 'D', 'E', 'F', 0};
+  expect(std::equal(std::begin(expected), std::end(expected),
+                    std::begin(value)),
+         "VARBINARY SQL_C_WCHAR conversion did not return ABCDEF");
+}
+
+void test_unquoted_unicode_identifier(SQLHDBC dbc) {
+  std::vector<SQLWCHAR> sql =
+      widen_ascii("CREATE TABLE mo_odbc_deep.t_");
+  sql.pop_back();
+  sql.push_back(0x00e3);
+  const std::string suffix = "g (id INT)";
+  for (unsigned char c : suffix) sql.push_back(static_cast<SQLWCHAR>(c));
+  sql.push_back(0);
+
+  Statement stmt(dbc);
+  SQLRETURN rc = SQLExecDirectW(stmt.handle(), sql.data(), SQL_NTS);
+  if (!succeeded(rc)) {
+    const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+    if (!records.empty() && records.front().state == "42000" &&
+        records.front().native_error == 1064) {
+      throw KnownIssue(
+          "matrixorigin/matrixone#26715: the MySQL-compatible parser rejects "
+          "valid unquoted Unicode identifiers");
+    }
+    check(rc, SQL_HANDLE_STMT, stmt.handle(),
+          "SQLExecDirectW unquoted Unicode identifier");
+  }
+}
+
 void test_transactions(SQLHDBC dbc) {
   execute(dbc, "DELETE FROM mo_odbc_deep.tx_values");
   check(SQLSetConnectAttr(dbc, SQL_ATTR_AUTOCOMMIT,
@@ -1115,6 +1219,12 @@ int main() {
          [&] { test_prepared_parameters(db.handle()); }},
         {"prepared floating-point precision",
          [&] { test_prepared_floating_point(db.handle()); }},
+        {"prepared boolean parameters",
+         [&] { test_prepared_boolean(db.handle()); }},
+        {"VARBINARY wide conversion",
+         [&] { test_varbinary_wide_conversion(db.handle()); }},
+        {"unquoted Unicode identifier",
+         [&] { test_unquoted_unicode_identifier(db.handle()); }},
         {"transactions", [&] { test_transactions(db.handle()); }},
         {"transaction isolation",
          [&] { test_transaction_isolation_known_issue(db.handle()); }},
