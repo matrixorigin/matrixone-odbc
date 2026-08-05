@@ -30,13 +30,13 @@
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Property Id="ARPCOMMENTS" Value="MatrixOne ODBC $(var.odbc_ver_short) connects ODBC applications to MatrixOne." />
-  <Property Id="ARPCONTACT" Value="https://github.com/iamlinjunhong/matrixone-odbc" />
+  <Property Id="ARPCONTACT" Value="https://github.com/matrixorigin/matrixone-odbc" />
   <Property Id="ARPPRODUCTICON" Value="MySQLConnector.ico" />
-  <Property Id="ARPHELPLINK" Value="https://github.com/iamlinjunhong/matrixone-odbc/issues" />
-  <Property Id="ARPURLINFOABOUT" Value="https://github.com/iamlinjunhong/matrixone-odbc" />
-  <Property Id="ARPURLUPDATEINFO" Value="https://github.com/iamlinjunhong/matrixone-odbc/releases" />
+  <Property Id="ARPHELPLINK" Value="https://github.com/matrixorigin/matrixone-odbc/issues" />
+  <Property Id="ARPURLINFOABOUT" Value="https://github.com/matrixorigin/matrixone-odbc" />
+  <Property Id="ARPURLUPDATEINFO" Value="https://github.com/matrixorigin/matrixone-odbc/releases" />
   <!--Property Id="ARPHELPTELEPHONE" Value="URL where one can find support phone numbers" /-->
-  <Property Id="ARPAUTHORIZEDCDFPREFIX" Value="https://github.com/iamlinjunhong/matrixone-odbc" />
+  <Property Id="ARPAUTHORIZEDCDFPREFIX" Value="https://github.com/matrixorigin/matrixone-odbc" />
   <Property Id="ARPSIZE" Value="3" />
   <Property Id="INSTALLSUMMARY" Value="Install Summary:"/>
   <Property Id="SUMMARYDRIVER" Value=" "/>

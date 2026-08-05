@@ -1,6 +1,6 @@
 # MatrixOne ODBC
 
-[![CI](https://github.com/iamlinjunhong/matrixone-odbc/actions/workflows/ci.yml/badge.svg)](https://github.com/iamlinjunhong/matrixone-odbc/actions/workflows/ci.yml)
+[![CI](https://github.com/matrixorigin/matrixone-odbc/actions/workflows/ci.yml/badge.svg)](https://github.com/matrixorigin/matrixone-odbc/actions/workflows/ci.yml)
 
 MatrixOne ODBC is a thin, experimental fork of MySQL Connector/ODBC 9.7.0 for
 MatrixOne and Power BI DirectQuery compatibility work. It intentionally keeps
