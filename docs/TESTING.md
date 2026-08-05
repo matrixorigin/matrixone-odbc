@@ -70,7 +70,7 @@ the server is fixed, and any unrelated behavior still fails the suite.
 | [matrixone#26680](https://github.com/matrixorigin/matrixone/issues/26680) | uppercase `DATA_TYPE` breaks case-sensitive `SQLColumns` mapping | driver compatibility fix, passing |
 | [matrixone#26682](https://github.com/matrixorigin/matrixone/issues/26682) | prepared DOUBLE metadata reports zero decimals | MatrixOne-specific native bind workaround, passing |
 | [matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683) | result metadata reports invalid VARCHAR/VARBINARY lengths | XFAIL |
-| [matrixone#26684](https://github.com/matrixorigin/matrixone/issues/26684) | missing table uses native error 1064 instead of 1146 | XFAIL |
+| [matrixone#26684](https://github.com/matrixorigin/matrixone/issues/26684) | missing table used native error 1064 instead of 1146 | passing on main after `4b62e3edd6`; XFAIL on the v4.1.4 CI baseline |
 | [matrixone#26686](https://github.com/matrixorigin/matrixone/issues/26686) | `LONG VARCHAR` / `LONG VARBINARY` aliases are rejected | upstream differential |
 | [matrixone#26687](https://github.com/matrixorigin/matrixone/issues/26687) | `TINYTEXT` does not enforce the 255-byte limit | upstream differential |
 | [matrixone#26688](https://github.com/matrixorigin/matrixone/issues/26688) | character-set information schema is empty/inconsistent | driver Unicode fallback, passing |
