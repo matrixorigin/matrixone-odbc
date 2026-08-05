@@ -39,6 +39,9 @@ Reproduce in this order:
   it to `false`. The connector logs `SQLGetInfo`, `SQLGetTypeInfo`,
   `SQLColumns`, and error-hook activity.
 - Capture MatrixOne server logs using the same time window and connection user.
+- Only native authentication errors 1044 and 1045 invalidate stored Power BI
+  credentials. Syntax, metadata, and query errors are returned unchanged so
+  they do not trigger a misleading password prompt.
 
 Do not commit passwords, complete production connection strings, or raw traces
 without redaction.
