@@ -311,7 +311,8 @@ void test_connection_capabilities(SQLHDBC dbc) {
   const std::string dbms_version = info_string(dbc, SQL_DBMS_VER);
   const std::string driver_name = info_string(dbc, SQL_DRIVER_NAME);
   const std::string driver_version = info_string(dbc, SQL_DRIVER_VER);
-  expect(!dbms_name.empty(), "SQL_DBMS_NAME is empty");
+  expect(dbms_name == "MatrixOne",
+         "SQL_DBMS_NAME should identify MatrixOne, got: " + dbms_name);
   expect(dbms_version.find("MatrixOne") != std::string::npos,
          "SQL_DBMS_VER does not identify MatrixOne: " + dbms_version);
   expect(!driver_name.empty(), "SQL_DRIVER_NAME is empty");
