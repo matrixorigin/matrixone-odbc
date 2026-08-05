@@ -2,7 +2,7 @@
 
 Tested on 2026-08-05 with:
 
-- MatrixOne `8.0.30-MatrixOne-v` at `ace13bf4b4` (`main`, Darwin ARM64)
+- MatrixOne `8.0.30-MatrixOne-v` at `e31ee06042` (`main`, Darwin ARM64)
 - MatrixOne ODBC based on MySQL Connector/ODBC `9.7.0`
 - Homebrew MySQL client `9.7.1` and unixODBC `2.3.14`
 - macOS ARM64
@@ -25,8 +25,8 @@ Tested on 2026-08-05 with:
 The deeper `mo_odbc_deep` suite passes through both registered driver variants:
 
 ```text
-Unicode: 10 passed, 6 expected MatrixOne failures, 0 failed
-ANSI:    10 passed, 6 expected MatrixOne failures, 0 failed
+Unicode: 11 passed, 5 expected MatrixOne failures, 0 failed
+ANSI:    11 passed, 5 expected MatrixOne failures, 0 failed
 ```
 
 In addition to the smoke paths, it verifies `SQLGetTypeInfo`, tables and views,
@@ -35,13 +35,17 @@ Unicode-aware `SQLColumns`, primary and secondary index metadata,
 FLOAT/DOUBLE and boolean values, VARBINARY-to-wide conversion, unquoted
 Unicode identifiers, commit/rollback, 64 KiB data-at-execution and chunked
 retrieval, SQLSTATE diagnostics, 72 reads over six concurrent connections,
-timeout, and cancellation. The six XFAILs are linked to
+timeout, and cancellation. The five XFAILs are linked to
 [matrixone#26648](https://github.com/matrixorigin/matrixone/issues/26648),
 [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678),
-[matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683), and
-[matrixone#26684](https://github.com/matrixorigin/matrixone/issues/26684),
+[matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683),
 [matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715), and
 [matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716).
+
+Missing-table diagnostics now pass after MatrixOne
+[4b62e3edd6](https://github.com/matrixorigin/matrixone/commit/4b62e3edd6)
+fixed [#26684](https://github.com/matrixorigin/matrixone/issues/26684) by
+returning native error 1146; the driver maps it to ODBC SQLSTATE `42S02`.
 
 Driver compatibility fixes are covered for uppercase information-schema type
 names ([#26680](https://github.com/matrixorigin/matrixone/issues/26680)),
@@ -65,8 +69,8 @@ server and driver build:
   large binary round trips pass. Five cases stop at unsupported `LONG VARCHAR`
   or `LONG VARBINARY` aliases (#26686), and `TINYTEXT` stores more than its
   MySQL-compatible limit (#26687).
-- `my_error`: 16 of 20 cases pass. ODBC 2 and 3 missing-table classification
-  account for two failures (#26684); the other two depend on MySQL-specific
+- `my_error`: 18 of 20 cases pass, including the ODBC 2 and 3 missing-table
+  cases fixed by MatrixOne #26684. The other two depend on MySQL-specific
   account/password-expiration and stored-procedure error behavior.
 - `my_basics`, `my_prepare`, `my_param`, and `my_types` confirm core direct and
   prepared execution, parameter arrays for DML, decimal/bigint conversion,
