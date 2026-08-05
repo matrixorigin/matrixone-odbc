@@ -239,7 +239,7 @@ MySQLGetInfo(SQLHDBC hdbc, SQLUSMALLINT fInfoType,
                      SQL_DL_SQL92_TIMESTAMP);
 
   case SQL_DBMS_NAME:
-    MYINFO_SET_STR("MySQL");
+    MYINFO_SET_STR("MatrixOne");
 
   case SQL_DBMS_VER:
     /** @todo technically this is not right: should be ##.##.#### */
@@ -1341,4 +1341,3 @@ SQLRETURN SQL_API SQLGetFunctions(SQLHDBC hdbc __attribute__((unused)),
 
   return SQL_SUCCESS;
 }
-

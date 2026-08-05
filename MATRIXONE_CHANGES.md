@@ -8,6 +8,8 @@ Baseline: MySQL Connector/ODBC 9.7.0
 - Register the public driver names as `MatrixOne ODBC 9.7 Unicode Driver` and
   `MatrixOne ODBC 9.7 ANSI Driver`.
 - Use MatrixOne's MySQL-compatible listener port `6001` when `PORT` is omitted.
+- Report `MatrixOne` through ODBC `SQL_DBMS_NAME` instead of leaking the
+  upstream server identity.
 - Rename the bundled Power BI connector to `MatrixOne.mez`, its data-source
   kind to `MatrixOne`, and its entry point to `MatrixOne.Contents`.
 - Keep DirectQuery, `SQLGetInfo`, `SQLColumns`, `SQLGetTypeInfo`, and diagnostic
