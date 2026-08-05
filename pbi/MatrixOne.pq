@@ -587,16 +587,25 @@ MatrixOne.Icons =
 
 OnError = (errorRecord as record) =>
   let
-    OdbcError = errorRecord[Detail][OdbcErrors]{0},
-    OdbcErrorMessage = OdbcError[Message],
-    OdbcErrorCode = OdbcError[NativeError],
-    HasCredentialError = errorRecord[Detail] <> null
-      and errorRecord[Detail][OdbcErrors]? <> null
-      and OdbcErrorCode <> 0 and OdbcErrorCode <> 7
+    OdbcErrors = try errorRecord[Detail][OdbcErrors] otherwise null,
+    OdbcError =
+      if OdbcErrors <> null and not List.IsEmpty(OdbcErrors)
+      then OdbcErrors{0}
+      else null,
+    OdbcErrorCode =
+      if OdbcError <> null then OdbcError[NativeError]? else null,
+
+    // Only authentication/authorization failures should invalidate saved
+    // credentials. Treating every non-zero native error as a credential error
+    // makes syntax, metadata, and query failures prompt for a password again.
+    HasCredentialError = List.Contains({1044, 1045}, OdbcErrorCode)
   in
     if HasCredentialError
     then
-      error Extension.CredentialError(Credential.AccessDenied, OdbcErrorMessage)
+      error Extension.CredentialError(
+        Credential.AccessDenied,
+        OdbcError[Message]
+      )
     else
       error errorRecord;
 
