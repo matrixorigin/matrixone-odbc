@@ -37,7 +37,7 @@ export MO_ODBC_CONNECTION_STRING='DRIVER={MatrixOne ODBC 9.7 ANSI Driver};SERVER
 ./build-arm64/test/mo_odbc_deep
 ```
 
-The 13 TAP cases cover:
+The 16 TAP cases cover:
 
 | Case | Main contract |
 | --- | --- |
@@ -47,6 +47,9 @@ The 13 TAP cases cover:
 | Type round trip | integers, decimal, bool, temporal, Unicode, binary, LOB, JSON, NULL |
 | Prepared parameters | wide text, decimal, date, binary, NULL, result verification |
 | Prepared floating point | FLOAT/DOUBLE values retain fractional precision |
+| Prepared boolean | `SQL_C_BIT` parameters update and filter `BOOL` values |
+| Binary-to-wide conversion | VARBINARY is exposed as hexadecimal `SQL_C_WCHAR` text |
+| Unicode identifiers | `SQLExecDirectW` accepts MySQL-valid unquoted BMP identifiers |
 | Transactions | rollback and commit visibility |
 | Transaction isolation | requested isolation is actually applied by MatrixOne |
 | Streaming | 64 KiB data-at-execution plus chunked text/binary retrieval |
@@ -71,6 +74,8 @@ the server is fixed, and any unrelated behavior still fails the suite.
 | [matrixone#26686](https://github.com/matrixorigin/matrixone/issues/26686) | `LONG VARCHAR` / `LONG VARBINARY` aliases are rejected | upstream differential |
 | [matrixone#26687](https://github.com/matrixorigin/matrixone/issues/26687) | `TINYTEXT` does not enforce the 255-byte limit | upstream differential |
 | [matrixone#26688](https://github.com/matrixorigin/matrixone/issues/26688) | character-set information schema is empty/inconsistent | driver Unicode fallback, passing |
+| [matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715) | unquoted Unicode identifiers are rejected by the parser | XFAIL |
+| [matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716) | VARBINARY result metadata omits `BINARY_FLAG` | XFAIL |
 
 The umbrella request for first-class support and shared acceptance criteria is
 [matrixone#26677](https://github.com/matrixorigin/matrixone/issues/26677).
