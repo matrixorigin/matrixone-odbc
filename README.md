@@ -66,10 +66,11 @@ Leaving `PORT` out of that string intentionally verifies the MatrixOne default
 of `6001`. Current results are recorded in
 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
-For the Unicode/ANSI 13-case suite covering metadata, descriptors, prepared
-values, transactions, streaming, diagnostics, concurrency, timeout, and
-cancellation, follow [docs/TESTING.md](docs/TESTING.md). Known MatrixOne defects
-remain visible as issue-linked XFAILs.
+For the Unicode/ANSI 18-case suite covering metadata, descriptors, prepared
+values, Power BI DirectQuery-shaped SQL, transactions, streaming, diagnostics,
+concurrency, timeout, and cancellation, follow
+[docs/TESTING.md](docs/TESTING.md). Known MatrixOne defects remain visible as
+issue-linked XFAILs.
 
 ## Continuous integration
 
