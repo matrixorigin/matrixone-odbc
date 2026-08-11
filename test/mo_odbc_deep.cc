@@ -304,6 +304,23 @@ CREATE TABLE mo_odbc_deep.param_values (
                "value VARCHAR(64))");
   execute(dbc, "CREATE TABLE mo_odbc_deep.long_values (id INT PRIMARY KEY, "
                "payload TEXT, binary_payload BLOB)");
+  execute(dbc, R"SQL(
+CREATE TABLE mo_odbc_deep.pbi_sales (
+  id INT PRIMARY KEY,
+  category VARCHAR(32),
+  amount DECIMAL(12,2),
+  event_time DATETIME(6),
+  nullable_note VARCHAR(64),
+  active BOOL
+))SQL");
+  execute(dbc, R"SQL(
+INSERT INTO mo_odbc_deep.pbi_sales VALUES
+  (1,'A',10.00,'2026-01-02 00:00:00.000001','keep',TRUE),
+  (2,'A',20.00,'2026-01-03 00:00:00.000002',NULL,TRUE),
+  (3,'B',30.00,'2026-01-04 00:00:00.000003','keep',TRUE),
+  (4,'B',100.00,'2025-12-31 23:59:59.999999','keep',TRUE),
+  (5,'C',40.00,'2026-01-05 00:00:00.000004','keep',FALSE)
+)SQL");
 }
 
 void test_connection_capabilities(SQLHDBC dbc) {
@@ -318,7 +335,8 @@ void test_connection_capabilities(SQLHDBC dbc) {
   expect(!driver_name.empty(), "SQL_DRIVER_NAME is empty");
   expect(!driver_version.empty(), "SQL_DRIVER_VER is empty");
 
-  for (SQLUSMALLINT api : {SQL_API_SQLBINDPARAMETER, SQL_API_SQLTABLES,
+  for (SQLUSMALLINT api : {SQL_API_SQLBINDPARAMETER, SQL_API_SQLDESCRIBEPARAM,
+                           SQL_API_SQLNUMPARAMS, SQL_API_SQLTABLES,
                            SQL_API_SQLCOLUMNS, SQL_API_SQLPRIMARYKEYS,
                            SQL_API_SQLSTATISTICS, SQL_API_SQLGETTYPEINFO}) {
     SQLUSMALLINT supported = SQL_FALSE;
@@ -831,6 +849,144 @@ void test_prepared_boolean(SQLHDBC dbc) {
          "prepared SQL_BIT update did not persist FALSE");
 }
 
+void test_directquery_shape(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string sql = R"SQL(
+SELECT q.category, SUM(q.amount) AS total_amount
+FROM (
+  SELECT category, amount, event_time, nullable_note, active
+  FROM mo_odbc_deep.pbi_sales
+  WHERE event_time >= ?
+) AS q
+WHERE COALESCE(q.nullable_note, '') <> ? AND q.active = ?
+GROUP BY q.category
+HAVING SUM(q.amount) > ?
+ORDER BY q.category
+LIMIT ? OFFSET ?)SQL";
+  check(SQLPrepare(stmt.handle(),
+                   reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+                   static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare DirectQuery-shaped query");
+
+  SQLSMALLINT parameter_count = 0;
+  check(SQLNumParams(stmt.handle(), &parameter_count), SQL_HANDLE_STMT,
+        stmt.handle(), "SQLNumParams DirectQuery-shaped query");
+  expect(parameter_count == 6,
+         "DirectQuery-shaped query expected 6 parameters, got " +
+             std::to_string(parameter_count));
+
+  for (SQLUSMALLINT parameter = 1; parameter <= 6; ++parameter) {
+    SQLSMALLINT data_type = 0;
+    SQLULEN parameter_size = 0;
+    SQLSMALLINT decimal_digits = 0;
+    SQLSMALLINT nullable = 0;
+    check(SQLDescribeParam(stmt.handle(), parameter, &data_type,
+                           &parameter_size, &decimal_digits, &nullable),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLDescribeParam " + std::to_string(parameter));
+  }
+
+  SQL_TIMESTAMP_STRUCT start = {2026, 1, 1, 0, 0, 0, 0};
+  SQLLEN start_len = sizeof(start);
+  SQLCHAR excluded_note[] = "skip";
+  SQLLEN excluded_note_len = SQL_NTS;
+  SQLCHAR active = 1;
+  SQLLEN active_len = 0;
+  SQLCHAR minimum_total[] = "20.00";
+  SQLLEN minimum_total_len = SQL_NTS;
+  SQLINTEGER limit = 1;
+  SQLINTEGER offset = 1;
+  SQLLEN integer_len = 0;
+
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT,
+                         SQL_C_TYPE_TIMESTAMP, SQL_TYPE_TIMESTAMP, 26, 6,
+                         &start, sizeof(start), &start_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter DirectQuery time");
+  check(SQLBindParameter(stmt.handle(), 2, SQL_PARAM_INPUT, SQL_C_CHAR,
+                         SQL_VARCHAR, sizeof(excluded_note) - 1, 0,
+                         excluded_note, sizeof(excluded_note),
+                         &excluded_note_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter DirectQuery text");
+  check(SQLBindParameter(stmt.handle(), 3, SQL_PARAM_INPUT, SQL_C_BIT,
+                         SQL_BIT, 1, 0, &active, 0, &active_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter DirectQuery bool");
+  check(SQLBindParameter(stmt.handle(), 4, SQL_PARAM_INPUT, SQL_C_CHAR,
+                         SQL_DECIMAL, 12, 2, minimum_total,
+                         sizeof(minimum_total), &minimum_total_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLBindParameter DirectQuery decimal");
+  check(SQLBindParameter(stmt.handle(), 5, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &limit, 0, &integer_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter DirectQuery limit");
+  check(SQLBindParameter(stmt.handle(), 6, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &offset, 0, &integer_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLBindParameter DirectQuery offset");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute DirectQuery-shaped query");
+
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch DirectQuery-shaped query");
+  SQLCHAR category[32] = {};
+  SQLLEN category_len = 0;
+  double total = 0;
+  SQLLEN total_len = 0;
+  check(SQLGetData(stmt.handle(), 1, SQL_C_CHAR, category, sizeof(category),
+                   &category_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLGetData DirectQuery category");
+  check(SQLGetData(stmt.handle(), 2, SQL_C_DOUBLE, &total, sizeof(total),
+                   &total_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLGetData DirectQuery total");
+  expect(std::string(reinterpret_cast<const char *>(category)) == "B",
+         "DirectQuery-shaped pagination returned the wrong category");
+  expect(std::fabs(total - 30.0) < 0.000001,
+         "DirectQuery-shaped aggregation returned the wrong total");
+  expect(SQLFetch(stmt.handle()) == SQL_NO_DATA,
+         "DirectQuery-shaped LIMIT returned more than one row");
+}
+
+void test_offset_without_limit_known_issue(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string sql =
+      "SELECT id FROM mo_odbc_deep.pbi_sales ORDER BY id OFFSET ?";
+  SQLRETURN rc = SQLPrepare(
+      stmt.handle(), reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+      static_cast<SQLINTEGER>(sql.size()));
+  if (!succeeded(rc)) {
+    const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+    if (!records.empty() && records.front().state == "42000" &&
+        records.front().native_error == 1064) {
+      throw KnownIssue(
+          "matrixorigin/matrixone#26769: Power BI LimitOffset folding "
+          "requires OFFSET without LIMIT");
+    }
+    check(rc, SQL_HANDLE_STMT, stmt.handle(),
+          "SQLPrepare offset without limit");
+  }
+
+  SQLINTEGER offset = 1;
+  SQLLEN offset_len = 0;
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &offset, 0, &offset_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLBindParameter offset without limit");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute offset without limit");
+  for (SQLINTEGER expected_id = 2; expected_id <= 5; ++expected_id) {
+    check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+          "SQLFetch offset without limit");
+    SQLINTEGER actual_id = 0;
+    SQLLEN actual_id_len = 0;
+    check(SQLGetData(stmt.handle(), 1, SQL_C_SLONG, &actual_id,
+                     sizeof(actual_id), &actual_id_len),
+          SQL_HANDLE_STMT, stmt.handle(), "SQLGetData offset without limit");
+    expect(actual_id == expected_id,
+           "offset without limit returned the wrong row");
+  }
+  expect(SQLFetch(stmt.handle()) == SQL_NO_DATA,
+         "offset without limit returned an unexpected row");
+}
+
 void test_varbinary_wide_conversion(SQLHDBC dbc) {
   execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.binary_wide");
   execute(dbc,
@@ -1222,6 +1378,10 @@ int main() {
          [&] { test_prepared_floating_point(db.handle()); }},
         {"prepared boolean parameters",
          [&] { test_prepared_boolean(db.handle()); }},
+        {"Power BI DirectQuery SQL shape",
+         [&] { test_directquery_shape(db.handle()); }},
+        {"offset without limit",
+         [&] { test_offset_without_limit_known_issue(db.handle()); }},
         {"VARBINARY wide conversion",
          [&] { test_varbinary_wide_conversion(db.handle()); }},
         {"unquoted Unicode identifier",

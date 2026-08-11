@@ -233,7 +233,9 @@ let
 
   SqlCapabilities = LogMsg("SqlCapabilities_Options: #{0}",
   [
-    LimitClauseKind = LimitClauseKind.LimitOffset,
+    // LimitOffset also requires OFFSET without LIMIT, which MatrixOne does not
+    // support yet (matrixorigin/matrixone#26769).
+    LimitClauseKind = LimitClauseKind.Limit,
     SupportsTop = false,
     GroupByCapabilities = ODBC[SQL_GB][SQL_GB_NO_RELATION],
     FractionalSecondsScale = 3
@@ -388,10 +390,13 @@ let
 
   ty_id = md[DATA_TYPE],
   ty_name = md[TYPE_NAME],
+  // MatrixOne versions differ in the casing used by INFORMATION_SCHEMA.
+  // Match type names case-insensitively while preserving the original record.
+  ty_name_lc = Text.Lower(ty_name),
 
   fixes0 =
   if
-    Text.Contains(ty_name, "int")
+    Text.Contains(ty_name_lc, "int")
   then
     /*
       Note: The only integer types allowed in a CAST() expression
@@ -399,7 +404,7 @@ let
     */
     [
       TYPE_NAME =
-      if Text.Contains(ty_name, "unsigned") then "unsigned" else "signed"
+      if Text.Contains(ty_name_lc, "unsigned") then "unsigned" else "signed"
     ]
 
   else if
@@ -407,7 +412,7 @@ let
       Note: Doing similar renaming for TEXT type and similar seems to
       not be needed and also leads to other issues.
     */
-    List.Contains({"long varchar", "varchar", "enum", "set"}, ty_name)
+    List.Contains({"long varchar", "varchar", "enum", "set"}, ty_name_lc)
   then
     /*
       Note: The only string type allowed in a CAST() expression is CHAR.
@@ -415,7 +420,7 @@ let
     [ TYPE_NAME = "char", DATA_TYPE = ODBC[SQL_TYPE][WVARCHAR] ]
 
   else if
-    "float" = ty_name
+    "float" = ty_name_lc
   then
     [ TYPE_NAME = "double", DATA_TYPE = ODBC[SQL_TYPE][DOUBLE] ]
 

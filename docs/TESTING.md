@@ -17,7 +17,8 @@ as evidence of database compatibility.
    length.
 4. **Data and execution** covers scalar types, Unicode text, binary and JSON,
    NULL, prepared parameters, floating-point precision, date structures,
-   data-at-execution, chunked `SQLGetData`, transactions, and isolation.
+   Power BI DirectQuery-shaped SQL, data-at-execution, chunked `SQLGetData`,
+   transactions, and isolation.
 5. **Stress** opens six simultaneous connections and performs 72 catalog-backed
    reads. This is a bounded concurrency smoke test, not a throughput benchmark.
 6. **Upstream differential tests** run selected MySQL Connector/ODBC modules
@@ -37,7 +38,7 @@ export MO_ODBC_CONNECTION_STRING='DRIVER={MatrixOne ODBC 9.7 ANSI Driver};SERVER
 ./build-arm64/test/mo_odbc_deep
 ```
 
-The 16 TAP cases cover:
+The 18 TAP cases cover:
 
 | Case | Main contract |
 | --- | --- |
@@ -48,6 +49,8 @@ The 16 TAP cases cover:
 | Prepared parameters | wide text, decimal, date, binary, NULL, result verification |
 | Prepared floating point | FLOAT/DOUBLE values retain fractional precision |
 | Prepared boolean | `SQL_C_BIT` parameters update and filter `BOOL` values |
+| Power BI DirectQuery SQL shape | nested query, `COALESCE`, aggregation, HAVING, typed bindings, and LIMIT/OFFSET |
+| Offset without limit | prepared offset-only pagination required by Power Query `LimitOffset` folding |
 | Binary-to-wide conversion | VARBINARY is exposed as hexadecimal `SQL_C_WCHAR` text |
 | Unicode identifiers | `SQLExecDirectW` accepts MySQL-valid unquoted BMP identifiers |
 | Transactions | rollback and commit visibility |
@@ -69,13 +72,14 @@ the server is fixed, and any unrelated behavior still fails the suite.
 | [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678) | `max_execution_time` is not enforced | XFAIL |
 | [matrixone#26680](https://github.com/matrixorigin/matrixone/issues/26680) | uppercase `DATA_TYPE` breaks case-sensitive `SQLColumns` mapping | driver compatibility fix, passing |
 | [matrixone#26682](https://github.com/matrixorigin/matrixone/issues/26682) | prepared DOUBLE metadata reports zero decimals | MatrixOne-specific native bind workaround, passing |
-| [matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683) | result metadata reports invalid VARCHAR/VARBINARY lengths | XFAIL |
+| [matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683) | result metadata reports invalid VARCHAR/VARBINARY lengths | passing on main after `c31b46d9ec`; XFAIL on the v4.1.4 CI baseline |
 | [matrixone#26684](https://github.com/matrixorigin/matrixone/issues/26684) | missing table used native error 1064 instead of 1146 | passing on main after `4b62e3edd6`; XFAIL on the v4.1.4 CI baseline |
 | [matrixone#26686](https://github.com/matrixorigin/matrixone/issues/26686) | `LONG VARCHAR` / `LONG VARBINARY` aliases are rejected | upstream differential |
 | [matrixone#26687](https://github.com/matrixorigin/matrixone/issues/26687) | `TINYTEXT` does not enforce the 255-byte limit | upstream differential |
 | [matrixone#26688](https://github.com/matrixorigin/matrixone/issues/26688) | character-set information schema is empty/inconsistent | driver Unicode fallback, passing |
 | [matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715) | unquoted Unicode identifiers are rejected by the parser | XFAIL |
 | [matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716) | VARBINARY result metadata omits `BINARY_FLAG` | XFAIL |
+| [matrixone#26769](https://github.com/matrixorigin/matrixone/issues/26769) | offset-only pagination required by Power Query is rejected | XFAIL; connector advertises `Limit` until fixed |
 
 The umbrella request for first-class support and shared acceptance criteria is
 [matrixone#26677](https://github.com/matrixorigin/matrixone/issues/26677).

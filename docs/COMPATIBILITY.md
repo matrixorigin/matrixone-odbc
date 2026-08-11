@@ -1,8 +1,8 @@
 # Compatibility snapshot
 
-Tested on 2026-08-05 with:
+Tested on 2026-08-07 with:
 
-- MatrixOne `8.0.30-MatrixOne-v` at `e31ee06042` (`main`, Darwin ARM64)
+- MatrixOne `8.0.30-MatrixOne-v` at `d0057b3503` (`main`, Darwin ARM64)
 - MatrixOne ODBC based on MySQL Connector/ODBC `9.7.0`
 - Homebrew MySQL client `9.7.1` and unixODBC `2.3.14`
 - macOS ARM64
@@ -25,27 +25,34 @@ Tested on 2026-08-05 with:
 The deeper `mo_odbc_deep` suite passes through both registered driver variants:
 
 ```text
-Unicode: 11 passed, 5 expected MatrixOne failures, 0 failed
-ANSI:    11 passed, 5 expected MatrixOne failures, 0 failed
+Unicode: 13 passed, 5 expected MatrixOne failures, 0 failed
+ANSI:    13 passed, 5 expected MatrixOne failures, 0 failed
 ```
 
 In addition to the smoke paths, it verifies `SQLGetTypeInfo`, tables and views,
 Unicode-aware `SQLColumns`, primary and secondary index metadata,
 `SQLDescribeCol`, 20 SQL types, prepared Unicode/decimal/date/binary/NULL,
-FLOAT/DOUBLE and boolean values, VARBINARY-to-wide conversion, unquoted
-Unicode identifiers, commit/rollback, 64 KiB data-at-execution and chunked
-retrieval, SQLSTATE diagnostics, 72 reads over six concurrent connections,
-timeout, and cancellation. The five XFAILs are linked to
+FLOAT/DOUBLE and boolean values, a Power BI DirectQuery-shaped prepared query,
+`SQLDescribeParam`, nested filtering, `COALESCE`, aggregation, HAVING,
+LIMIT/OFFSET, VARBINARY-to-wide conversion, unquoted Unicode identifiers,
+commit/rollback, 64 KiB data-at-execution and chunked retrieval, SQLSTATE
+diagnostics, 72 reads over six concurrent connections, timeout, and
+cancellation. The five XFAILs are linked to
 [matrixone#26648](https://github.com/matrixorigin/matrixone/issues/26648),
 [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678),
-[matrixone#26683](https://github.com/matrixorigin/matrixone/issues/26683),
-[matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715), and
-[matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716).
+[matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715),
+[matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716), and
+[matrixone#26769](https://github.com/matrixorigin/matrixone/issues/26769).
 
 Missing-table diagnostics now pass after MatrixOne
 [4b62e3edd6](https://github.com/matrixorigin/matrixone/commit/4b62e3edd6)
 fixed [#26684](https://github.com/matrixorigin/matrixone/issues/26684) by
 returning native error 1146; the driver maps it to ODBC SQLSTATE `42S02`.
+
+Result descriptor lengths now pass after MatrixOne
+[c31b46d9ec](https://github.com/matrixorigin/matrixone/commit/c31b46d9ec)
+fixed [#26683](https://github.com/matrixorigin/matrixone/issues/26683):
+`SQLDescribeCol` reports 128 for both `VARCHAR(128)` and `VARBINARY(128)`.
 
 Driver compatibility fixes are covered for uppercase information-schema type
 names ([#26680](https://github.com/matrixorigin/matrixone/issues/26680)),
