@@ -10,8 +10,20 @@ Power BI Desktop and an on-premises data gateway must both have:
    gateway.
 
 The connector expects `server[:port][;database]`; port `6001` is used when the
-port is omitted. It uses username/password authentication and requests SSL in
-preferred mode unless Power BI requires encryption.
+port is omitted. It uses username/password authentication and requests
+opportunistic TLS (`SSLMODE=PREFERRED`). This works with MatrixOne's default
+unencrypted local deployment while still preferring TLS when the server offers
+it.
+
+The Windows x64 MSI contains the driver, client runtime DLLs, authentication
+plugins, and `MatrixOne.mez`. End users do not need the MySQL SDK or a MySQL
+Server installation. The installer checks for the Visual C++ 2022 x64 runtime.
+
+The preview connector is unsigned. In Power BI Desktop, enable loading of
+unvalidated custom extensions under **Options and settings > Options >
+Security > Data Extensions**, restart Power BI, and then select **MatrixOne
+Database with DirectQuery Support** from **Get data**. Production distribution
+should sign the connector and restore the validated-extension policy.
 
 ## Failure isolation
 
