@@ -498,8 +498,7 @@ sql_get_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
         Handle BLOB -> CHAR conversion
         Conversion only for field which is having binary character set (63)
       */
-      if ((field->flags & BINARY_FLAG) &&
-        field->charsetnr == BINARY_CHARSET_NUMBER &&
+      if (field->charsetnr == BINARY_CHARSET_NUMBER &&
         IS_LONGDATA(field->type) &&
         !field->decimals)
       {
@@ -547,8 +546,7 @@ sql_get_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
       {
         char *tmp= get_string(stmt, column_number, value, &length, as_string);
 
-        if ((field->flags & BINARY_FLAG) &&
-          field->charsetnr == BINARY_CHARSET_NUMBER &&
+        if (field->charsetnr == BINARY_CHARSET_NUMBER &&
           IS_LONGDATA(field->type) &&
           !field->decimals)
         {
