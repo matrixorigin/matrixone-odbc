@@ -102,6 +102,12 @@ caused MatrixOne to receive new `SHOW KEYS` and grouped `SUM` statements. The
 refreshed visual retained the expected total, proving the live Desktop query
 path rather than only a cached PBIX result.
 
+For the narrower validation snapshot that accompanied the `v9.7.0-mo.1`
+developer preview, see its
+[versioned Chinese test report](TEST_REPORT_9.7.0_MO_1_ZH_CN.md). The current
+public-data and query-folding results above supersede that historical report's
+not-yet-tested list.
+
 The Windows x64 release shape was also built as MSI and ZIP. Administrative MSI
 extraction contained `MatrixOne.mez`, both driver variants, `libmysql.dll`,
 OpenSSL/Kerberos/SASL runtime DLLs, and authentication plugins. The extracted
