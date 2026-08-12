@@ -1345,7 +1345,15 @@ SQLULEN get_column_size(STMT *stmt, MYSQL_FIELD *field)
       return length;
     // For BINARY charset the maxlen is 1, so the result
     // will be the byte length.
-    return length / get_charset_maxlen(field->charsetnr);
+    // A server can return a charset id that is not in the client library's
+    // collation table. Treat the wire byte length as a conservative column
+    // size in that case. Apart from avoiding an integer divide-by-zero, this
+    // keeps callers from allocating a buffer that is smaller than the value.
+    {
+      const unsigned int charset_maxlen =
+          get_charset_maxlen(field->charsetnr);
+      return charset_maxlen ? length / charset_maxlen : length;
+    }
   case MYSQL_TYPE_JSON:
     return UINT32_MAX / 4; // Because JSON is always UTF8MB4
   case MYSQL_TYPE_VECTOR:
@@ -1529,6 +1537,12 @@ SQLLEN get_display_size(STMT *stmt __attribute__((unused)),MYSQL_FIELD *field)
 {
   int capint32 = stmt->dbc->ds.opt_COLUMN_SIZE_S32 ? 1 : 0;
   unsigned int mbmaxlen = get_charset_maxlen(field->charsetnr);
+  // Unknown server-side collation ids are possible when MatrixOne and the
+  // bundled client library have different collation tables. Falling back to
+  // one byte per character is conservative and must never crash metadata
+  // discovery with an integer divide-by-zero.
+  if (!mbmaxlen)
+    mbmaxlen = 1;
 
   switch (field->type) {
   case MYSQL_TYPE_TINY:

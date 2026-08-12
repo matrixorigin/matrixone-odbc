@@ -35,6 +35,7 @@
 #include <errmsg.h>
 #include <ctype.h>
 #include <locale.h>
+#include <limits>
 
 #define SQL_MY_PRIMARY_KEY 1212
 
@@ -582,35 +583,57 @@ sql_get_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
 
     case SQL_C_TINYINT:
     case SQL_C_STINYINT:
-      if (rgbValue)
-        *((SQLSCHAR *)rgbValue)= (SQLSCHAR)(convert
-                                 ? get_int(stmt, column_number, value, length)
-                                 : (numeric_value & (SQLSCHAR)(-1)));
+      {
+        const longlong converted =
+            convert ? get_int64(stmt, column_number, value, length)
+                    : numeric_value;
+        if (converted < (std::numeric_limits<SQLSCHAR>::min)() ||
+            converted > (std::numeric_limits<SQLSCHAR>::max)())
+          return stmt->set_error("22003", "Numeric value out of range", 0);
+        if (rgbValue)
+          *((SQLSCHAR *)rgbValue)= (SQLSCHAR)converted;
+      }
       *pcbValue= 1;
       break;
 
     case SQL_C_UTINYINT:
-      if (rgbValue)
-        *((SQLCHAR *)rgbValue)= (SQLCHAR)(convert
-                                ? get_uint(stmt, column_number, value, length)
-                                : (numeric_value & (SQLCHAR)(-1)));
+      {
+        const ulonglong converted =
+            convert ? get_uint64(stmt, column_number, value, length)
+                    : u_numeric_value;
+        if (converted > (std::numeric_limits<SQLCHAR>::max)())
+          return stmt->set_error("22003", "Numeric value out of range", 0);
+        if (rgbValue)
+          *((SQLCHAR *)rgbValue)= (SQLCHAR)converted;
+      }
       *pcbValue= 1;
       break;
 
     case SQL_C_SHORT:
     case SQL_C_SSHORT:
-      if (rgbValue)
-        *((SQLSMALLINT *)rgbValue)= (SQLSMALLINT)(convert
-                                ? get_int(stmt, column_number, value, length)
-                                : (numeric_value & (SQLUSMALLINT)(-1)));
+      {
+        const longlong converted =
+            convert ? get_int64(stmt, column_number, value, length)
+                    : numeric_value;
+        if (converted < (std::numeric_limits<SQLSMALLINT>::min)() ||
+            converted > (std::numeric_limits<SQLSMALLINT>::max)())
+          return stmt->set_error("22003", "Numeric value out of range", 0);
+        if (rgbValue)
+          *((SQLSMALLINT *)rgbValue)= (SQLSMALLINT)converted;
+      }
       *pcbValue= sizeof(SQLSMALLINT);
       break;
 
     case SQL_C_USHORT:
-      if (rgbValue)
-        *((SQLUSMALLINT *)rgbValue)= (SQLUSMALLINT)(convert
-                                ? get_uint(stmt, column_number, value, length)
-                                : (numeric_value & (SQLUSMALLINT)(-1)));
+      {
+        const ulonglong converted =
+            convert ? get_uint64(stmt, column_number, value, length)
+                    : u_numeric_value;
+        if (converted > (std::numeric_limits<SQLUSMALLINT>::max)())
+          return stmt->set_error("22003", "Numeric value out of range", 0);
+        if (rgbValue)
+          *((SQLUSMALLINT *)rgbValue)= (SQLUSMALLINT)converted;
+      }
       *pcbValue= sizeof(SQLUSMALLINT);
       break;
 
@@ -629,21 +652,35 @@ sql_get_data(STMT *stmt, SQLSMALLINT fCType, uint column_number,
                                         (SQLINTEGER) atol(value + 8));
           }
           else
-            *((SQLINTEGER *)rgbValue)= (SQLINTEGER) get_int64(stmt,
-                                                  column_number, value, length);
+          {
+            const longlong converted =
+                get_int64(stmt, column_number, value, length);
+            if (converted < (std::numeric_limits<SQLINTEGER>::min)() ||
+                converted > (std::numeric_limits<SQLINTEGER>::max)())
+              return stmt->set_error("22003", "Numeric value out of range", 0);
+            *((SQLINTEGER *)rgbValue)= (SQLINTEGER)converted;
+          }
         }
-        else
-          *((SQLINTEGER *)rgbValue)= (SQLINTEGER)(numeric_value
-                                                  & (SQLUINTEGER)(-1));
+        else {
+          if (numeric_value < (std::numeric_limits<SQLINTEGER>::min)() ||
+              numeric_value > (std::numeric_limits<SQLINTEGER>::max)())
+            return stmt->set_error("22003", "Numeric value out of range", 0);
+          *((SQLINTEGER *)rgbValue)= (SQLINTEGER)numeric_value;
+        }
       }
       *pcbValue= sizeof(SQLINTEGER);
       break;
 
     case SQL_C_ULONG:
-      if (rgbValue)
-        *((SQLUINTEGER *)rgbValue)= (SQLUINTEGER)(convert ?
-                                get_uint64(stmt, column_number, value, length) :
-                                numeric_value & (SQLUINTEGER)(-1));
+      {
+        const ulonglong converted =
+            convert ? get_uint64(stmt, column_number, value, length)
+                    : u_numeric_value;
+        if (converted > (std::numeric_limits<SQLUINTEGER>::max)())
+          return stmt->set_error("22003", "Numeric value out of range", 0);
+        if (rgbValue)
+          *((SQLUINTEGER *)rgbValue)= (SQLUINTEGER)converted;
+      }
       *pcbValue= sizeof(SQLUINTEGER);
       break;
 
