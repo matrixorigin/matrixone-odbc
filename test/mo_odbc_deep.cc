@@ -1581,6 +1581,46 @@ void test_unknown_charset_metadata(SQLHDBC dbc) {
              diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
 }
 
+void test_unreachable_connection_sqlstate(
+    const std::string &connection_string) {
+  SQLHENV env = SQL_NULL_HENV;
+  SQLHDBC dbc = SQL_NULL_HDBC;
+  check(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env),
+        SQL_HANDLE_ENV, env, "SQLAllocHandle unreachable ENV");
+  try {
+    check(SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION,
+                        reinterpret_cast<SQLPOINTER>(SQL_OV_ODBC3), 0),
+          SQL_HANDLE_ENV, env, "SQLSetEnvAttr unreachable ODBC3");
+    check(SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc), SQL_HANDLE_ENV, env,
+          "SQLAllocHandle unreachable DBC");
+    check(SQLSetConnectAttr(dbc, SQL_ATTR_LOGIN_TIMEOUT,
+                            reinterpret_cast<SQLPOINTER>(uintptr_t{2}), 0),
+          SQL_HANDLE_DBC, dbc, "SQL_ATTR_LOGIN_TIMEOUT unreachable");
+
+    const std::string unreachable =
+        connection_string + ";SERVER=127.0.0.1;PORT=1;LOGIN_TIMEOUT=2";
+    std::vector<SQLWCHAR> connection = widen_ascii(unreachable);
+    SQLWCHAR completed[4096] = {};
+    SQLSMALLINT completed_len = 0;
+    SQLRETURN rc = SQLDriverConnectW(
+        dbc, nullptr, connection.data(), SQL_NTS, completed,
+        sizeof(completed) / sizeof(completed[0]), &completed_len,
+        SQL_DRIVER_NOPROMPT);
+    expect(rc == SQL_ERROR,
+           "connection to an unused local port should fail");
+    const auto records = diagnostics(SQL_HANDLE_DBC, dbc);
+    expect(!records.empty() && records.front().state == "08001",
+           "initial connection failure should report SQLSTATE 08001" +
+               diagnostic_text(SQL_HANDLE_DBC, dbc));
+  } catch (...) {
+    if (dbc != SQL_NULL_HDBC) SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    throw;
+  }
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+  SQLFreeHandle(SQL_HANDLE_ENV, env);
+}
+
 void test_concurrent_connections(const std::string &connection_string) {
   const int thread_count = 6;
   const int iterations = 12;
@@ -1737,6 +1777,8 @@ int main() {
          [&] { test_transaction_error_recovery(db.handle()); }},
         {"unknown charset result metadata",
          [&] { test_unknown_charset_metadata(db.handle()); }},
+        {"unreachable connection SQLSTATE",
+         [&] { test_unreachable_connection_sqlstate(connection_string); }},
         {"concurrent connections",
          [&] { test_concurrent_connections(connection_string); }},
         {"query timeout", [&] { test_query_timeout_known_issue(db.handle()); }},

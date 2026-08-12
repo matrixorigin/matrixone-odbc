@@ -241,6 +241,12 @@ void translate_error(char *save_state, myodbc_errid errid, uint mysql_err)
         case ER_BAD_FIELD_ERROR:
             state= myodbc3_errors[MYERR_42S22].sqlstate;
             break;
+        case CR_SOCKET_CREATE_ERROR:
+        case CR_CONN_HOST_ERROR:
+        case CR_IPSOCK_ERROR:
+        case CR_UNKNOWN_HOST:
+            state= "08001"; /* Client unable to establish connection */
+            break;
         case CR_SERVER_HANDSHAKE_ERR:
         case CR_CONNECTION_ERROR:
         case CR_SERVER_GONE_ERROR:
