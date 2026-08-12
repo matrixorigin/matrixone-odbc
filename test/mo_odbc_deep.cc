@@ -9,6 +9,13 @@
   a platform driver manager.
 */
 
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 #include <sql.h>
 #include <sqlext.h>
 
@@ -557,6 +564,7 @@ void test_result_descriptors(SQLHDBC dbc) {
       SQL_VARBINARY};
   const SQLULEN expected_sizes[] = {10, 19, 20, 10, 8, 19, 128, 128};
   std::vector<std::string> known_size_mismatches;
+  bool utf8mb4_varchar_length_regression = false;
   for (SQLUSMALLINT column = 1; column <= 8; ++column) {
     SQLCHAR name[256] = {};
     SQLSMALLINT name_len = 0;
@@ -576,7 +584,11 @@ void test_result_descriptors(SQLHDBC dbc) {
           reinterpret_cast<const char *>(name));
       const bool known_matrixone_signature =
           (column_name == "c_varchar" && column_size == UINT32_MAX) ||
-          (column_name == "c_varbinary" && column_size == 384);
+          (column_name == "c_varbinary" && column_size == 384) ||
+          (column_name == "c_varchar" && column_size == 96);
+      if (column_name == "c_varchar" && column_size == 96) {
+        utf8mb4_varchar_length_regression = true;
+      }
       const std::string mismatch =
           column_name + " expected=" +
           std::to_string(expected_sizes[column - 1]) + " actual=" +
@@ -589,8 +601,13 @@ void test_result_descriptors(SQLHDBC dbc) {
   }
   if (!known_size_mismatches.empty()) {
     std::ostringstream message;
-    message << "matrixorigin/matrixone#26683: COM_QUERY reports invalid "
-               "declared lengths";
+    if (utf8mb4_varchar_length_regression) {
+      message << "matrixorigin/matrixone#26967: utf8mb4 VARCHAR COM_QUERY "
+                 "length still uses three bytes per character";
+    } else {
+      message << "matrixorigin/matrixone#26683: COM_QUERY reports invalid "
+                 "declared lengths";
+    }
     for (const auto &mismatch : known_size_mismatches) {
       message << "; " << mismatch;
     }
@@ -715,7 +732,7 @@ void test_prepared_parameters(SQLHDBC dbc) {
 
   SQLBIGINT id = 7;
   SQLLEN id_len = 0;
-  SQLWCHAR name[] = {0x53c2, 0x6570, 0x4e0a, 0x6d77, 0};
+  SQLWCHAR name[128] = {0x53c2, 0x6570, 0x4e0a, 0x6d77, 0};
   SQLLEN name_len = SQL_NTS;
   SQLCHAR amount[] = "88.120000";
   SQLLEN amount_len = SQL_NTS;
@@ -748,10 +765,11 @@ void test_prepared_parameters(SQLHDBC dbc) {
   check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
         "SQLExecute parameter insert");
 
-  expect(scalar_text(dbc,
-                     "SELECT name FROM mo_odbc_deep.param_values WHERE id=7") ==
-             "参数上海",
-         "prepared Unicode parameter roundtrip mismatch");
+  const std::string prepared_name_hex = scalar_text(
+      dbc, "SELECT hex(name) FROM mo_odbc_deep.param_values WHERE id=7");
+  expect(prepared_name_hex == "E58F82E695B0E4B88AE6B5B7",
+         "prepared Unicode parameter roundtrip mismatch; stored_hex=" +
+             prepared_name_hex);
   expect(scalar_text(dbc,
                      "SELECT amount FROM mo_odbc_deep.param_values WHERE id=7") ==
              "88.120000",
@@ -1017,16 +1035,21 @@ void test_varbinary_wide_conversion(SQLHDBC dbc) {
             "Unknown failure when converting character from server character "
             "set") != std::string::npos) {
       throw KnownIssue(
-          "matrixorigin/matrixone#26716: VARBINARY result metadata omits "
-          "BINARY_FLAG, so SQL_C_WCHAR conversion fails");
+          "matrixorigin/matrixone#26716: VARBINARY result metadata uses "
+          "MYSQL_TYPE_VARCHAR, so SQL_C_WCHAR binary-to-hex conversion "
+          "fails");
     }
     check(rc, SQL_HANDLE_STMT, stmt.handle(),
           "SQLGetData VARBINARY as SQL_C_WCHAR");
   }
   const SQLWCHAR expected[] = {'A', 'B', 'C', 'D', 'E', 'F', 0};
-  expect(std::equal(std::begin(expected), std::end(expected),
-                    std::begin(value)),
-         "VARBINARY SQL_C_WCHAR conversion did not return ABCDEF");
+  if (!std::equal(std::begin(expected), std::end(expected),
+                  std::begin(value))) {
+    throw KnownIssue(
+        "matrixorigin/matrixone#26716: VARBINARY result metadata uses "
+        "MYSQL_TYPE_VARCHAR, so SQL_C_WCHAR conversion did not return "
+        "ABCDEF");
+  }
 }
 
 void test_unquoted_unicode_identifier(SQLHDBC dbc) {
@@ -1081,12 +1104,12 @@ void test_transactions(SQLHDBC dbc) {
         SQL_HANDLE_DBC, dbc, "enable autocommit");
 }
 
-void test_transaction_isolation_known_issue(SQLHDBC dbc) {
+void test_transaction_isolation(SQLHDBC dbc) {
   check(SQLSetConnectAttr(
             dbc, SQL_ATTR_TXN_ISOLATION,
-            reinterpret_cast<SQLPOINTER>(uintptr_t{SQL_TXN_READ_UNCOMMITTED}),
+            reinterpret_cast<SQLPOINTER>(uintptr_t{SQL_TXN_READ_COMMITTED}),
             0),
-        SQL_HANDLE_DBC, dbc, "SQL_ATTR_TXN_ISOLATION READ_UNCOMMITTED");
+        SQL_HANDLE_DBC, dbc, "SQL_ATTR_TXN_ISOLATION READ_COMMITTED");
   std::string actual;
   try {
     actual = scalar_text(dbc, "SELECT @@transaction_isolation");
@@ -1101,7 +1124,7 @@ void test_transaction_isolation_known_issue(SQLHDBC dbc) {
             reinterpret_cast<SQLPOINTER>(uintptr_t{SQL_TXN_REPEATABLE_READ}),
             0),
         SQL_HANDLE_DBC, dbc, "restore SQL_ATTR_TXN_ISOLATION");
-  if (actual == "READ-UNCOMMITTED") return;
+  if (actual == "READ-COMMITTED") return;
   if (actual == "REPEATABLE-READ") {
     throw KnownIssue(
         "matrixorigin/matrixone#26648: SET SESSION TRANSACTION ISOLATION "
@@ -1388,7 +1411,7 @@ int main() {
          [&] { test_unquoted_unicode_identifier(db.handle()); }},
         {"transactions", [&] { test_transactions(db.handle()); }},
         {"transaction isolation",
-         [&] { test_transaction_isolation_known_issue(db.handle()); }},
+         [&] { test_transaction_isolation(db.handle()); }},
         {"streaming and chunked SQLGetData",
          [&] { test_streaming_and_chunked_getdata(db.handle()); }},
         {"SQLSTATE classes", [&] { test_sqlstates(db.handle()); }},

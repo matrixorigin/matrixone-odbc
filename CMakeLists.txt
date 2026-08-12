@@ -720,6 +720,15 @@ set(BUNDLED_LIBS
   libssl libcrypto ssleay libeay
 )
 
+# A dynamic Windows build must carry the client runtime next to the driver.
+# MYSQL_DIR is a build-time SDK location and is not present on customer
+# machines. Official packaging usually avoids this path by linking the client
+# statically, but MatrixOne's distributable build intentionally uses the DLL
+# and bundles it with the rest of the runtime dependencies.
+if(WIN32 AND NOT MYSQLCLIENT_STATIC_LINKING)
+  list(APPEND BUNDLED_LIBS libmysql)
+endif()
+
 # List plugins and other libraries that can be found bundled with the server
 # but which are not relevant on client-side and can be safely ignored.
 

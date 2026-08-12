@@ -92,7 +92,10 @@ DefaultMatrixOneHost = "localhost";
 
 MatrixOne =
 [
-  SupportsEncryption = true,
+  // MatrixOne's default local deployment does not enable protocol TLS. Use
+  // Connector/ODBC's opportunistic TLS mode so encrypted servers are still
+  // preferred while standard MatrixOne development instances remain usable.
+  SupportsEncryption = false,
   Authentication = [ UsernamePassword = [] ],
 
   // TestConnection is required for the Gateway Support:
@@ -352,12 +355,7 @@ let
       // Currently only UsernamePassword authentication is supported
       error Extension.LoadString("Error_UidPwdRequired"),
 
-  ssl_opts =
-    if (cred[EncryptConnection]? = true)
-    then
-      [SSLMODE = "REQUIRED"]
-    else
-      [SSLMODE = "PREFERRED"]
+  ssl_opts = [SSLMODE = "PREFERRED"]
 
 in
   [
@@ -594,7 +592,9 @@ OnError = (errorRecord as record) =>
   let
     OdbcErrors = try errorRecord[Detail][OdbcErrors] otherwise null,
     OdbcError =
-      if OdbcErrors <> null and not List.IsEmpty(OdbcErrors)
+      if Value.Is(OdbcErrors, type table) and not Table.IsEmpty(OdbcErrors)
+      then Table.First(OdbcErrors)
+      else if Value.Is(OdbcErrors, type list) and not List.IsEmpty(OdbcErrors)
       then OdbcErrors{0}
       else null,
     OdbcErrorCode =
