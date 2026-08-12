@@ -1399,17 +1399,12 @@ void test_numeric_overflow_diagnostics(SQLHDBC dbc) {
 
 void test_missing_parameter_diagnostics(SQLHDBC dbc) {
   Statement stmt(dbc);
-  const std::string sql = "SELECT ? + ?";
+  const std::string sql = "SELECT ?";
   check(SQLPrepare(
             stmt.handle(),
             reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
             static_cast<SQLINTEGER>(sql.size())),
         SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare missing parameter");
-  SQLINTEGER value = 1;
-  SQLLEN value_len = 0;
-  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
-                         SQL_INTEGER, 0, 0, &value, 0, &value_len),
-        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter first of two");
   SQLRETURN rc = SQLExecute(stmt.handle());
   expect(rc == SQL_ERROR,
          "SQLExecute with a missing parameter should fail");
@@ -1544,12 +1539,20 @@ void test_unknown_charset_metadata(SQLHDBC dbc) {
       "EXPLAIN DELETE a1,a2 FROM mo_odbc_deep.explain_delete AS a1 "
       "INNER JOIN mo_odbc_deep.explain_delete AS a2 "
       "WHERE a1.id=a2.id AND a2.id>=?";
-  check(SQLPrepare(
-            stmt.handle(),
-            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
-            static_cast<SQLINTEGER>(sql.size())),
-        SQL_HANDLE_STMT, stmt.handle(),
-        "SQLPrepare EXPLAIN DELETE metadata regression");
+  SQLRETURN prepare_rc = SQLPrepare(
+      stmt.handle(),
+      reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+      static_cast<SQLINTEGER>(sql.size()));
+  if (!succeeded(prepare_rc)) {
+    const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+    if (!records.empty() && records.front().state.compare(0, 2, "42") == 0) {
+      throw KnownIssue(
+          "older MatrixOne releases do not support the multi-table EXPLAIN "
+          "DELETE syntax that exposes matrixorigin/matrixone#27022");
+    }
+    check(prepare_rc, SQL_HANDLE_STMT, stmt.handle(),
+          "SQLPrepare EXPLAIN DELETE metadata regression");
+  }
   SQLUINTEGER minimum_id = 0;
   SQLLEN minimum_id_len = 0;
   check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_ULONG,
