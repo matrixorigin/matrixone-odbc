@@ -121,6 +121,8 @@ and removable.
 
 The automated jobs do not replace these release gates:
 
+- TPC-H multi-table Import and DirectQuery validation at representative scale
+- broader strict Power Query folding coverage beyond the current preview
 - MSI side-by-side install, upgrade, and uninstall with Oracle MySQL ODBC
 - Unicode and ANSI DSN creation in the 64-bit ODBC Administrator
 - Power BI Desktop Import and DirectQuery schema discovery
