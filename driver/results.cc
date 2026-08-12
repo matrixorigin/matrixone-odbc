@@ -68,6 +68,7 @@ my_bool odbc_supported_conversion(SQLSMALLINT sqlType, SQLSMALLINT cType)
       case SQL_C_TYPE_TIMESTAMP:
         return FALSE;
       }
+      return TRUE;
     }
   case SQL_BINARY:
     {

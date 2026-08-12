@@ -72,6 +72,10 @@ concurrency, timeout, and cancellation, follow
 [docs/TESTING.md](docs/TESTING.md). Known MatrixOne defects remain visible as
 issue-linked XFAILs.
 
+The public-data and real Power BI Desktop validation results, MatrixOne issue
+priorities, and release recommendation are recorded in the Chinese
+[Power BI deep-test report](docs/POWER_BI_TEST_REPORT_ZH_CN.md).
+
 ## Continuous integration
 
 Every pull request builds the driver and `MatrixOne.mez` on Linux and macOS

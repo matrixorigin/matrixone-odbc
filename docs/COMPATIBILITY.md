@@ -1,8 +1,8 @@
 # Compatibility snapshot
 
-Tested on 2026-08-11 with:
+Tested on 2026-08-12 with:
 
-- MatrixOne `8.0.30-MatrixOne-v` at `0f145bbc0a020e979e5bc2515de1a8a21ae4f222`
+- MatrixOne `8.0.30-MatrixOne-v` at `9a7c98b8f3aa07fad24b411d54c7a9f6cb3a8731`
   (`main`, WSL2 Ubuntu 24.04, Windows x64 host)
 - MatrixOne ODBC based on MySQL Connector/ODBC `9.7.0`
 - MySQL command-line client `9.7.1`
@@ -38,13 +38,38 @@ FLOAT/DOUBLE and boolean values, a Power BI DirectQuery-shaped prepared query,
 LIMIT/OFFSET, VARBINARY-to-wide conversion, unquoted Unicode identifiers,
 commit/rollback, 64 KiB data-at-execution and chunked retrieval, SQLSTATE
 diagnostics, 72 reads over six concurrent connections, timeout, and
-cancellation. The five XFAILs are linked to
+cancellation. MatrixOne `BOOL` is now asserted as ODBC `SQL_BIT` in catalog and
+result descriptors while ordinary `TINYINT` remains `SQL_TINYINT`. Catalog
+tests also verify that MatrixOne physical helper columns are not exposed by
+`SQLColumns`. The five XFAILs are linked to
 [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678),
 [matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715),
 [matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716), and
 [matrixone#26769](https://github.com/matrixorigin/matrixone/issues/26769), plus
 the current UTF-8 descriptor regression
 [matrixone#26967](https://github.com/matrixorigin/matrixone/issues/26967).
+
+## Public-data validation
+
+TPC-H SF1 was loaded from MatrixOne's published test-data URL: 8 tables,
+8,661,255 rows in total, including 6,001,215 `lineitem` rows. MatrixOne's 22
+TPC-H queries all passed natively. The dedicated ODBC TPC-H suite then passed
+8 cases with one issue-linked descriptor XFAIL and no unknown failures through
+each of the Unicode and ANSI drivers. It covers row counts, catalog metadata,
+Q1, Q3, Q13, a prepared folding shape, a 100,000-row typed fetch, and eight
+parallel analytics clients.
+
+Microsoft's Power Query SDK Test Framework was run at DataConnectors commit
+`c7b9d81d0d1a62b5f5486f63087c8587e2ca0160` with its 20,266-row modified NYC
+Taxi data set. Sanity passed 8 of 9 cases; Standard functional comparison
+passed 188 of 203. Strict DirectQuery folding passed at least 115 of 203;
+57 of its 88 failures were PQTest `NullReferenceException` results rather than
+confirmed connector folding failures. `FoldListCount` and `FoldTableRowCount`
+isolated the MatrixOne prepared aggregate correctness bug
+[#26994](https://github.com/matrixorigin/matrixone/issues/26994).
+
+Full hashes, classifications, and release gates are in the
+[Chinese deep-test report](POWER_BI_TEST_REPORT_ZH_CN.md).
 
 Missing-table diagnostics now pass after MatrixOne
 [4b62e3edd6](https://github.com/matrixorigin/matrixone/commit/4b62e3edd6)
@@ -71,6 +96,11 @@ fixture containing Chinese text, `DECIMAL`, `DATE`, `DATETIME`, booleans, and
 nulls. Import displayed all five rows correctly. A DirectQuery table visual
 generated a grouped aggregate and returned `A=30`, `B=30`, `Power BI=-7.25`,
 `上海=1234.50`, total `1287.25`.
+
+Reopening the DirectQuery PBIX with the latest driver and clicking Refresh
+caused MatrixOne to receive new `SHOW KEYS` and grouped `SUM` statements. The
+refreshed visual retained the expected total, proving the live Desktop query
+path rather than only a cached PBIX result.
 
 The Windows x64 release shape was also built as MSI and ZIP. Administrative MSI
 extraction contained `MatrixOne.mez`, both driver variants, `libmysql.dll`,
@@ -106,6 +136,13 @@ server and driver build:
 These upstream totals are diagnostic, not CI gates: the dedicated suite turns
 the Power BI-relevant contracts into stable assertions without treating every
 MySQL server feature as required MatrixOne functionality.
+
+The bounded full-module run covered 35 upstream executables: 8 modules passed,
+22 failed, 4 terminated inside MySQL-specific test assumptions, and 1 skipped;
+313 TAP assertions passed and 117 failed. The residual failures are dominated
+by MySQL-only stored procedures, cursor updates, TLS fixtures, account syntax,
+VECTOR, and exact MySQL metadata expectations, so module totals are not a
+MatrixOne compatibility score.
 
 ## Upstream Unicode suite observations
 

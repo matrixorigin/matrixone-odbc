@@ -68,7 +68,7 @@ the server is fixed, and any unrelated behavior still fails the suite.
 
 | Issue | Layer | Automated status |
 | --- | --- | --- |
-| [matrixone#26648](https://github.com/matrixorigin/matrixone/issues/26648) | transaction isolation is accepted but ignored | XFAIL |
+| [matrixone#26648](https://github.com/matrixorigin/matrixone/issues/26648) | transaction isolation was accepted but ignored | passing on current main |
 | [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678) | `max_execution_time` is not enforced | XFAIL |
 | [matrixone#26680](https://github.com/matrixorigin/matrixone/issues/26680) | uppercase `DATA_TYPE` breaks case-sensitive `SQLColumns` mapping | driver compatibility fix, passing |
 | [matrixone#26682](https://github.com/matrixorigin/matrixone/issues/26682) | prepared DOUBLE metadata reports zero decimals | MatrixOne-specific native bind workaround, passing |
@@ -80,9 +80,26 @@ the server is fixed, and any unrelated behavior still fails the suite.
 | [matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715) | unquoted Unicode identifiers are rejected by the parser | XFAIL |
 | [matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716) | VARBINARY result metadata omits `BINARY_FLAG` | XFAIL |
 | [matrixone#26769](https://github.com/matrixorigin/matrixone/issues/26769) | offset-only pagination required by Power Query is rejected | XFAIL; connector advertises `Limit` until fixed |
+| [matrixone#26967](https://github.com/matrixorigin/matrixone/issues/26967) | utf8mb4 VARCHAR wire length shrinks ODBC `ColumnSize` | XFAIL |
+| [matrixone#26993](https://github.com/matrixorigin/matrixone/issues/26993) | information schema exposes internal primary-key helper columns | driver filter and regression test, passing |
+| [matrixone#26994](https://github.com/matrixorigin/matrixone/issues/26994) | prepared `COUNT(?)` silently returns the wrong table aggregate | Power Query Standard failure; stable-release blocker |
 
 The umbrella request for first-class support and shared acceptance criteria is
 [matrixone#26677](https://github.com/matrixorigin/matrixone/issues/26677).
+
+## Public-data and Power Query suites
+
+`test/tpch` contains the MatrixOne schema, deterministic SF1 loader, native
+22-query runner, and row-count checks. After loading, run `mo_odbc_tpch` once
+through each registered driver. The executable tests catalog metadata, Q1, Q3,
+Q13, a prepared Power Query shape, a 100,000-row fetch, and parallel analytics.
+
+`test/powerquery` pins the Microsoft DataConnectors framework commit and all
+four public-data SHA-256 values. Its wrapper prepares the official connector
+configuration layout and can run either functional comparison or strict
+`--failOnFoldingFailure` coverage. Keep these two result sets separate: local
+Mashup evaluation can make a functional case pass even when it is unsuitable
+for DirectQuery.
 
 ## Failure attribution checklist
 
