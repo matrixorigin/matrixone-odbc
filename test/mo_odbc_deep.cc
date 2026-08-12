@@ -450,6 +450,9 @@ void test_catalog_metadata(SQLHDBC dbc) {
            "c_big is not reported as SQL_BIGINT");
     expect(types["c_dec"] == SQL_DECIMAL,
            "c_dec is not reported as SQL_DECIMAL");
+    expect(types["c_bool"] == SQL_BIT,
+           "c_bool is not reported as SQL_BIT; got " +
+               std::to_string(types["c_bool"]));
     expect(types["c_date"] == SQL_TYPE_DATE,
            "c_date is not reported as SQL_TYPE_DATE");
     expect(types["c_time"] == SQL_TYPE_TIME,
@@ -470,6 +473,57 @@ void test_catalog_metadata(SQLHDBC dbc) {
                std::to_string(types["c_text"]));
     expect(types["c_varbinary"] == SQL_VARBINARY,
            "c_varbinary is not reported as SQL_VARBINARY");
+  }
+  {
+    Statement stmt(dbc);
+    const std::string sql =
+        "SELECT c_tiny,c_bool FROM mo_odbc_deep.type_matrix LIMIT 1";
+    check(SQLExecDirect(
+              stmt.handle(),
+              reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+              static_cast<SQLINTEGER>(sql.size())),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLExecDirect TINYINT and BOOL descriptors");
+    SQLSMALLINT tiny_type = 0;
+    SQLSMALLINT bool_type = 0;
+    check(SQLDescribeCol(stmt.handle(), 1, nullptr, 0, nullptr, &tiny_type,
+                         nullptr, nullptr, nullptr),
+          SQL_HANDLE_STMT, stmt.handle(), "SQLDescribeCol TINYINT");
+    check(SQLDescribeCol(stmt.handle(), 2, nullptr, 0, nullptr, &bool_type,
+                         nullptr, nullptr, nullptr),
+          SQL_HANDLE_STMT, stmt.handle(), "SQLDescribeCol BOOL");
+    expect(tiny_type == SQL_TINYINT,
+           "TINYINT result descriptor is not SQL_TINYINT");
+    expect(bool_type == SQL_BIT,
+           "BOOL result descriptor is not SQL_BIT; got " +
+               std::to_string(bool_type));
+  }
+  {
+    Statement stmt(dbc);
+    SQLCHAR catalog[] = "mo_odbc_deep";
+    SQLCHAR table[] = "metaxunderxscore";
+    check(SQLColumns(stmt.handle(), catalog, SQL_NTS, nullptr, 0, table,
+                     SQL_NTS, nullptr, 0),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLColumns table without primary key");
+    std::vector<std::string> columns;
+    SQLRETURN rc;
+    while (succeeded(rc = SQLFetch(stmt.handle()))) {
+      SQLCHAR column_name[256] = {};
+      SQLLEN length = 0;
+      check(SQLGetData(stmt.handle(), 4, SQL_C_CHAR, column_name,
+                       sizeof(column_name), &length),
+            SQL_HANDLE_STMT, stmt.handle(),
+            "SQLColumns table without primary key COLUMN_NAME");
+      columns.emplace_back(reinterpret_cast<const char *>(column_name));
+    }
+    if (rc != SQL_NO_DATA) {
+      check(rc, SQL_HANDLE_STMT, stmt.handle(),
+            "SQLColumns table without primary key fetch");
+    }
+    expect(columns == std::vector<std::string>{"id"},
+           "SQLColumns exposed unexpected columns on a table without a "
+           "primary key");
   }
   {
     Statement stmt(dbc);

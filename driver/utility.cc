@@ -958,6 +958,18 @@ SQLSMALLINT get_sql_data_type(STMT *stmt, MYSQL_FIELD *field, char *buff)
 
   case MYSQL_TYPE_TINY:
     /* MYSQL_TYPE_TINY could either be a TINYINT or a single CHAR. */
+    // MatrixOne distinguishes BOOL from TINYINT in the wire metadata by
+    // reporting a one-character display length for BOOL (plain TINYINT uses
+    // its numeric display width). Preserve that distinction for consumers
+    // such as Power Query that rely on result-set descriptors.
+    if ((field->flags & NUM_FLAG) && field->length == 1 && stmt->dbc &&
+        stmt->dbc->mysql && stmt->dbc->mysql->server_version &&
+        strstr(stmt->dbc->mysql->server_version, "MatrixOne") != nullptr)
+    {
+      if (buff)
+        (void)myodbc_stpmov(buff, "bit");
+      return SQL_BIT;
+    }
     if (buff)
     {
       buff= myodbc_stpmov(buff, (field->flags & NUM_FLAG) ? "tinyint" : "char");

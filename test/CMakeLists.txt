@@ -295,6 +295,18 @@ ELSE()
                         ${CMAKE_THREAD_LIBS_INIT})
 ENDIF()
 
+# TPC-H SF1 validation through public ODBC APIs. The external data set is not
+# downloaded by the build; test/tpch/load_tpch.ps1 prepares it explicitly.
+ADD_EXECUTABLE(mo_odbc_tpch mo_odbc_tpch.cc)
+add_dependencies(mo_odbc_tpch myodbc-w myodbc-a)
+set_target_properties(mo_odbc_tpch PROPERTIES FOLDER Tests)
+IF(WIN32)
+  TARGET_LINK_LIBRARIES(mo_odbc_tpch ${ODBCLIB} ${ODBCINSTLIB})
+ELSE()
+  TARGET_LINK_LIBRARIES(mo_odbc_tpch ${ODBC_LINK_FLAGS} ${ODBCINSTLIB}
+                        ${CMAKE_THREAD_LIBS_INIT})
+ENDIF()
+
 
 #
 # Custom command and target generate_test_config_files to generate

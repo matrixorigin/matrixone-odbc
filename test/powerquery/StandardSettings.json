@@ -1,0 +1,5 @@
+{
+  "FailOnMissingOutputFile": true,
+  "QueryFilePath": "TestSuites/Standard",
+  "ParameterQueryFilePath": "ConnectorConfigs/MatrixOne/ParameterQueries/MatrixOne.parameterquery.pq"
+}

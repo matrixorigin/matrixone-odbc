@@ -893,6 +893,12 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
     "IFNULL(MAXLEN, IF(c.CHARACTER_SET_NAME IS NULL, 1, 4))) as CHAR_SIZE");
   ocat.set_join("LEFT JOIN information_schema.CHARACTER_SETS cs ON c.CHARACTER_SET_NAME = cs.CHARACTER_SET_NAME");
 
+  // MatrixOne exposes physical helper columns in INFORMATION_SCHEMA.COLUMNS,
+  // although they are absent from SHOW COLUMNS and SELECT *. Do not leak
+  // these implementation details through the public ODBC catalog API.
+  ocat.set_where(
+    "COLUMN_NAME NOT IN ('__mo_fake_pk_col', '__mo_cpkey_col')");
+
   ocat.set_order_by("ORDINAL_POSITION");
   // Get DB name before running query or executing stmt.
   std::string db = get_database_name(stmt, catalog, catalog_len,
@@ -935,11 +941,20 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
     /* COLUMN_NAME */
     data[3] = mysql_row[3];
     /* DATA_TYPE */
+    const bool is_matrixone_boolean =
+      mysql_row[5] &&
+      ((!myodbc_casecmp(mysql_row[5], "BOOL", 4) &&
+        (mysql_row[5][4] == '\0' || mysql_row[5][4] == '(')) ||
+       (!myodbc_casecmp(mysql_row[5], "BOOLEAN", 7) &&
+        (mysql_row[5][7] == '\0' || mysql_row[5][7] == '(')));
+
     size_t col_size = ocat.is_null_value(6) ? 0 :
       get_column_size_from_str(stmt, mysql_row[6]);
+    if (is_matrixone_boolean)
+      col_size = 1;
 
     SQLSMALLINT odbc_sql_type =
-      get_sql_data_type_from_str(mysql_row[4]);
+      get_sql_data_type_from_str(is_matrixone_boolean ? "bool" : mysql_row[4]);
 
     const char *char_size = mysql_row[18];
     SQLSMALLINT sqltype =
@@ -948,7 +963,7 @@ columns_i_s(SQLHSTMT hstmt, SQLCHAR *catalog, unsigned long catalog_len,
 
     data[4] = sqltype;
     /* TYPE_NAME */
-    data[5] = mysql_row[4];
+    data[5] = is_matrixone_boolean ? "bool" : mysql_row[4];
     /* COLUMN_SIZE */
 #if _WIN32 && !_WIN64
 #define COL_SIZE_VAL (int)col_size
