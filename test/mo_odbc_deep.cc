@@ -1327,6 +1327,300 @@ void test_sqlstates(SQLHDBC dbc) {
              " native=" + std::to_string(missing.native_error));
 }
 
+void test_truncation_diagnostics(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string sql =
+      "SELECT c_varchar FROM mo_odbc_deep.type_matrix WHERE id=1";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect truncation query");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch truncation row");
+
+  SQLCHAR value[8] = {};
+  SQLLEN value_len = 0;
+  SQLRETURN rc = SQLGetData(stmt.handle(), 1, SQL_C_CHAR, value,
+                            sizeof(value), &value_len);
+  expect(rc == SQL_SUCCESS_WITH_INFO,
+         "truncated SQLGetData should return SQL_SUCCESS_WITH_INFO");
+  const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!records.empty() && records.front().state == "01004",
+         "truncated SQLGetData should report SQLSTATE 01004" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+  expect(value_len > static_cast<SQLLEN>(sizeof(value) - 1),
+         "truncated SQLGetData did not report the full value length");
+}
+
+void test_numeric_overflow_diagnostics(SQLHDBC dbc) {
+  auto expect_overflow = [&](const std::string &sql, SQLSMALLINT c_type,
+                             SQLPOINTER value, SQLLEN value_size,
+                             const std::string &label) {
+    Statement stmt(dbc);
+    check(SQLExecDirect(
+              stmt.handle(),
+              reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+              static_cast<SQLINTEGER>(sql.size())),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLExecDirect numeric overflow " + label);
+    check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+          "SQLFetch numeric overflow " + label);
+    SQLLEN value_len = 0;
+    SQLRETURN rc = SQLGetData(stmt.handle(), 1, c_type, value, value_size,
+                              &value_len);
+    expect(rc == SQL_ERROR,
+           "out-of-range " + label + " conversion should fail");
+    const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+    expect(!records.empty() && records.front().state == "22003",
+           label + " overflow should report SQLSTATE 22003" +
+               diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+  };
+
+  SQLSCHAR signed_tiny = 0;
+  SQLCHAR unsigned_tiny = 0;
+  SQLSMALLINT signed_short = 0;
+  SQLUSMALLINT unsigned_short = 0;
+  SQLINTEGER signed_long = 0;
+  SQLUINTEGER unsigned_long = 0;
+  expect_overflow("SELECT 1000", SQL_C_STINYINT, &signed_tiny,
+                  sizeof(signed_tiny), "SQL_C_STINYINT");
+  expect_overflow("SELECT -1", SQL_C_UTINYINT, &unsigned_tiny,
+                  sizeof(unsigned_tiny), "SQL_C_UTINYINT");
+  expect_overflow("SELECT 40000", SQL_C_SSHORT, &signed_short,
+                  sizeof(signed_short), "SQL_C_SSHORT");
+  expect_overflow("SELECT -1", SQL_C_USHORT, &unsigned_short,
+                  sizeof(unsigned_short), "SQL_C_USHORT");
+  expect_overflow("SELECT 3000000000", SQL_C_SLONG, &signed_long,
+                  sizeof(signed_long), "SQL_C_SLONG");
+  expect_overflow("SELECT -1", SQL_C_ULONG, &unsigned_long,
+                  sizeof(unsigned_long), "SQL_C_ULONG");
+}
+
+void test_missing_parameter_diagnostics(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string sql = "SELECT ?";
+  check(SQLPrepare(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare missing parameter");
+  SQLRETURN rc = SQLExecute(stmt.handle());
+  expect(rc == SQL_ERROR,
+         "SQLExecute with a missing parameter should fail");
+  const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!records.empty() && records.front().state.compare(0, 2, "07") == 0,
+         "missing parameter should report SQLSTATE class 07" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+}
+
+void test_function_sequence_diagnostics(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  SQLRETURN rc = SQLFetch(stmt.handle());
+  expect(rc == SQL_ERROR, "SQLFetch before execution should fail");
+  const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!records.empty() &&
+             (records.front().state == "HY010" ||
+              records.front().state == "24000"),
+         "SQLFetch before execution should report a sequence/cursor state "
+         "diagnostic" + diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+}
+
+void test_schema_drift_recovery(SQLHDBC dbc) {
+  execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.schema_drift");
+  execute(dbc, "CREATE TABLE mo_odbc_deep.schema_drift "
+               "(id INT PRIMARY KEY, metric INT)");
+  execute(dbc, "INSERT INTO mo_odbc_deep.schema_drift VALUES (1,10)");
+
+  Statement stmt(dbc);
+  const std::string sql =
+      "SELECT metric FROM mo_odbc_deep.schema_drift WHERE id=?";
+  check(SQLPrepare(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare schema drift query");
+  SQLINTEGER id = 1;
+  SQLLEN id_len = 0;
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &id, 0, &id_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter schema drift id");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute schema drift baseline");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch schema drift baseline");
+  check(SQLFreeStmt(stmt.handle(), SQL_CLOSE), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFreeStmt schema drift baseline");
+
+  execute(dbc, "ALTER TABLE mo_odbc_deep.schema_drift DROP COLUMN metric");
+  SQLRETURN rc = SQLExecute(stmt.handle());
+  expect(rc == SQL_ERROR,
+         "prepared query should fail after its selected column is dropped");
+  const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!records.empty(), "schema drift error has no ODBC diagnostic");
+  const bool generic_schema_drift_diagnostic =
+      records.front().state == "HY000" &&
+      records.front().native_error == 20301;
+  expect(generic_schema_drift_diagnostic ||
+             records.front().state.compare(0, 2, "42") == 0,
+         "schema drift returned an unexpected diagnostic" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+
+  check(SQLFreeStmt(stmt.handle(), SQL_CLOSE), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFreeStmt after schema drift error");
+  check(SQLFreeStmt(stmt.handle(), SQL_RESET_PARAMS), SQL_HANDLE_STMT,
+        stmt.handle(), "SQL_RESET_PARAMS after schema drift error");
+  execute(dbc, "ALTER TABLE mo_odbc_deep.schema_drift ADD COLUMN metric INT");
+  execute(dbc, "UPDATE mo_odbc_deep.schema_drift SET metric=20 WHERE id=1");
+  check(SQLPrepare(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare schema drift recovery");
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &id, 0, &id_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLBindParameter schema drift recovery");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute schema drift recovery");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch schema drift recovery");
+  SQLINTEGER metric = 0;
+  SQLLEN metric_len = 0;
+  check(SQLGetData(stmt.handle(), 1, SQL_C_SLONG, &metric, sizeof(metric),
+                   &metric_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLGetData schema drift recovery");
+  expect(metric == 20, "schema drift recovery returned stale data");
+  if (generic_schema_drift_diagnostic) {
+    throw KnownIssue(
+        "matrixorigin/matrixone#27024: missing column returns generic "
+        "HY000/20301 instead of SQLSTATE 42S22");
+  }
+}
+
+void test_transaction_error_recovery(SQLHDBC dbc) {
+  execute(dbc, "DELETE FROM mo_odbc_deep.tx_values");
+  check(SQLSetConnectAttr(dbc, SQL_ATTR_AUTOCOMMIT,
+                          reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_OFF), 0),
+        SQL_HANDLE_DBC, dbc, "disable autocommit for error recovery");
+  try {
+    execute(dbc, "INSERT INTO mo_odbc_deep.tx_values VALUES (10,'first')");
+    const Diagnostic duplicate = expect_error(
+        dbc, "INSERT INTO mo_odbc_deep.tx_values VALUES (10,'duplicate')");
+    expect(duplicate.state.compare(0, 2, "23") == 0,
+           "duplicate key in transaction should report class 23");
+    check(SQLEndTran(SQL_HANDLE_DBC, dbc, SQL_ROLLBACK), SQL_HANDLE_DBC, dbc,
+          "rollback transaction after statement error");
+    expect(scalar_int(dbc,
+                      "SELECT COUNT(*) FROM mo_odbc_deep.tx_values") == 0,
+           "rollback after statement error left a visible row");
+    expect(scalar_int(dbc, "SELECT 1") == 1,
+           "connection is not reusable after transaction error rollback");
+  } catch (...) {
+    SQLEndTran(SQL_HANDLE_DBC, dbc, SQL_ROLLBACK);
+    SQLSetConnectAttr(dbc, SQL_ATTR_AUTOCOMMIT,
+                      reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_ON), 0);
+    throw;
+  }
+  check(SQLSetConnectAttr(dbc, SQL_ATTR_AUTOCOMMIT,
+                          reinterpret_cast<SQLPOINTER>(SQL_AUTOCOMMIT_ON), 0),
+        SQL_HANDLE_DBC, dbc, "restore autocommit after error recovery");
+}
+
+void test_unknown_charset_metadata(SQLHDBC dbc) {
+  execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.explain_delete");
+  execute(dbc, "CREATE TABLE mo_odbc_deep.explain_delete "
+               "(id INT UNSIGNED, c CHAR(10))");
+  execute(dbc, "CREATE INDEX explain_delete_i ON "
+               "mo_odbc_deep.explain_delete(id,c)");
+
+  Statement stmt(dbc);
+  const std::string sql =
+      "EXPLAIN DELETE a1,a2 FROM mo_odbc_deep.explain_delete AS a1 "
+      "INNER JOIN mo_odbc_deep.explain_delete AS a2 "
+      "WHERE a1.id=a2.id AND a2.id>=?";
+  SQLRETURN prepare_rc = SQLPrepare(
+      stmt.handle(),
+      reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+      static_cast<SQLINTEGER>(sql.size()));
+  if (!succeeded(prepare_rc)) {
+    const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+    if (!records.empty() && records.front().state.compare(0, 2, "42") == 0) {
+      throw KnownIssue(
+          "older MatrixOne releases do not support the multi-table EXPLAIN "
+          "DELETE syntax that exposes matrixorigin/matrixone#27022");
+    }
+    check(prepare_rc, SQL_HANDLE_STMT, stmt.handle(),
+          "SQLPrepare EXPLAIN DELETE metadata regression");
+  }
+  SQLUINTEGER minimum_id = 0;
+  SQLLEN minimum_id_len = 0;
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_ULONG,
+                         SQL_INTEGER, 0, 0, &minimum_id, 0,
+                         &minimum_id_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLBindParameter EXPLAIN DELETE metadata regression");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute EXPLAIN DELETE metadata regression");
+
+  SQLSMALLINT column_count = 0;
+  check(SQLNumResultCols(stmt.handle(), &column_count), SQL_HANDLE_STMT,
+        stmt.handle(), "SQLNumResultCols EXPLAIN DELETE metadata regression");
+  expect(column_count > 0,
+         "EXPLAIN DELETE metadata regression returned no columns");
+  for (SQLUSMALLINT column = 1; column <= column_count; ++column) {
+    SQLULEN column_size = 0;
+    check(SQLDescribeCol(stmt.handle(), column, nullptr, 0, nullptr, nullptr,
+                         &column_size, nullptr, nullptr),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLDescribeCol EXPLAIN DELETE metadata regression");
+  }
+  SQLRETURN fetch_rc = SQLFetch(stmt.handle());
+  expect(succeeded(fetch_rc) || fetch_rc == SQL_NO_DATA,
+         "EXPLAIN DELETE result fetch failed" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+}
+
+void test_unreachable_connection_sqlstate(
+    const std::string &connection_string) {
+  SQLHENV env = SQL_NULL_HENV;
+  SQLHDBC dbc = SQL_NULL_HDBC;
+  check(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env),
+        SQL_HANDLE_ENV, env, "SQLAllocHandle unreachable ENV");
+  try {
+    check(SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION,
+                        reinterpret_cast<SQLPOINTER>(SQL_OV_ODBC3), 0),
+          SQL_HANDLE_ENV, env, "SQLSetEnvAttr unreachable ODBC3");
+    check(SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc), SQL_HANDLE_ENV, env,
+          "SQLAllocHandle unreachable DBC");
+    check(SQLSetConnectAttr(dbc, SQL_ATTR_LOGIN_TIMEOUT,
+                            reinterpret_cast<SQLPOINTER>(uintptr_t{2}), 0),
+          SQL_HANDLE_DBC, dbc, "SQL_ATTR_LOGIN_TIMEOUT unreachable");
+
+    const std::string unreachable =
+        connection_string + ";SERVER=127.0.0.1;PORT=1;LOGIN_TIMEOUT=2";
+    std::vector<SQLWCHAR> connection = widen_ascii(unreachable);
+    SQLWCHAR completed[4096] = {};
+    SQLSMALLINT completed_len = 0;
+    SQLRETURN rc = SQLDriverConnectW(
+        dbc, nullptr, connection.data(), SQL_NTS, completed,
+        sizeof(completed) / sizeof(completed[0]), &completed_len,
+        SQL_DRIVER_NOPROMPT);
+    expect(rc == SQL_ERROR,
+           "connection to an unused local port should fail");
+    const auto records = diagnostics(SQL_HANDLE_DBC, dbc);
+    expect(!records.empty() && records.front().state == "08001",
+           "initial connection failure should report SQLSTATE 08001" +
+               diagnostic_text(SQL_HANDLE_DBC, dbc));
+  } catch (...) {
+    if (dbc != SQL_NULL_HDBC) SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+    SQLFreeHandle(SQL_HANDLE_ENV, env);
+    throw;
+  }
+  SQLFreeHandle(SQL_HANDLE_DBC, dbc);
+  SQLFreeHandle(SQL_HANDLE_ENV, env);
+}
+
 void test_concurrent_connections(const std::string &connection_string) {
   const int thread_count = 6;
   const int iterations = 12;
@@ -1469,6 +1763,22 @@ int main() {
         {"streaming and chunked SQLGetData",
          [&] { test_streaming_and_chunked_getdata(db.handle()); }},
         {"SQLSTATE classes", [&] { test_sqlstates(db.handle()); }},
+        {"truncation diagnostics",
+         [&] { test_truncation_diagnostics(db.handle()); }},
+        {"numeric overflow diagnostics",
+         [&] { test_numeric_overflow_diagnostics(db.handle()); }},
+        {"missing parameter diagnostics",
+         [&] { test_missing_parameter_diagnostics(db.handle()); }},
+        {"function sequence diagnostics",
+         [&] { test_function_sequence_diagnostics(db.handle()); }},
+        {"schema drift recovery",
+         [&] { test_schema_drift_recovery(db.handle()); }},
+        {"transaction error recovery",
+         [&] { test_transaction_error_recovery(db.handle()); }},
+        {"unknown charset result metadata",
+         [&] { test_unknown_charset_metadata(db.handle()); }},
+        {"unreachable connection SQLSTATE",
+         [&] { test_unreachable_connection_sqlstate(connection_string); }},
         {"concurrent connections",
          [&] { test_concurrent_connections(connection_string); }},
         {"query timeout", [&] { test_query_timeout_known_issue(db.handle()); }},
