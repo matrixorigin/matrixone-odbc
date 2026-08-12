@@ -1,6 +1,6 @@
 # MatrixOne ODBC 9.7.0-mo.1 中文测试报告
 
-测试日期：2026-08-11（Asia/Shanghai）  
+测试日期：2026-08-11（Asia/Shanghai）
 报告修订日期：2026-08-12
 
 ## 1. 结论
