@@ -146,7 +146,7 @@ try {
         Assert-True (-not (Get-ChildItem $installDir -Recurse -File -Include *.h,*.hpp,*.lib)) 'MSI install contains SDK headers or import libraries.'
         Add-Result 'clean MSI/custom path/no MySQL SDK' PASS "$productVersion $productCode"
 
-        Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port", 'UID=root', 'PWD=111')
+        Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
         Invoke-Msi $Package 'REINSTALL=ALL REINSTALLMODE=vomus' '02-repair.log' | Out-Null
         Assert-True (Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit') 'Repair deleted the system DSN.'
         Test-Connection
@@ -156,7 +156,7 @@ try {
             Remove-TestDsn
             Invoke-Msi $Package 'REMOVE=ALL' '03-remove-current-before-upgrade.log' | Out-Null
             Invoke-Msi $PreviousPackage '' '04-install-previous.log' | Out-Null
-            Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port", 'UID=root', 'PWD=111')
+            Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
             Invoke-Msi $Package '' '05-major-upgrade.log' | Out-Null
             Assert-True (Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit') 'Major upgrade deleted the system DSN.'
             Assert-True ((Get-MsiProperty $Package ProductCode) -ne (Get-MsiProperty $PreviousPackage ProductCode)) 'Upgrade packages share ProductCode.'
