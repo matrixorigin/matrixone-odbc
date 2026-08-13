@@ -135,12 +135,8 @@ jobs:
           Expand-Archive $zip $inspect
           $sdk = @(Get-ChildItem $inspect -Recurse -File -Include *.h,*.hpp,*.lib)
           if ($sdk) { throw "Customer package contains build SDK: $($sdk.FullName -join ', ')" }
-          $mysqlProducts = @(Get-ChildItem @(
-            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
-            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall'
-          ) -ErrorAction SilentlyContinue | ForEach-Object { Get-ItemProperty $_.PSPath } |
-            Where-Object DisplayName -Like 'MySQL*')
-          if ($mysqlProducts) { throw "Runner is not clean of installed MySQL products." }
+          $runtime = Get-ChildItem $inspect -Recurse -File -Filter libmysql.dll
+          if (@($runtime).Count -ne 1) { throw 'Runtime ZIP must contain exactly one bundled libmysql.dll.' }
 
       - name: Test MSI install, repair, upgrade, downgrade, coexistence, and uninstall
         shell: pwsh
