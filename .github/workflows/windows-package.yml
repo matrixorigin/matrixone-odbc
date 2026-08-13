@@ -141,6 +141,11 @@ jobs:
       - name: Test MSI install, repair, upgrade, downgrade, coexistence, and uninstall
         shell: pwsh
         run: |
+          $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+          if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            throw 'MSI lifecycle requires an elevated runner account.'
+          }
           ./test/windows/Test-WindowsPackage.ps1 `
             -Mode MsiLifecycle `
             -Package (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.msi') `
