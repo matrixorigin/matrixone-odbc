@@ -73,14 +73,25 @@ function Invoke-Msi([string[]]$Arguments, [string]$LogName, [int[]]$AllowedExitC
 
 function Get-MsiProperty([string]$Path, [string]$Name) {
     $installer = New-Object -ComObject WindowsInstaller.Installer
-    $database = $installer.OpenDatabase($Path, 0)
-    $view = $database.OpenView("SELECT ``Value`` FROM ``Property`` WHERE ``Property``='$Name'")
+    $database = $null
+    $view = $null
+    $record = $null
+    $value = $null
     try {
+        $database = $installer.OpenDatabase($Path, 0)
+        $view = $database.OpenView("SELECT ``Value`` FROM ``Property`` WHERE ``Property``='$Name'")
         [void]$view.Execute()
         $record = $view.Fetch()
-        if ($record) { return $record.StringData(1) }
-        return $null
-    } finally { [void]$view.Close() }
+        if ($record) { $value = $record.StringData(1) }
+    } finally {
+        if ($view) { [void]$view.Close() }
+        foreach ($comObject in @($record, $view, $database, $installer)) {
+            if ($comObject) {
+                [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($comObject)
+            }
+        }
+    }
+    return $value
 }
 
 function Get-DriverPath([string]$Name) {
