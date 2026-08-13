@@ -51,12 +51,20 @@
           <?if $(var.odbc_64bit) = 1 ?>
 
             <Component Id="driver" Guid="ED2FAED7-76A5-4D4C-84D8-843318F7CB83" SharedDllRefCount="yes" Bitness="always64">
-              <File Id="myodbc$(var.odbc_ver_major)a.dll" Name="myodbc$(var.odbc_ver_major)a.dll" Checksum="yes" KeyPath="yes" DiskId="1" Source="x64\myodbc$(var.odbc_ver_major)a.dll">
-                <ODBCDriver Id="MySQL_ODBC_$(var.odbc_ver_short)a_Driver" Name="MatrixOne ODBC $(var.odbc_ver_short) ANSI Driver" SetupFile="myodbc$(var.odbc_ver_major)S.dll" />
-              </File>
-              <File Id="myodbc$(var.odbc_ver_major)w.dll" Name="myodbc$(var.odbc_ver_major)w.dll" Checksum="yes" DiskId="1" Source="x64\myodbc$(var.odbc_ver_major)w.dll">
-                <ODBCDriver Id="MySQL_ODBC_$(var.odbc_ver_short)w_Driver" Name="MatrixOne ODBC $(var.odbc_ver_short) Unicode Driver" SetupFile="myodbc$(var.odbc_ver_major)S.dll" />
-              </File>
+              <File Id="myodbc$(var.odbc_ver_major)a.dll" Name="myodbc$(var.odbc_ver_major)a.dll" Checksum="yes" KeyPath="yes" DiskId="1" Source="x64\myodbc$(var.odbc_ver_major)a.dll" />
+              <File Id="myodbc$(var.odbc_ver_major)w.dll" Name="myodbc$(var.odbc_ver_major)w.dll" Checksum="yes" DiskId="1" Source="x64\myodbc$(var.odbc_ver_major)w.dll" />
+              <RegistryValue Id="OdbcAnsiInstalled64" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" Name="MatrixOne ODBC $(var.odbc_ver_short) ANSI Driver" Type="string" Value="Installed" />
+              <RegistryKey Id="OdbcAnsiDriver64" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\MatrixOne ODBC $(var.odbc_ver_short) ANSI Driver" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+                <RegistryValue Id="OdbcAnsiDriverPath64" Name="Driver" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)a.dll" />
+                <RegistryValue Id="OdbcAnsiSetupPath64" Name="Setup" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)S.dll" />
+                <RegistryValue Id="OdbcAnsiUsageCount64" Name="UsageCount" Type="integer" Value="1" />
+              </RegistryKey>
+              <RegistryValue Id="OdbcUnicodeInstalled64" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" Name="MatrixOne ODBC $(var.odbc_ver_short) Unicode Driver" Type="string" Value="Installed" />
+              <RegistryKey Id="OdbcUnicodeDriver64" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\MatrixOne ODBC $(var.odbc_ver_short) Unicode Driver" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+                <RegistryValue Id="OdbcUnicodeDriverPath64" Name="Driver" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)w.dll" />
+                <RegistryValue Id="OdbcUnicodeSetupPath64" Name="Setup" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)S.dll" />
+                <RegistryValue Id="OdbcUnicodeUsageCount64" Name="UsageCount" Type="integer" Value="1" />
+              </RegistryKey>
               <File Id="readme" Name="README.txt" DiskId="1" Source="doc\README.txt" />
               <File Id="changelog" Name="ChangeLog.txt" DiskId="1" Source="doc\ChangeLog.txt" />
               <File Id="license" Name="LICENSE.txt" DiskId="1" Source="doc\LICENSE.txt" />
@@ -83,12 +91,20 @@
             </Component>
           <?else?>
             <Component Id="driver" Guid="E47090B3-80F9-40A9-9F2A-A00F34D4ED06" SharedDllRefCount="yes">
-              <File Id="myodbc$(var.odbc_ver_major)a.dll" Name="myodbc$(var.odbc_ver_major)a.dll" Checksum="yes" KeyPath="yes" DiskId="1" Source="x86\myodbc$(var.odbc_ver_major)a.dll">
-                <ODBCDriver Id="MySQL_ODBC_$(var.odbc_ver_short)a_Driver" Name="MatrixOne ODBC $(var.odbc_ver_short) ANSI Driver" SetupFile="myodbc$(var.odbc_ver_major)S.dll" />
-              </File>
-              <File Id="myodbc$(var.odbc_ver_major)w.dll" Name="myodbc$(var.odbc_ver_major)w.dll" Checksum="yes" DiskId="1" Source="x86\myodbc$(var.odbc_ver_major)w.dll">
-                <ODBCDriver Id="MySQL_ODBC_$(var.odbc_ver_short)w_Driver" Name="MatrixOne ODBC $(var.odbc_ver_short) Unicode Driver" SetupFile="myodbc$(var.odbc_ver_major)S.dll" />
-              </File>
+              <File Id="myodbc$(var.odbc_ver_major)a.dll" Name="myodbc$(var.odbc_ver_major)a.dll" Checksum="yes" KeyPath="yes" DiskId="1" Source="x86\myodbc$(var.odbc_ver_major)a.dll" />
+              <File Id="myodbc$(var.odbc_ver_major)w.dll" Name="myodbc$(var.odbc_ver_major)w.dll" Checksum="yes" DiskId="1" Source="x86\myodbc$(var.odbc_ver_major)w.dll" />
+              <RegistryValue Id="OdbcAnsiInstalled32" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" Name="MatrixOne ODBC $(var.odbc_ver_short) ANSI Driver" Type="string" Value="Installed" />
+              <RegistryKey Id="OdbcAnsiDriver32" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\MatrixOne ODBC $(var.odbc_ver_short) ANSI Driver" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+                <RegistryValue Id="OdbcAnsiDriverPath32" Name="Driver" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)a.dll" />
+                <RegistryValue Id="OdbcAnsiSetupPath32" Name="Setup" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)S.dll" />
+                <RegistryValue Id="OdbcAnsiUsageCount32" Name="UsageCount" Type="integer" Value="1" />
+              </RegistryKey>
+              <RegistryValue Id="OdbcUnicodeInstalled32" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers" Name="MatrixOne ODBC $(var.odbc_ver_short) Unicode Driver" Type="string" Value="Installed" />
+              <RegistryKey Id="OdbcUnicodeDriver32" Root="HKLM" Key="SOFTWARE\ODBC\ODBCINST.INI\MatrixOne ODBC $(var.odbc_ver_short) Unicode Driver" ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes">
+                <RegistryValue Id="OdbcUnicodeDriverPath32" Name="Driver" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)w.dll" />
+                <RegistryValue Id="OdbcUnicodeSetupPath32" Name="Setup" Type="string" Value="[INSTALLDIR]myodbc$(var.odbc_ver_major)S.dll" />
+                <RegistryValue Id="OdbcUnicodeUsageCount32" Name="UsageCount" Type="integer" Value="1" />
+              </RegistryKey>
               <File Id="readme" Name="README.txt" DiskId="1" Source="doc\README.txt" />
               <File Id="changelog" Name="ChangeLog.txt" DiskId="1" Source="doc\ChangeLog.txt" />
               <File Id="license" Name="LICENSE.txt" DiskId="1" Source="doc\LICENSE.txt" />

@@ -119,6 +119,15 @@ and removable.
 
 ## Windows and Power BI acceptance
 
+The Windows package lifecycle is automated by
+`.github/workflows/windows-package.yml`. It builds from an empty binary tree,
+uses the real `v9.7.0-mo.1` release MSI for the upgrade baseline, verifies that
+the runtime ZIP has no SDK headers or import libraries, and exercises clean
+install, repair, major upgrade, downgrade rejection, Oracle MySQL ODBC
+coexistence, portable registration, missing-runtime recovery, and complete
+uninstall. See `docs/WINDOWS_INSTALL_TEST_REPORT_2026_08_13_ZH_CN.md` for the
+Chinese evidence report and the ten-scenario matrix.
+
 The automated jobs do not replace these release gates:
 
 - TPC-H multi-table Import and DirectQuery validation at representative scale

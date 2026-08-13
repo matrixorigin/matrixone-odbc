@@ -53,6 +53,12 @@
 #include <stdlib.h>
 #include <iostream>
 #include <iomanip>
+#include <string>
+#include <vector>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 const char usage[] =
 "+---                                                                   \n"
@@ -780,7 +786,7 @@ end:
 /*
  * Entry point, parse args and do first set of validation.
  */
-int main(int argc, char **argv)
+static int installer_main(int argc, char **argv)
 {
   char *arg;
   int i;
@@ -889,7 +895,7 @@ int main(int argc, char **argv)
 
   /* convert to SQLWCHAR for installer API */
   convlen= SQL_NTS;
-  if (name && !(wname= sqlchar_as_sqlwchar(myodbc::default_charset_info,
+  if (name && !(wname= sqlchar_as_sqlwchar(utf8_charset_info,
                                            (SQLCHAR *)name, &convlen, NULL)))
   {
     fprintf(stderr, "[ERROR] Name is invalid\n");
@@ -897,7 +903,7 @@ int main(int argc, char **argv)
   }
 
   convlen= SQL_NTS;
-  if (attrstr && !(wattrs= sqlchar_as_sqlwchar(myodbc::default_charset_info,
+  if (attrstr && !(wattrs= sqlchar_as_sqlwchar(utf8_charset_info,
                                                (SQLCHAR *)attrstr, &convlen,
                                                NULL)))
   {
@@ -917,4 +923,54 @@ int main(int argc, char **argv)
     return 1;
   }
 }
+
+#ifdef _WIN32
+/*
+  The narrow Windows entry point decodes argv with the active ANSI code page,
+  irreversibly replacing characters that are not representable there. That
+  made a portable driver appear to register successfully while paths such as
+  "便携路径" were stored as "????". Receive UTF-16 argv and convert it to the
+  UTF-8 expected by the existing parser and default charset conversion.
+*/
+int wmain(int argc, wchar_t **wide_argv)
+{
+  std::vector<std::string> utf8_args;
+  std::vector<char *> argv;
+  utf8_args.reserve(argc);
+  argv.reserve(argc);
+
+  for (int i= 0; i < argc; ++i)
+  {
+    int bytes= WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                                   wide_argv[i], -1, nullptr, 0,
+                                   nullptr, nullptr);
+    if (!bytes)
+    {
+      fprintf(stderr, "[ERROR] Command-line argument is not valid UTF-16\n");
+      return 1;
+    }
+
+    std::string arg(static_cast<size_t>(bytes), '\0');
+    if (!WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+                             wide_argv[i], -1, &arg[0], bytes,
+                             nullptr, nullptr))
+    {
+      fprintf(stderr, "[ERROR] Could not convert command-line argument to UTF-8\n");
+      return 1;
+    }
+    arg.resize(static_cast<size_t>(bytes - 1));
+    utf8_args.push_back(std::move(arg));
+  }
+
+  for (std::string &arg : utf8_args)
+    argv.push_back(&arg[0]);
+
+  return installer_main(argc, argv.data());
+}
+#else
+int main(int argc, char **argv)
+{
+  return installer_main(argc, argv);
+}
+#endif
 

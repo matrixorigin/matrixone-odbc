@@ -1,0 +1,180 @@
+name: Windows package
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-package-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  MYSQL_ARCHIVE: mysql-9.7.1-winx64.zip
+  MYSQL_MD5: 8778341c62eb2ab1a95b1f22bee70f9e
+  ORACLE_ODBC_MSI: mysql-connector-odbc-9.7.0-winx64.msi
+  ORACLE_ODBC_MD5: 6339a03e5b5ae2d9b1a7c5a94bbd6b87
+  PREVIOUS_MSI: matrixone-odbc-9.7.0-mo.1-winx64.msi
+  PREVIOUS_MSI_SHA256: 14ca707c458f64aacf1df77e8750225d414fa665dc9dbddbe7db63a035f8c4cf
+  WIX_MSI: wix-cli-x64.msi
+  WIX_SHA256: 097383b2773bdd3d76a6a2cd3f4de6357bae59172e1b6fa5ad87ce062074e8d0
+
+jobs:
+  package-lifecycle:
+    name: Windows MSI + ZIP lifecycle
+    # The source currently targets the VS 2022 toolset. Keep the package job on
+    # the corresponding maintained runner instead of silently switching ABI
+    # when windows-latest advances to a newer Visual Studio generation.
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Cache pinned build inputs
+        id: cache-inputs
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/downloads
+          key: windows-inputs-mysql-9.7.1-wix-5.0.2-odbc-9.7.0-mo1
+
+      - name: Download and verify pinned build inputs
+        shell: pwsh
+        run: |
+          $downloads = Join-Path $env:RUNNER_TEMP 'downloads'
+          New-Item -ItemType Directory -Force -Path $downloads | Out-Null
+          $inputs = @(
+            @{
+              Name = $env:MYSQL_ARCHIVE
+              Url = "https://dev.mysql.com/get/Downloads/MySQL-9.7/$env:MYSQL_ARCHIVE"
+              Algorithm = 'MD5'
+              Expected = $env:MYSQL_MD5
+            },
+            @{
+              Name = $env:WIX_MSI
+              Url = "https://github.com/wixtoolset/wix/releases/download/v5.0.2/$env:WIX_MSI"
+              Algorithm = 'SHA256'
+              Expected = $env:WIX_SHA256
+            },
+            @{
+              Name = $env:ORACLE_ODBC_MSI
+              Url = "https://dev.mysql.com/get/Downloads/Connector-ODBC/9.7/$env:ORACLE_ODBC_MSI"
+              Algorithm = 'MD5'
+              Expected = $env:ORACLE_ODBC_MD5
+            },
+            @{
+              Name = $env:PREVIOUS_MSI
+              Url = "https://github.com/matrixorigin/matrixone-odbc/releases/download/v9.7.0-mo.1/$env:PREVIOUS_MSI"
+              Algorithm = 'SHA256'
+              Expected = $env:PREVIOUS_MSI_SHA256
+            }
+          )
+          foreach ($input in $inputs) {
+            $path = Join-Path $downloads $input.Name
+            if (-not (Test-Path $path)) {
+              curl.exe --fail --location --retry 5 --retry-all-errors `
+                --output "$path.part" $input.Url
+              if ($LASTEXITCODE -ne 0) { throw "Download failed: $($input.Url)" }
+              Move-Item "$path.part" $path
+            }
+            $actual = (Get-FileHash $path -Algorithm $input.Algorithm).Hash.ToLowerInvariant()
+            if ($actual -ne $input.Expected) {
+              throw "$($input.Name) $($input.Algorithm) mismatch: $actual"
+            }
+          }
+
+      - name: Prepare MySQL build SDK and portable WiX
+        shell: pwsh
+        run: |
+          $downloads = Join-Path $env:RUNNER_TEMP 'downloads'
+          $mysql = Join-Path $env:RUNNER_TEMP 'mysql-sdk'
+          Expand-Archive (Join-Path $downloads $env:MYSQL_ARCHIVE) $mysql
+          $mysqlRoot = Get-ChildItem $mysql -Directory | Select-Object -First 1 -ExpandProperty FullName
+          "MYSQL_DIR=$mysqlRoot" >> $env:GITHUB_ENV
+
+          $wixAdmin = Join-Path $env:RUNNER_TEMP 'wix-admin'
+          $wixLog = Join-Path $env:RUNNER_TEMP 'wix-admin.log'
+          $wixArguments = @(
+            '/a', (Join-Path $downloads $env:WIX_MSI), '/qn',
+            "TARGETDIR=$wixAdmin", '/l*v', $wixLog
+          )
+          $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = 'msiexec.exe'
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in $wixArguments) { [void]$startInfo.ArgumentList.Add($argument) }
+          $process = [System.Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
+          $exitCode = $process.ExitCode
+          $process.Dispose()
+          if ($exitCode -notin 0,3010) { throw "WiX administrative extraction failed: $exitCode" }
+          $wix = Get-ChildItem $wixAdmin -Recurse -Filter wix.exe |
+            Where-Object FullName -Match '\\bin\\wix\.exe$' |
+            Select-Object -First 1 -ExpandProperty DirectoryName
+          "WIX_DIR=$wix" >> $env:GITHUB_ENV
+
+      - name: Build mo.2 current package
+        shell: pwsh
+        run: |
+          ./scripts/build-windows-packages.ps1 `
+            -PackageRevision 2 `
+            -MySqlDir $env:MYSQL_DIR `
+            -WixDir $env:WIX_DIR `
+            -BuildDirectory (Join-Path $env:RUNNER_TEMP 'build-mo2') `
+            -OutputDirectory (Join-Path $env:RUNNER_TEMP 'packages-mo2')
+
+      - name: Prove the runtime package contains no SDK
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.zip'
+          $inspect = Join-Path $env:RUNNER_TEMP 'inspect-runtime'
+          Expand-Archive $zip $inspect
+          $sdk = @(Get-ChildItem $inspect -Recurse -File -Include *.h,*.hpp,*.lib)
+          if ($sdk) { throw "Customer package contains build SDK: $($sdk.FullName -join ', ')" }
+          $runtime = Get-ChildItem $inspect -Recurse -File -Filter libmysql.dll
+          if (@($runtime).Count -ne 1) { throw 'Runtime ZIP must contain exactly one bundled libmysql.dll.' }
+
+      - name: Test MSI install, repair, upgrade, downgrade, coexistence, and uninstall
+        shell: pwsh
+        run: |
+          $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+          if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            throw 'MSI lifecycle requires an elevated runner account.'
+          }
+          ./test/windows/Test-WindowsPackage.ps1 `
+            -Mode MsiLifecycle `
+            -Package (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.msi') `
+            -PreviousPackage (Join-Path $env:RUNNER_TEMP "downloads\$env:PREVIOUS_MSI") `
+            -OracleMsi (Join-Path $env:RUNNER_TEMP "downloads\$env:ORACLE_ODBC_MSI") `
+            -Artifacts (Join-Path $env:RUNNER_TEMP 'lifecycle-msi')
+
+      - name: Test portable ZIP registration and dependency isolation
+        if: always()
+        shell: pwsh
+        run: |
+          ./test/windows/Test-WindowsPackage.ps1 `
+            -Mode PortableZip `
+            -Package (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.zip') `
+            -CleanupMsi @(
+              (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.msi'),
+              (Join-Path $env:RUNNER_TEMP "downloads\$env:PREVIOUS_MSI")
+            ) `
+            -Artifacts (Join-Path $env:RUNNER_TEMP 'lifecycle-zip')
+
+      - name: Upload packages and lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: matrixone-odbc-windows-package-lifecycle
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/packages-mo2/*
+            ${{ runner.temp }}/lifecycle-msi/*
+            ${{ runner.temp }}/lifecycle-zip/*
+            ${{ runner.temp }}/wix-admin.log

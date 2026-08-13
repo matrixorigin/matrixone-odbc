@@ -39,14 +39,22 @@ IF(WIN32)
   INCLUDE(${CMAKE_SOURCE_DIR}/cmake/FindWix.cmake)
 
   # ----------- generate version information ---------
-  FILE(REMOVE "myodbc_version.wxs")
-  TRY_RUN(VERSION_OUT VERSION_TEST
-          "${CMAKE_SOURCE_DIR}"
-          "${CMAKE_SOURCE_DIR}/cmake/getodbcversion.c"
-          ARGS "myodbc_version.wxs")
-  IF(NOT VERSION_OUT STREQUAL "0")
-      MESSAGE(ERROR "Can't create myodbc_version.wxs")
-  ENDIF(NOT VERSION_OUT STREQUAL "0")
+  # Keep generated files in the binary tree.  The former TRY_RUN helper wrote
+  # into whichever working directory happened to be active, so an in-source
+  # artifact could hide a broken clean package build.
+  SET(ODBC_VERSION "${CONNECTOR_NUMERIC_VERSION}")
+  SET(ODBC_VERSION_SUFFIX "")
+  MATH(EXPR ODBC_VERSION_NUMBER
+       "${CONNECTOR_MAJOR} * 10000 + ${CONNECTOR_MINOR} * 100 + ${CONNECTOR_PATCH}")
+  FILE(WRITE "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs"
+       "<Include xmlns=\"http://wixtoolset.org/schemas/v4/wxs\">\n"
+       "<?define odbc_ver_major=\"${CONNECTOR_MAJOR}\" ?>\n"
+       "<?define odbc_ver_short=\"${CONNECTOR_BASE_VERSION}\" ?>\n"
+       "<?define odbc_ver_long=\"${CONNECTOR_NUMERIC_VERSION}\" ?>\n"
+       "<?define odbc_ver_prev=\"${CONNECTOR_MAJOR_PREV}.${CONNECTOR_MINOR_PREV}.${CONNECTOR_PATCH_PREV}\" ?>\n"
+       "<?define odbc_ver_num=\"${ODBC_VERSION_NUMBER}\" ?>\n"
+       "<?define odbc_driver_type=\"Unicode and ANSI\" ?>\n"
+       "<?define odbc_driver_type_suffix=\"\" ?>\n")
   # -------------- find binary resources -------------
   FIND_PATH(WIX_RESOURCE MySQLConnector.ico
           ./resources
@@ -59,45 +67,48 @@ IF(WIN32)
   # --------------------------------------------------
 
   # -------------- add wix variables --- -------------
-  WRITE_FILE("myodbc_version.wxs" "<?define odbc_resource=\"${WIX_RESOURCE}\" ?>" APPEND)
+  FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define odbc_resource=\"${WIX_RESOURCE}\" ?>")
+  FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define odbc_msi_ver=\"${MATRIXONE_MSI_VERSION}\" ?>")
+  FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define matrixone_package_version=\"${MATRIXONE_PACKAGE_VERSION}\" ?>")
   IF(${MSI_64})
-     WRITE_FILE("myodbc_version.wxs" "<?define odbc_64bit=1 ?>" APPEND)
+     FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define odbc_64bit=1 ?>")
      SET(MSI_VERSION "winx64")
   ELSE(${MSI_64})
-     WRITE_FILE("myodbc_version.wxs" "<?define odbc_64bit=0 ?>" APPEND)
+     FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define odbc_64bit=0 ?>")
      SET(MSI_VERSION "win32")
   ENDIF(${MSI_64})
   IF(${LICENSE})
-     WRITE_FILE("myodbc_version.wxs" "<?define license=\"commercial\" ?><?define odbc_license_suffix=\" - Commercial\" ?>" APPEND)
+     FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define license=\"commercial\" ?><?define odbc_license_suffix=\" - Commercial\" ?>")
   ELSE(${LICENSE})
-     WRITE_FILE("myodbc_version.wxs" "<?define license=\"community\" ?><?define odbc_license_suffix=\"\" ?>" APPEND)
+     FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "<?define license=\"community\" ?><?define odbc_license_suffix=\"\" ?>")
   ENDIF(${LICENSE})
-  WRITE_FILE("myodbc_version.wxs" "</Include>" APPEND)
+  FILE(APPEND "${CMAKE_CURRENT_BINARY_DIR}/myodbc_version.wxs" "</Include>")
   # --------------------------------------------------
-  INCLUDE(${CMAKE_BINARY_DIR}/myodbc_version.cmake)
 
   IF(ODBC_VERSION_SUFFIX STREQUAL "a")
 	  SET(PACKAGE_SUFFIX "a")
   ENDIF(ODBC_VERSION_SUFFIX STREQUAL "a")
 
   IF(${LICENSE})
-	  SET(MSI_PACKAGE "matrixone-odbc-commercial-${ODBC_VERSION}-${MSI_VERSION}${PACKAGE_SUFFIX}.msi")
+	  SET(MSI_PACKAGE "matrixone-odbc-commercial-${MATRIXONE_PACKAGE_VERSION}-${MSI_VERSION}${PACKAGE_SUFFIX}.msi")
   ELSE(${LICENSE})
-	  SET(MSI_PACKAGE "matrixone-odbc-${ODBC_VERSION}-${MSI_VERSION}${PACKAGE_SUFFIX}.msi")
+	  SET(MSI_PACKAGE "matrixone-odbc-${MATRIXONE_PACKAGE_VERSION}-${MSI_VERSION}${PACKAGE_SUFFIX}.msi")
   ENDIF(${LICENSE})
 
-  # Generate GUID
-EXECUTE_PROCESS(COMMAND uuidgen
-                OUTPUT_VARIABLE CONNECTOR_PKG_ID1)
-STRING(STRIP "${CONNECTOR_PKG_ID1}" CONNECTOR_PKG_ID1)
-EXECUTE_PROCESS(COMMAND uuidgen
-                OUTPUT_VARIABLE CONNECTOR_PKG_ID2)
-STRING(STRIP "${CONNECTOR_PKG_ID2}" CONNECTOR_PKG_ID2)
+  # A package revision must have a new ProductCode so Windows Installer treats
+  # it as a major upgrade.  Derive the GUID deterministically so rebuilding the
+  # same revision still produces a repairable package with the same identity.
+  STRING(UUID CONNECTOR_PKG_ID1
+         NAMESPACE "AF8C2D5E-2B35-4F37-A83A-8B447E0FC7D8"
+         NAME "matrixone-odbc-${MATRIXONE_PACKAGE_VERSION}-${MSI_VERSION}-${LICENSE}-${ODBC_VERSION_SUFFIX}"
+         TYPE SHA1 UPPER)
 
 ENDIF(WIN32)
 #-----------------------------------------------------
 
-SET(LICENSE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/doc/LICENSE.txt")
+SET(WIX_DOCUMENT_DIR "${CMAKE_CURRENT_BINARY_DIR}/doc" CACHE PATH
+    "Directory containing README, license, change log, and build metadata")
+SET(LICENSE_FILE "${WIX_DOCUMENT_DIR}/LICENSE.txt")
 SET(LICENSE_RTF  "${CMAKE_CURRENT_BINARY_DIR}/resources/LICENSE.rtf")
 
 FILE(READ ${LICENSE_FILE} CONTENTS)
@@ -117,7 +128,7 @@ IF(${MSI_64})
   SET(XML_FILE_SOURCE_ARCH x64)
 ENDIF()
 
-SET(XML_PLUGINS mysql_odbc_plugins.wxs)
+SET(XML_PLUGINS "${CMAKE_CURRENT_BINARY_DIR}/mysql_odbc_plugins.wxs")
 SET(XML_PLUGINS_GUID "DA0F35CE-9A33-4EDD-9B83-47E679CABCDE")
 IF(${MSI_64})
   SET(XML_PLUGINS_GUID "F5FC6873-2D8A-45D6-8B3B-EC2DB6782A79")
@@ -136,7 +147,7 @@ FILE(APPEND "${XML_PLUGINS}" "</Component></Include>")
 
 # Generating XML list of dependencies
 
-SET(XML_DEPENDENCIES mysql_odbc_dependencies.wxs)
+SET(XML_DEPENDENCIES "${CMAKE_CURRENT_BINARY_DIR}/mysql_odbc_dependencies.wxs")
 SET(XML_DEPS_GUID "8D0139C3-219E-4818-B1CD-4F8F43BEF28A")
 IF(${MSI_64})
   SET(XML_DEPS_GUID "E49B9F03-4289-4EC1-AAF8-5B5DC2CE8AB2")
@@ -168,7 +179,14 @@ FILE(APPEND "${XML_DEPENDENCIES}" "</Component></Include>")
 
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/mysql_odbc.wxs.in
-               ${CMAKE_CURRENT_SOURCE_DIR}/mysql-odbc-${ODBC_VERSION}-${MSI_VERSION}.wxs @ONLY)
+               ${CMAKE_CURRENT_BINARY_DIR}/mysql-odbc-${ODBC_VERSION}-${MSI_VERSION}.wxs @ONLY)
+FOREACH(_WIX_INPUT
+        mysql_common_ui.wxs
+        mysql_odbc_fragment.wxs
+        mysql-connector-odbc-msi-arpprops.wxs)
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${_WIX_INPUT}
+                 ${CMAKE_CURRENT_BINARY_DIR}/${_WIX_INPUT} COPYONLY)
+ENDFOREACH()
 
 ADD_CUSTOM_TARGET(
         MSI_INSTALLER ALL
@@ -178,4 +196,8 @@ ADD_CUSTOM_COMMAND(
         OUTPUT ${MSI_PACKAGE}
         DEPENDS mysql_odbc.wxs.in
                 mysql_common_ui.wxs
-        COMMAND ${WIX_EXECUTABLE} build -arch ${XML_FILE_SOURCE_ARCH} -out ${MSI_PACKAGE} mysql-odbc-${ODBC_VERSION}-${MSI_VERSION}.wxs mysql_odbc_fragment.wxs)
+        COMMAND "${WIX_EXECUTABLE}" build -arch ${XML_FILE_SOURCE_ARCH}
+                -out ${MSI_PACKAGE}
+                mysql-odbc-${ODBC_VERSION}-${MSI_VERSION}.wxs
+                mysql_odbc_fragment.wxs
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
