@@ -624,6 +624,14 @@ void scroller_create(STMT * stmt, const char *query, SQLULEN query_len)
   /* putting row count in place. normally should not change or only once */
   myodbc_snprintf(stmt->scroller.offset_pos + MAX64_BUFF_SIZE - 1, MAX32_BUFF_SIZE + 1,
     ",%*u", MAX32_BUFF_SIZE-1, stmt->scroller.row_count);
+  /*
+    The fixed-width LIMIT buffer includes room for snprintf's terminator, but
+    scroller.query_len is passed verbatim to mysql_real_query(). MySQL Server
+    accepts a trailing NUL in that byte range; MatrixOne treats it as part of
+    the SQL text and reports a syntax error at end-of-input. Replace
+    the terminator with whitespace before an optional query suffix is copied.
+  */
+  stmt->scroller.offset_pos[MAX64_BUFF_SIZE + MAX32_BUFF_SIZE - 1] = ' ';
   /* cpy'ing end of query from original query - not sure if we will allow to
      have one */
   memcpy(stmt->scroller.offset_pos + MAX64_BUFF_SIZE + MAX32_BUFF_SIZE - 1, limit.end,

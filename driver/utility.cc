@@ -223,7 +223,12 @@ void fix_result_types(STMT *stmt)
     /* We need support from server, when aliasing is there */
     irrec->base_column_name= (SQLCHAR *)field->org_name;
     irrec->base_table_name= (SQLCHAR *)field->org_table;
-    if (field->flags & BINARY_FLAG) /* TODO this doesn't cut it anymore */
+    /*
+      MySQL JSON uses the utf8mb4_bin collation and is case-sensitive. Some
+      MySQL-protocol compatible servers identify the field as MYSQL_TYPE_JSON
+      without setting BINARY_FLAG, so use the unambiguous type as a fallback.
+    */
+    if ((field->flags & BINARY_FLAG) || field->type == MYSQL_TYPE_JSON)
       irrec->case_sensitive= SQL_TRUE;
     else
       irrec->case_sensitive= SQL_FALSE;

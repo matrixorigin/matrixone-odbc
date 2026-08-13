@@ -28,6 +28,7 @@
 #include <cstring>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <mutex>
 #include <sstream>
@@ -669,6 +670,24 @@ void test_result_descriptors(SQLHDBC dbc) {
   }
 }
 
+void test_json_descriptor(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string sql =
+      "SELECT c_json FROM mo_odbc_deep.type_matrix WHERE id=1";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect JSON descriptor query");
+  SQLLEN case_sensitive = SQL_FALSE;
+  check(SQLColAttribute(stmt.handle(), 1, SQL_DESC_CASE_SENSITIVE, nullptr, 0,
+                        nullptr, &case_sensitive),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_DESC_CASE_SENSITIVE JSON");
+  expect(case_sensitive == SQL_TRUE,
+         "JSON SQL_DESC_CASE_SENSITIVE should be SQL_TRUE, actual=" +
+             std::to_string(case_sensitive));
+}
+
 void test_type_roundtrip(SQLHDBC dbc) {
   Statement stmt(dbc);
   const std::string sql =
@@ -1063,13 +1082,15 @@ void test_varbinary_wide_conversion(SQLHDBC dbc) {
   execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.binary_wide");
   execute(dbc,
           "CREATE TABLE mo_odbc_deep.binary_wide "
-          "(id INT PRIMARY KEY, payload VARBINARY(32))");
+          "(id INT PRIMARY KEY, payload VARBINARY(32), "
+          "medium_payload MEDIUMBLOB)");
   execute(dbc,
-          "INSERT INTO mo_odbc_deep.binary_wide VALUES (1, 0xabcdef)");
+          "INSERT INTO mo_odbc_deep.binary_wide VALUES "
+          "(1, 0xabcdef, 0x0123ff)");
 
   Statement stmt(dbc);
   const std::string sql =
-      "SELECT payload FROM mo_odbc_deep.binary_wide WHERE id=1";
+      "SELECT payload,medium_payload FROM mo_odbc_deep.binary_wide WHERE id=1";
   check(SQLExecDirect(
             stmt.handle(),
             reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
@@ -1104,6 +1125,17 @@ void test_varbinary_wide_conversion(SQLHDBC dbc) {
         "MYSQL_TYPE_VARCHAR, so SQL_C_WCHAR conversion did not return "
         "ABCDEF");
   }
+  std::fill(std::begin(value), std::end(value), 0);
+  value_len = 0;
+  check(SQLGetData(stmt.handle(), 2, SQL_C_WCHAR, value, sizeof(value),
+                   &value_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLGetData MEDIUMBLOB as SQL_C_WCHAR");
+  const SQLWCHAR expected_medium[] = {'0', '1', '2', '3', 'F', 'F', 0};
+  expect(std::equal(std::begin(expected_medium), std::end(expected_medium),
+                    std::begin(value)) &&
+             value_len == 6 * sizeof(SQLWCHAR),
+         "MEDIUMBLOB SQL_C_WCHAR conversion did not return 0123FF");
 }
 
 void test_unquoted_unicode_identifier(SQLHDBC dbc) {
@@ -1188,7 +1220,7 @@ void test_transaction_isolation(SQLHDBC dbc) {
 }
 
 void test_streaming_and_chunked_getdata(SQLHDBC dbc) {
-  const size_t text_size = 64 * 1024;
+  const size_t text_size = 1024 * 1024;
   std::string text;
   text.reserve(text_size);
   const std::string pattern = "MatrixOne-ODBC-";
@@ -1287,6 +1319,376 @@ void test_streaming_and_chunked_getdata(SQLHDBC dbc) {
          "chunked SQLGetData content mismatch: expected " +
              std::to_string(text.size()) + " bytes, got " +
              std::to_string(fetched.size()));
+}
+
+void test_parameter_arrays_and_partial_failure(SQLHDBC dbc) {
+  execute(dbc, "DROP TABLE IF EXISTS mo_odbc_deep.param_array");
+  execute(dbc, "CREATE TABLE mo_odbc_deep.param_array "
+               "(id INT PRIMARY KEY, name VARCHAR(32), amount INT)");
+
+  Statement stmt(dbc);
+  const std::string sql =
+      "INSERT INTO mo_odbc_deep.param_array VALUES (?,?,?)";
+  check(SQLPrepare(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare parameter array insert");
+
+  SQLINTEGER ids[4] = {1, 2, 3, 4};
+  SQLCHAR names[4][16] = {"one", "two", "three", "four"};
+  SQLINTEGER amounts[4] = {10, 20, 30, 40};
+  SQLLEN id_indicators[4] = {0, 0, 0, 0};
+  SQLLEN name_indicators[4] = {SQL_NTS, SQL_NTS, SQL_NTS, SQL_NTS};
+  SQLLEN amount_indicators[4] = {0, 0, 0, 0};
+  SQLUSMALLINT statuses[4] = {SQL_PARAM_UNUSED, SQL_PARAM_UNUSED,
+                              SQL_PARAM_UNUSED, SQL_PARAM_UNUSED};
+  SQLULEN processed = 0;
+
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAM_BIND_TYPE,
+                       reinterpret_cast<SQLPOINTER>(SQL_PARAM_BIND_BY_COLUMN),
+                       0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_PARAM_BIND_TYPE");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAMSET_SIZE,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{4}), 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_PARAMSET_SIZE=4");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAMS_PROCESSED_PTR,
+                       &processed, 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_PARAMS_PROCESSED_PTR");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAM_STATUS_PTR, statuses, 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_PARAM_STATUS_PTR");
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, ids, sizeof(ids[0]),
+                         id_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter array id");
+  check(SQLBindParameter(stmt.handle(), 2, SQL_PARAM_INPUT, SQL_C_CHAR,
+                         SQL_VARCHAR, 32, 0, names, sizeof(names[0]),
+                         name_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter array name");
+  check(SQLBindParameter(stmt.handle(), 3, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, amounts, sizeof(amounts[0]),
+                         amount_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter array amount");
+  check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLExecute parameter array insert");
+  expect(processed == 4,
+         "parameter array reported processed=" + std::to_string(processed));
+  for (size_t i = 0; i < 4; ++i) {
+    expect(statuses[i] == SQL_PARAM_SUCCESS ||
+               statuses[i] == SQL_PARAM_SUCCESS_WITH_INFO,
+           "parameter array item " + std::to_string(i) +
+               " has status=" + std::to_string(statuses[i]));
+  }
+  expect(scalar_int(dbc,
+                    "SELECT COUNT(*) FROM mo_odbc_deep.param_array") == 4,
+         "parameter array did not insert four rows");
+
+  check(SQLFreeStmt(stmt.handle(), SQL_CLOSE), SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_CLOSE before partial-failure batch");
+  SQLINTEGER duplicate_ids[3] = {5, 2, 6};
+  SQLCHAR duplicate_names[3][16] = {"five", "duplicate", "six"};
+  SQLINTEGER duplicate_amounts[3] = {50, 200, 60};
+  SQLLEN duplicate_id_indicators[3] = {0, 0, 0};
+  SQLLEN duplicate_name_indicators[3] = {SQL_NTS, SQL_NTS, SQL_NTS};
+  SQLLEN duplicate_amount_indicators[3] = {0, 0, 0};
+  SQLUSMALLINT duplicate_statuses[3] = {SQL_PARAM_UNUSED, SQL_PARAM_UNUSED,
+                                        SQL_PARAM_UNUSED};
+  processed = 0;
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAMSET_SIZE,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{3}), 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_PARAMSET_SIZE=3");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAM_STATUS_PTR,
+                       duplicate_statuses, 0),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_ATTR_PARAM_STATUS_PTR partial failure");
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, duplicate_ids,
+                         sizeof(duplicate_ids[0]), duplicate_id_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter duplicate id");
+  check(SQLBindParameter(stmt.handle(), 2, SQL_PARAM_INPUT, SQL_C_CHAR,
+                         SQL_VARCHAR, 32, 0, duplicate_names,
+                         sizeof(duplicate_names[0]), duplicate_name_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter duplicate name");
+  check(SQLBindParameter(stmt.handle(), 3, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, duplicate_amounts,
+                         sizeof(duplicate_amounts[0]),
+                         duplicate_amount_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter duplicate amount");
+
+  const SQLRETURN rc = SQLExecute(stmt.handle());
+  expect(rc == SQL_ERROR || rc == SQL_SUCCESS_WITH_INFO,
+         "mixed valid/duplicate parameter array unexpectedly returned rc=" +
+             std::to_string(rc));
+  const auto records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!records.empty() && records.front().state.compare(0, 2, "23") == 0,
+         "duplicate parameter set should report integrity SQLSTATE" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+  expect(processed > 0 && processed <= 3,
+         "partial-failure batch reported invalid processed=" +
+             std::to_string(processed));
+  expect(std::find(std::begin(duplicate_statuses),
+                   std::end(duplicate_statuses), SQL_PARAM_ERROR) !=
+             std::end(duplicate_statuses),
+         "partial-failure batch did not mark any parameter set as error");
+
+  check(SQLFreeStmt(stmt.handle(), SQL_CLOSE), SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_CLOSE after partial-failure batch");
+  check(SQLFreeStmt(stmt.handle(), SQL_RESET_PARAMS), SQL_HANDLE_STMT,
+        stmt.handle(), "SQL_RESET_PARAMS after partial-failure batch");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAMSET_SIZE,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{1}), 0),
+        SQL_HANDLE_STMT, stmt.handle(), "restore SQL_ATTR_PARAMSET_SIZE");
+  const std::string recovery_sql = "SELECT COUNT(*) FROM mo_odbc_deep.param_array";
+  check(SQLExecDirect(
+            stmt.handle(), reinterpret_cast<SQLCHAR *>(
+                               const_cast<char *>(recovery_sql.data())),
+            static_cast<SQLINTEGER>(recovery_sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "reuse statement after batch error");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "fetch after batch error");
+}
+
+void test_row_array_fetch(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  SQLINTEGER ids[3] = {};
+  SQLCHAR names[3][16] = {};
+  SQLLEN id_indicators[3] = {};
+  SQLLEN name_indicators[3] = {};
+  SQLUSMALLINT row_statuses[3] = {};
+  SQLULEN rows_fetched = 0;
+
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_ROW_ARRAY_SIZE,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{3}), 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_ROW_ARRAY_SIZE=3");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_ROWS_FETCHED_PTR, &rows_fetched,
+                       0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_ROWS_FETCHED_PTR");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_ROW_STATUS_PTR, row_statuses, 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_ROW_STATUS_PTR");
+  check(SQLBindCol(stmt.handle(), 1, SQL_C_SLONG, ids, sizeof(ids[0]),
+                   id_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindCol row-array id");
+  check(SQLBindCol(stmt.handle(), 2, SQL_C_CHAR, names, sizeof(names[0]),
+                   name_indicators),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindCol row-array name");
+
+  const std::string sql =
+      "SELECT id,name FROM mo_odbc_deep.param_array WHERE id<=4 ORDER BY id";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect row-array query");
+  check(SQLFetchScroll(stmt.handle(), SQL_FETCH_NEXT, 0), SQL_HANDLE_STMT,
+        stmt.handle(), "SQLFetchScroll first row array");
+  expect(rows_fetched == 3, "first row array should contain three rows");
+  for (size_t i = 0; i < 3; ++i) {
+    expect(ids[i] == static_cast<SQLINTEGER>(i + 1),
+           "row-array id mismatch at index " + std::to_string(i));
+    expect(row_statuses[i] == SQL_ROW_SUCCESS ||
+               row_statuses[i] == SQL_ROW_SUCCESS_WITH_INFO,
+           "row-array status mismatch at index " + std::to_string(i));
+  }
+  check(SQLFetchScroll(stmt.handle(), SQL_FETCH_NEXT, 0), SQL_HANDLE_STMT,
+        stmt.handle(), "SQLFetchScroll second row array");
+  expect(rows_fetched == 1 && ids[0] == 4,
+         "second row array should contain id=4 only");
+  expect(SQLFetchScroll(stmt.handle(), SQL_FETCH_NEXT, 0) == SQL_NO_DATA,
+         "row-array query should be exhausted");
+}
+
+void test_parameter_array_select(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  SQLINTEGER values[3] = {3, 1, 2};
+  SQLLEN indicators[3] = {sizeof(SQLINTEGER), sizeof(SQLINTEGER),
+                          sizeof(SQLINTEGER)};
+  SQLUSMALLINT statuses[3] = {SQL_PARAM_UNUSED, SQL_PARAM_UNUSED,
+                              SQL_PARAM_UNUSED};
+  SQLULEN processed = 0;
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAM_BIND_TYPE,
+                       reinterpret_cast<SQLPOINTER>(SQL_PARAM_BIND_BY_COLUMN),
+                       0),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_ATTR_PARAM_BIND_TYPE parameter-array SELECT");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAMSET_SIZE,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{3}), 0),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_ATTR_PARAMSET_SIZE parameter-array SELECT");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAM_STATUS_PTR, statuses, 0),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_ATTR_PARAM_STATUS_PTR parameter-array SELECT");
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_PARAMS_PROCESSED_PTR,
+                       &processed, 0),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_ATTR_PARAMS_PROCESSED_PTR parameter-array SELECT");
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, values, 0, indicators),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "SQLBindParameter parameter-array SELECT");
+  const std::string sql = "SELECT ?";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect parameter-array SELECT");
+  expect(processed == 3,
+         "parameter-array SELECT processed=" + std::to_string(processed));
+  std::vector<SQLINTEGER> actual_values;
+  for (size_t i = 0; i < 3; ++i) {
+    expect(statuses[i] == SQL_PARAM_SUCCESS ||
+               statuses[i] == SQL_PARAM_SUCCESS_WITH_INFO,
+           "parameter-array SELECT status " + std::to_string(i) + "=" +
+               std::to_string(statuses[i]));
+    check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+          "SQLFetch parameter-array SELECT item " + std::to_string(i));
+    SQLINTEGER actual = 0;
+    SQLLEN actual_len = 0;
+    check(SQLGetData(stmt.handle(), 1, SQL_C_SLONG, &actual, sizeof(actual),
+                     &actual_len),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLGetData parameter-array SELECT item " + std::to_string(i));
+    actual_values.push_back(actual);
+  }
+  expect(SQLFetch(stmt.handle()) == SQL_NO_DATA,
+         "parameter-array SELECT returned more than three rows");
+  const std::vector<SQLINTEGER> expected_values = {3, 1, 2};
+  if (actual_values == expected_values) return;
+  std::vector<SQLINTEGER> sorted_actual = actual_values;
+  std::sort(sorted_actual.begin(), sorted_actual.end());
+  if (sorted_actual == std::vector<SQLINTEGER>({1, 2, 3})) {
+    throw KnownIssue(
+        "matrixorigin/matrixone#27034: UNION ALL branch reordering breaks "
+        "ODBC parameter-array SELECT result mapping");
+  }
+  std::ostringstream message;
+  message << "parameter-array SELECT returned unexpected values:";
+  for (const SQLINTEGER value : actual_values) message << ' ' << value;
+  throw Failure(message.str());
+}
+
+void test_max_rows_attribute(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_MAX_ROWS,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{3}), 0),
+        SQL_HANDLE_STMT, stmt.handle(), "SQL_ATTR_MAX_ROWS=3");
+  const std::string sql =
+      "SELECT id FROM mo_odbc_deep.pbi_sales ORDER BY id";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect MAX_ROWS query");
+  int rows = 0;
+  while (SQLFetch(stmt.handle()) == SQL_SUCCESS) ++rows;
+  check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_MAX_ROWS,
+                       reinterpret_cast<SQLPOINTER>(uintptr_t{0}), 0),
+        SQL_HANDLE_STMT, stmt.handle(), "restore SQL_ATTR_MAX_ROWS");
+  if (rows == 3) return;
+  if (rows == 5) {
+    throw KnownIssue(
+        "matrixorigin/matrixone#27035: sql_select_limit is accepted but "
+        "ignored, breaking ODBC SQL_ATTR_MAX_ROWS");
+  }
+  throw Failure("SQL_ATTR_MAX_ROWS=3 returned " + std::to_string(rows) +
+                " rows");
+}
+
+void test_data_at_execution_cancel_recovery(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string insert_sql =
+      "INSERT INTO mo_odbc_deep.long_values VALUES (?,?,NULL)";
+  check(SQLPrepare(
+            stmt.handle(), reinterpret_cast<SQLCHAR *>(
+                               const_cast<char *>(insert_sql.data())),
+            static_cast<SQLINTEGER>(insert_sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPrepare cancellable stream");
+  SQLINTEGER id = 99;
+  SQLLEN id_len = 0;
+  char token = 0;
+  SQLLEN stream_len = SQL_DATA_AT_EXEC;
+  check(SQLBindParameter(stmt.handle(), 1, SQL_PARAM_INPUT, SQL_C_SLONG,
+                         SQL_INTEGER, 0, 0, &id, 0, &id_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter cancellable id");
+  check(SQLBindParameter(stmt.handle(), 2, SQL_PARAM_INPUT, SQL_C_CHAR,
+                         SQL_LONGVARCHAR, 1024, 0, &token, 0, &stream_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLBindParameter cancellable stream");
+  expect(SQLExecute(stmt.handle()) == SQL_NEED_DATA,
+         "cancellable stream did not enter SQL_NEED_DATA");
+  SQLPOINTER returned_token = nullptr;
+  expect(SQLParamData(stmt.handle(), &returned_token) == SQL_NEED_DATA &&
+             returned_token == &token,
+         "SQLParamData did not return the cancellable stream token");
+  check(SQLPutData(stmt.handle(), const_cast<char *>("partial"), 7),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLPutData partial stream");
+
+  const SQLRETURN sequence_rc = SQLExecute(stmt.handle());
+  expect(sequence_rc == SQL_ERROR,
+         "SQLExecute during SQL_NEED_DATA should fail with HY010");
+  const auto sequence_records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!sequence_records.empty() && sequence_records.front().state == "HY010",
+         "SQLExecute during SQL_NEED_DATA should report HY010" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+  check(SQLCancel(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLCancel during SQL_NEED_DATA");
+  check(SQLFreeStmt(stmt.handle(), SQL_CLOSE), SQL_HANDLE_STMT, stmt.handle(),
+        "SQL_CLOSE after SQL_NEED_DATA cancellation");
+  check(SQLFreeStmt(stmt.handle(), SQL_RESET_PARAMS), SQL_HANDLE_STMT,
+        stmt.handle(), "SQL_RESET_PARAMS after SQL_NEED_DATA cancellation");
+
+  const std::string recovery_sql = "SELECT 1";
+  check(SQLExecDirect(
+            stmt.handle(), reinterpret_cast<SQLCHAR *>(
+                               const_cast<char *>(recovery_sql.data())),
+            static_cast<SQLINTEGER>(recovery_sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "reuse statement after SQL_NEED_DATA cancellation");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "fetch after SQL_NEED_DATA cancellation");
+  expect(scalar_int(dbc,
+                    "SELECT COUNT(*) FROM mo_odbc_deep.long_values "
+                    "WHERE id=99") == 0,
+         "cancelled data-at-execution insert became visible");
+}
+
+void test_diagnostic_lifecycle(SQLHDBC dbc) {
+  Statement stmt(dbc);
+  const std::string bad_sql =
+      "SELECT * FROM mo_odbc_deep.diagnostic_table_that_does_not_exist";
+  expect(SQLExecDirect(
+             stmt.handle(), reinterpret_cast<SQLCHAR *>(
+                                const_cast<char *>(bad_sql.data())),
+             static_cast<SQLINTEGER>(bad_sql.size())) == SQL_ERROR,
+         "diagnostic lifecycle setup statement unexpectedly succeeded");
+  expect(!diagnostics(SQL_HANDLE_STMT, stmt.handle()).empty(),
+         "failed statement did not create a diagnostic");
+
+  const std::string good_sql = "SELECT 1";
+  check(SQLExecDirect(
+            stmt.handle(), reinterpret_cast<SQLCHAR *>(
+                               const_cast<char *>(good_sql.data())),
+            static_cast<SQLINTEGER>(good_sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "success after statement error");
+  expect(diagnostics(SQL_HANDLE_STMT, stmt.handle()).empty(),
+         "successful SQLExecDirect left stale diagnostics");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch diagnostic lifecycle");
+
+  SQLINTEGER value = 0;
+  SQLLEN value_len = 0;
+  expect(SQLGetData(stmt.handle(), 2, SQL_C_SLONG, &value, sizeof(value),
+                    &value_len) == SQL_ERROR,
+         "SQLGetData with an invalid column number should fail");
+  const auto column_records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  expect(!column_records.empty() && column_records.front().state == "07009",
+         "invalid column number should report SQLSTATE 07009" +
+             diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+  check(SQLGetData(stmt.handle(), 1, SQL_C_SLONG, &value, sizeof(value),
+                   &value_len),
+        SQL_HANDLE_STMT, stmt.handle(),
+        "valid SQLGetData after invalid column number");
+  expect(value == 1, "statement was not reusable after invalid column access");
+  expect(diagnostics(SQL_HANDLE_STMT, stmt.handle()).empty(),
+         "successful SQLGetData left stale diagnostics");
 }
 
 Diagnostic expect_error(SQLHDBC dbc, const std::string &sql) {
@@ -1657,6 +2059,144 @@ void test_concurrent_connections(const std::string &connection_string) {
   }
 }
 
+void test_prefetch_query_rewrite(const std::string &connection_string) {
+  Database db(connection_string + ";PREFETCH=2");
+  Statement stmt(db.handle());
+  std::string literal;
+  literal.reserve(5000);
+  for (int i = 0; i < 500; ++i) literal += "0123456789";
+  const std::string sql =
+      "SELECT id,'" + literal +
+      "' FROM mo_odbc_deep.type_matrix ORDER BY id";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "PREFETCH query rewrite");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch PREFETCH query");
+  SQLCHAR value[5001] = {};
+  SQLLEN value_len = 0;
+  check(SQLGetData(stmt.handle(), 2, SQL_C_CHAR, value, sizeof(value),
+                   &value_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLGetData PREFETCH query");
+  expect(value_len == static_cast<SQLLEN>(literal.size()) &&
+             std::memcmp(value, literal.data(), literal.size()) == 0,
+         "PREFETCH query rewrite changed the long literal");
+}
+
+void test_pad_space_connection(const std::string &connection_string) {
+  Database db(connection_string + ";PAD_SPACE=1");
+  Statement stmt(db.handle());
+  const std::string sql =
+      "SELECT c_char FROM mo_odbc_deep.type_matrix WHERE id=1";
+  check(SQLExecDirect(
+            stmt.handle(),
+            reinterpret_cast<SQLCHAR *>(const_cast<char *>(sql.data())),
+            static_cast<SQLINTEGER>(sql.size())),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLExecDirect PAD_SPACE query");
+  check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+        "SQLFetch PAD_SPACE query");
+  SQLCHAR value[16] = {};
+  SQLLEN value_len = 0;
+  check(SQLGetData(stmt.handle(), 1, SQL_C_CHAR, value, sizeof(value),
+                   &value_len),
+        SQL_HANDLE_STMT, stmt.handle(), "SQLGetData PAD_SPACE query");
+  if (value_len == 8 &&
+      std::string(reinterpret_cast<char *>(value), 8) == "MO      ") {
+    return;
+  }
+  if (value_len == 2 &&
+      std::strcmp(reinterpret_cast<char *>(value), "MO") == 0) {
+    throw KnownIssue(
+        "matrixorigin/matrixone#27036: PAD_CHAR_TO_FULL_LENGTH is accepted "
+        "but CHAR values remain unpadded over ODBC");
+  }
+  throw Failure("PAD_SPACE=1 returned length=" + std::to_string(value_len) +
+                " value='" + reinterpret_cast<char *>(value) + "'");
+}
+
+void test_empty_bookmark_fetch(const std::string &connection_string) {
+  {
+    Database setup_db(connection_string);
+    execute(setup_db.handle(),
+            "DROP TABLE IF EXISTS mo_odbc_deep.empty_bookmark_case");
+    execute(setup_db.handle(),
+            "CREATE TABLE mo_odbc_deep.empty_bookmark_case "
+            "(id INT, name VARCHAR(128) NOT NULL)");
+    execute(setup_db.handle(),
+            "INSERT INTO mo_odbc_deep.empty_bookmark_case VALUES "
+            "(1,'one'),(2,'two'),(3,'three'),(4,'four'),(5,'five')");
+  }
+  for (int selected_id : {0, 3}) {
+   for (const char *mode : {"NO_SSPS=0", "NO_SSPS=1"}) {
+    const std::string label = std::string(mode) + " id=" +
+                              std::to_string(selected_id);
+    Database db(connection_string + ";" + mode);
+    Statement stmt(db.handle());
+    constexpr SQLULEN rowset_size = 5;
+    SQLULEN rows_fetched = 999;
+    SQLUSMALLINT row_status[rowset_size] = {};
+    SQLINTEGER ids[rowset_size] = {};
+    SQLCHAR names[rowset_size][16] = {};
+    SQLLEN name_lengths[rowset_size] = {};
+    SQLCHAR bookmarks[rowset_size][10] = {};
+
+    check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_USE_BOOKMARKS,
+                         reinterpret_cast<SQLPOINTER>(SQL_UB_VARIABLE), 0),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQL_ATTR_USE_BOOKMARKS " + label);
+    check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_ROW_STATUS_PTR, row_status, 0),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQL_ATTR_ROW_STATUS_PTR " + label);
+    check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_ROWS_FETCHED_PTR,
+                         &rows_fetched, 0),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQL_ATTR_ROWS_FETCHED_PTR " + label);
+    check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_CURSOR_TYPE,
+                         reinterpret_cast<SQLPOINTER>(SQL_CURSOR_STATIC), 0),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQL_ATTR_CURSOR_TYPE " + label);
+    check(SQLSetStmtOption(stmt.handle(), SQL_ROWSET_SIZE, rowset_size),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQL_ROWSET_SIZE " + label);
+
+    const std::string sql =
+        "SELECT id,name FROM mo_odbc_deep.empty_bookmark_case "
+        "WHERE id=" + std::to_string(selected_id) + " ORDER BY name DESC";
+    check(SQLPrepare(
+              stmt.handle(), reinterpret_cast<SQLCHAR *>(
+                                 const_cast<char *>(sql.data())),
+              static_cast<SQLINTEGER>(sql.size())),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLPrepare bookmark query " + label);
+    check(SQLExecute(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+          "SQLExecute bookmark query " + label);
+    check(SQLBindCol(stmt.handle(), 0, SQL_C_VARBOOKMARK, bookmarks,
+                     sizeof(bookmarks[0]), nullptr),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLBindCol bookmark " + label);
+    check(SQLBindCol(stmt.handle(), 1, SQL_C_SLONG, ids, sizeof(ids[0]),
+                     nullptr),
+          SQL_HANDLE_STMT, stmt.handle(), "SQLBindCol id " + label);
+    check(SQLBindCol(stmt.handle(), 2, SQL_C_CHAR, names, sizeof(names[0]),
+                     name_lengths),
+          SQL_HANDLE_STMT, stmt.handle(),
+          "SQLBindCol name " + label);
+    const SQLRETURN rc =
+        SQLFetchScroll(stmt.handle(), SQL_FETCH_BOOKMARK, 0);
+    const SQLRETURN expected_rc =
+        selected_id == 0 ? SQL_NO_DATA : SQL_SUCCESS;
+    const SQLULEN expected_rows = selected_id == 0 ? 0 : 1;
+    expect(rc == expected_rc && rows_fetched == expected_rows,
+           "bookmark fetch returned an unexpected result for " + label +
+               ", rc=" + std::to_string(rc) +
+               " rows_fetched=" + std::to_string(rows_fetched) +
+               diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
+   }
+  }
+}
+
 void test_query_timeout_known_issue(SQLHDBC dbc) {
   Statement stmt(dbc);
   check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_QUERY_TIMEOUT,
@@ -1742,6 +2282,7 @@ int main() {
          [&] { test_connection_capabilities(db.handle()); }},
         {"catalog metadata", [&] { test_catalog_metadata(db.handle()); }},
         {"result descriptors", [&] { test_result_descriptors(db.handle()); }},
+        {"JSON descriptor", [&] { test_json_descriptor(db.handle()); }},
         {"type roundtrip", [&] { test_type_roundtrip(db.handle()); }},
         {"prepared parameters",
          [&] { test_prepared_parameters(db.handle()); }},
@@ -1762,6 +2303,17 @@ int main() {
          [&] { test_transaction_isolation(db.handle()); }},
         {"streaming and chunked SQLGetData",
          [&] { test_streaming_and_chunked_getdata(db.handle()); }},
+        {"parameter arrays and partial failure",
+         [&] { test_parameter_arrays_and_partial_failure(db.handle()); }},
+        {"row array fetch", [&] { test_row_array_fetch(db.handle()); }},
+        {"parameter array SELECT",
+         [&] { test_parameter_array_select(db.handle()); }},
+        {"SQL_ATTR_MAX_ROWS",
+         [&] { test_max_rows_attribute(db.handle()); }},
+        {"data-at-execution cancel recovery",
+         [&] { test_data_at_execution_cancel_recovery(db.handle()); }},
+        {"diagnostic lifecycle",
+         [&] { test_diagnostic_lifecycle(db.handle()); }},
         {"SQLSTATE classes", [&] { test_sqlstates(db.handle()); }},
         {"truncation diagnostics",
          [&] { test_truncation_diagnostics(db.handle()); }},
@@ -1781,6 +2333,12 @@ int main() {
          [&] { test_unreachable_connection_sqlstate(connection_string); }},
         {"concurrent connections",
          [&] { test_concurrent_connections(connection_string); }},
+        {"PREFETCH query rewrite",
+         [&] { test_prefetch_query_rewrite(connection_string); }},
+        {"PAD_SPACE connection option",
+         [&] { test_pad_space_connection(connection_string); }},
+        {"empty bookmark fetch",
+         [&] { test_empty_bookmark_fetch(connection_string); }},
         {"query timeout", [&] { test_query_timeout_known_issue(db.handle()); }},
         {"statement cancellation", [&] { test_cancel(connection_string); }},
     };
