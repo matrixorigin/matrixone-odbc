@@ -121,4 +121,3 @@ preview / prerelease**，建议资产包括 MSI、便携 ZIP、单独 `MatrixOne
 
 稳定版仍应以 #27034、#26967、#27024、#26678 的修复，以及干净 Windows
 VM 安装/升级/卸载、Gateway、TLS 和签名测试为发布门槛。
-
