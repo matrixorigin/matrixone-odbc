@@ -160,6 +160,10 @@ jobs:
           ./test/windows/Test-WindowsPackage.ps1 `
             -Mode PortableZip `
             -Package (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.zip') `
+            -CleanupMsi @(
+              (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.msi'),
+              (Join-Path $env:RUNNER_TEMP "downloads\$env:PREVIOUS_MSI")
+            ) `
             -Artifacts (Join-Path $env:RUNNER_TEMP 'lifecycle-zip')
 
       - name: Upload packages and lifecycle evidence

@@ -7,6 +7,7 @@ param(
     [string]$Package,
     [string]$PreviousPackage,
     [string]$OracleMsi,
+    [string[]]$CleanupMsi,
     [string]$Server = '',
     [int]$Port = 6001,
     [string]$User = 'root',
@@ -25,8 +26,8 @@ $dsnServer = if ($connect) { $Server } else { 'localhost' }
 $results = [System.Collections.Generic.List[object]]::new()
 New-Item -ItemType Directory -Force -Path $Artifacts | Out-Null
 
-function Assert-True([bool]$Condition, [string]$Message) {
-    if (-not $Condition) { throw $Message }
+function Assert-True($Condition, [string]$Message) {
+    if (-not [bool]$Condition) { throw $Message }
 }
 
 function Add-Result([string]$Scenario, [string]$Status, [string]$Detail) {
@@ -103,6 +104,15 @@ function Remove-TestDsn {
 
 try {
     if ($Mode -eq 'PortableZip') {
+        foreach ($cleanupPackage in @($CleanupMsi)) {
+            if (Test-Path -LiteralPath $cleanupPackage) {
+                $cleanupName = "00-precleanup-$([IO.Path]::GetFileNameWithoutExtension($cleanupPackage)).log"
+                Invoke-Msi $cleanupPackage 'REMOVE=ALL' $cleanupName -AllowedExitCodes @(0, 1605, 3010) | Out-Null
+            }
+        }
+        Remove-TestDsn
+        Assert-True (@(Get-OdbcDriver -Platform '64-bit' | Where-Object Name -In $driverNames).Count -eq 0) 'A previous MatrixOne MSI installation still contaminates the portable test.'
+
         $destination = Join-Path $env:TEMP "MatrixOne ODBC portable 路径 $([guid]::NewGuid()) with spaces"
         Expand-Archive -LiteralPath $Package -DestinationPath $destination -Force
         $root = Get-ChildItem $destination -Directory | Select-Object -First 1 -ExpandProperty FullName
@@ -148,7 +158,7 @@ try {
 
         Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
         Invoke-Msi $Package 'REINSTALL=ALL REINSTALLMODE=vomus' '02-repair.log' | Out-Null
-        Assert-True (Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit') 'Repair deleted the system DSN.'
+        Assert-True (@(Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit').Count -eq 1) 'Repair deleted the system DSN.'
         Test-Connection
         Add-Result 'silent repeat/repair keeps DSN' PASS 'DSN present'
 
@@ -158,7 +168,7 @@ try {
             Invoke-Msi $PreviousPackage '' '04-install-previous.log' | Out-Null
             Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
             Invoke-Msi $Package '' '05-major-upgrade.log' | Out-Null
-            Assert-True (Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit') 'Major upgrade deleted the system DSN.'
+            Assert-True (@(Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit').Count -eq 1) 'Major upgrade deleted the system DSN.'
             Assert-True ((Get-MsiProperty $Package ProductCode) -ne (Get-MsiProperty $PreviousPackage ProductCode)) 'Upgrade packages share ProductCode.'
             Test-Connection
             Add-Result 'mo.1 to mo.2 upgrade keeps DSN' PASS 'major upgrade succeeded'
