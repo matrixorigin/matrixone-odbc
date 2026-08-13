@@ -40,15 +40,24 @@ function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments, [int]$Tim
     # PowerShell/.NET combinations used by developers and hosted runners. None
     # of these MSI arguments can end in a backslash or contain a literal quote,
     # so an explicitly quoted command line is unambiguous here.
-    Assert-True (-not ($Arguments | Where-Object { $_ -match '["\r\n]' })) 'MSI argument contains an unsupported quote or newline.'
+    Assert-True (-not ($Arguments | Where-Object { $_ -match '["\r\n]' })) 'Native argument contains an unsupported quote or newline.'
     $startInfo.Arguments = (($Arguments | ForEach-Object { '"' + $_ + '"' }) -join ' ')
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $startInfo
     try {
         Assert-True ($process.Start()) "Failed to start $FilePath."
-        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+        if (-not $process.WaitForExit(5000)) {
+            $commandLine = Get-CimInstance Win32_Process -Filter "ProcessId=$($process.Id)" -ErrorAction SilentlyContinue
+            Write-Host "Still running: $($commandLine.CommandLine)"
+            Get-Service msiserver -ErrorAction SilentlyContinue | Format-List Status, StartType
+        }
+        if (-not $process.HasExited -and -not $process.WaitForExit(($TimeoutSeconds - 5) * 1000)) {
             $process.Kill($true)
             $process.WaitForExit()
+            $logArgument = $Arguments | Where-Object { $_ -like '*.log' } | Select-Object -Last 1
+            if ($logArgument -and (Test-Path -LiteralPath $logArgument)) {
+                Get-Content -LiteralPath $logArgument -Tail 100
+            }
             throw "$FilePath timed out after $TimeoutSeconds seconds."
         }
         return $process.ExitCode

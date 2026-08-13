@@ -149,6 +149,7 @@ jobs:
             -Artifacts (Join-Path $env:RUNNER_TEMP 'lifecycle-msi')
 
       - name: Test portable ZIP registration and dependency isolation
+        if: always()
         shell: pwsh
         run: |
           ./test/windows/Test-WindowsPackage.ps1 `
