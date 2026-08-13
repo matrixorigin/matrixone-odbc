@@ -9,7 +9,7 @@ MatrixOne ODBC 可以继续使用 MySQL 9.7 SDK 作为**构建输入**，但客�
 `9.7.0-mo.2` MSI 和便携 ZIP，ZIP 中头文件、C++ 头文件和 import library
 数量均为 0；ANSI、Unicode 和 Setup DLL 可从包内依赖目录独立加载。
 
-本轮发现并修复了三个会影响正式交付的问题：
+本轮发现并修复了六个会影响正式交付的问题：
 
 1. `mo.1`、`mo.2` 原先共享 MSI `ProductVersion=9.7.0` 和 ProductCode，不能
    形成可靠升级链；现在下游修订映射为 MSI `9.7.N`，每个 `mo.N` 有稳定且
@@ -18,10 +18,19 @@ MatrixOne ODBC 可以继续使用 MySQL 9.7 SDK 作为**构建输入**，但客�
    插件和依赖清单现全部在 binary tree 生成。
 3. 客户机运行时依赖检查原先使用默认 DLL 搜索路径，不能正确模拟 ODBC
    Driver Manager；现使用安全的 DLL 所在目录搜索并将加载失败设为硬失败。
+4. `myodbc-installer.exe` 原先按系统窄字符代码页读取命令行，中文安装路径会
+   被破坏；Windows 入口现改为 UTF-16 `wmain` 并显式转换为 UTF-8。
+5. MSI 中的 VBScript 自定义动作会被现代 Windows 禁用并使静默安装挂起；
+   运行库检测和目录创建现完全使用 Windows Installer 原生能力，无脚本动作。
+6. MSI 标准 ODBC 表在 repair 时会重复增加驱动 `UsageCount`，导致返回成功的
+   卸载仍残留驱动；MSI 现以幂等注册表组件管理驱动，安装、repair、升级和
+   Oracle 共存后 `UsageCount` 均强制为 1，卸载后注册和文件同时消失。
 
-当前本机进程不是管理员，因此完整 MSI 写 HKLM 生命周期放到
-`windows-2022` 干净管理员 runner 执行；相关 CI 会保存 MSI 日志和 JSON
-证据。当前结论是：安装包可进入 PR/CI 验证，CI 全绿前不应发布稳定版。
+完整 MSI 写 HKLM 生命周期已在 `windows-2022` 干净管理员 runner 通过，
+包括真实旧版升级、降级阻止和 Oracle 驱动共存。全绿证据为
+[GitHub Actions run 31690719458](https://github.com/matrixorigin/matrixone-odbc/actions/runs/31690719458)，
+日志、JSON 汇总和产物均由该 run 保存。当前结论是：可以发布开发预览版，
+但在代码签名、Gateway 和仍开放的 MO 正确性/协议问题完成前不应标稳定版。
 
 ## 基线与产物
 
@@ -31,12 +40,13 @@ MatrixOne ODBC 可以继续使用 MySQL 9.7 SDK 作为**构建输入**，但客�
 - 当前 MSI：`ProductVersion=9.7.2`，ProductCode
   `{032AA2B6-7062-55C6-A8FF-17EF6156C493}`；
 - UpgradeCode：`{0741D0F8-D27E-48E9-8D6C-70AC00A6E3AD}`；
-- MSI SHA-256：
-  `8a229b538aa40b7b821507c2cae13447fac4bf30c15594af7fa7945bbe59c6e8`；
-- ZIP SHA-256：
-  `0e0aa18fc5b8ff1cc91098dfe14d12c49600f374edba96c32a5e00ea2745155e`。
+- CI MSI：19,123,288 字节，SHA-256
+  `05f2bf8c875b496acef8d0ef2b45d599dd58aca66af7984e31f13c27b5b04e0f`；
+- CI ZIP：22,721,457 字节，SHA-256
+  `4e84ce6821d1a42f7a4b48c9094667747eddce692d28b7c4ba9752a256b63861`。
 
-哈希只对应本轮本机构建证据；正式 Release 应使用 CI 产物重新生成并签名。
+哈希对应全绿 CI run 31690719458 的未签名产物；正式 Release 应复用 CI
+产物或在签名流水线中可追溯地重建，并另行发布签名后的哈希。
 
 ## 公开规范/测试的采用方式
 
@@ -57,22 +67,23 @@ MatrixOne ODBC 可以继续使用 MySQL 9.7 SDK 作为**构建输入**，但客�
 
 | # | 大场景 | 判定标准 | 状态 |
 | ---: | --- | --- | --- |
-| 1 | 干净机静默安装 + 带空格自定义目录 | 两个 x64 驱动注册；Driver/Setup 路径存在；不依赖已安装 MySQL | CI 自动化 |
-| 2 | 便携 ZIP + 中文/空格/随机路径 | 无 SDK 文件；注册、DLL 加载、可选 MO 连接成功 | DLL/依赖本机通过；注册在 CI |
-| 3 | 重复静默安装和 `/fa` repair | 修复成功且现有系统 DSN 不丢失 | CI 自动化 |
-| 4 | 真实 `mo.1` → `mo.2` major upgrade | 旧包被替换、ProductCode 不同、DSN 保留 | CI 自动化 |
-| 5 | `mo.2` → `mo.1` 降级 | 安装被阻止，当前驱动保持可用 | CI 自动化 |
-| 6 | Oracle MySQL ODBC 同机共存 | 两品牌驱动同时存在；卸载 Oracle 后 MatrixOne 仍能加载 | CI 自动化 |
-| 7 | 缺少包内 `libmysql.dll` | 加载以 Win32 126 失败；恢复文件后同进程重新加载成功 | 本机通过 |
-| 8 | ANSI/Unicode/Setup 三 DLL 依赖闭包 | 使用 DLL 所在目录安全搜索，三者全部可加载并释放 | 本机通过 |
-| 9 | 完整卸载和重装 | 驱动注册、文件、自定义目录清除；随后可重新安装 | CI 自动化 |
-| 10 | 安装产物直连 MatrixOne | ANSI/Unicode smoke 均通过；deep 各 29 PASS/8 MO XFAIL/0 FAIL | 本机通过 |
+| 1 | 干净机静默安装 + 带空格自定义目录 | 两个 x64 驱动注册；Driver/Setup 路径存在；不依赖已安装 MySQL | PASS（CI） |
+| 2 | 便携 ZIP + 中文/空格/随机路径 | 无 SDK 文件；注册、DLL 加载、可选 MO 连接成功 | PASS（CI） |
+| 3 | 重复静默安装和 repair | 修复成功、`UsageCount=1` 且现有系统 DSN 不丢失 | PASS（CI） |
+| 4 | 真实 `mo.1` → `mo.2` major upgrade | 旧包被替换、ProductCode 不同、DSN 保留 | PASS（CI） |
+| 5 | `mo.2` → `mo.1` 降级 | 返回 1603 阻止安装，当前驱动保持可用 | PASS（CI） |
+| 6 | Oracle MySQL ODBC 同机共存 | 两品牌驱动同时存在；卸载 Oracle 后 MatrixOne 仍能加载 | PASS（CI） |
+| 7 | 缺少包内 `libmysql.dll` | 加载必须失败；恢复文件后同进程重新加载成功 | PASS（CI） |
+| 8 | ANSI/Unicode/Setup 三 DLL 依赖闭包 | 使用 DLL 所在目录安全搜索，三者全部可加载并释放 | PASS（CI） |
+| 9 | 完整卸载和重装 | 驱动注册、文件、自定义目录清除；重装后再完整清除 | PASS（CI，两轮） |
+| 10 | 安装产物直连最新 MatrixOne main | ANSI/Unicode smoke；deep 各 29 PASS/8 MO XFAIL/0 FAIL | PASS（本机） |
 
 ## 安装产物直连 MatrixOne 结果
 
-当前 `mo.2` 干净构建的测试可执行程序，通过已注册的同源码驱动直连最新
-MatrixOne `main` 提交
-`1d7b6311ce91df0968da435bb405f3d68137c595`：
+当前 `mo.2` 干净构建的测试可执行程序，通过已注册的同源码驱动直连测试时
+最新 MatrixOne `main` 提交
+`bdbd613fdece966769eb68481a3e58bfbc36b30c`，服务端版本字符串为
+`8.0.30-MatrixOne-v1.3.0`：
 
 - Unicode smoke：退出码 0；
 - Unicode deep：29 PASS / 8 个已登记 MO XFAIL / 0 FAIL；
@@ -85,14 +96,26 @@ MatrixOne `main` 提交
 最新 MO main 的公开套件差分如下：
 
 - pyodbc：31 PASS / 7 个 wheel 私有调试接口缺失，7 项均在调用 ODBC 前失败；
-- Connector/ODBC 35 个上游程序：370 TAP PASS / 116 FAIL，较旧 main 的
-  332/131 改善，逐程序没有 PASS→FAIL 回退；
+- Connector/ODBC 公开上游程序：34/35 个非交互程序完成，共 366 TAP PASS /
+  114 FAIL，逐程序没有 MO 导致的 PASS→FAIL；`my_options` 触发 Windows
+  交互/权限子进程，单列为 harness 限制，不计入 MO 结果；
 - Microsoft Power Query SDK：功能比较 206/212；
 - Power Query 折叠诊断：75/212 命令文本匹配；官方严格口径为 Sanity 8/9、
   Standard 21/203。严格失败多数源于连接器为规避 MO #27034 暂停参数绑定，
   不能与功能正确率混算；
 - Microsoft NYC Taxi 派生公开数据：10,000 + 10,000 + 265 + 1 行，四表
-  SHA-256、装载和行数校验全部通过。
+  SHA-256、重新装载和行数校验全部通过；
+- Microsoft Power Query SDK 功能比较在该最新 main 上复跑为 206/212，
+  与上一基线一致，没有新增功能失败。
+
+## MatrixOne issue 状态
+
+全部相关 issue 均已指派给 `iamlinjunhong`。最新 main 未出现未知 MO 回归，
+因此本轮没有创建重复 issue。
+
+- 仍开放：#26678、#26715、#26769、#26967、#27024、#27034、#27035、
+  #27036、#27108；
+- 已关闭且本轮回归未重现：#26716、#26993、#26994。
 
 ## 发布建议
 
