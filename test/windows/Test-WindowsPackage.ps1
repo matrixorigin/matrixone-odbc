@@ -33,14 +33,15 @@ function Add-Result([string]$Scenario, [string]$Status, [string]$Detail) {
 }
 
 function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments, [int]$TimeoutSeconds = 120) {
-    # ProcessStartInfo.ArgumentList is not reliably forwarded by all Windows
-    # PowerShell/.NET combinations used by developers and hosted runners. None
-    # of these MSI arguments can end in a backslash or contain a literal quote,
-    # so an explicitly quoted command line is unambiguous here.
     Assert-True (-not ($Arguments | Where-Object { $_ -match '["\r\n]' })) 'Native argument contains an unsupported quote or newline.'
-    $argumentLine = (($Arguments | ForEach-Object { '"' + $_ + '"' }) -join ' ')
-    $process = Start-Process -FilePath $FilePath -ArgumentList $argumentLine `
-        -PassThru -WindowStyle Hidden
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FilePath
+    $startInfo.UseShellExecute = $false
+    foreach ($argument in $Arguments) {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    Assert-True ($null -ne $process) "Failed to start $FilePath."
     try {
         if (-not $process.WaitForExit(5000)) {
             $commandLine = Get-CimInstance Win32_Process -Filter "ProcessId=$($process.Id)" -ErrorAction SilentlyContinue

@@ -895,7 +895,7 @@ static int installer_main(int argc, char **argv)
 
   /* convert to SQLWCHAR for installer API */
   convlen= SQL_NTS;
-  if (name && !(wname= sqlchar_as_sqlwchar(myodbc::default_charset_info,
+  if (name && !(wname= sqlchar_as_sqlwchar(utf8_charset_info,
                                            (SQLCHAR *)name, &convlen, NULL)))
   {
     fprintf(stderr, "[ERROR] Name is invalid\n");
@@ -903,7 +903,7 @@ static int installer_main(int argc, char **argv)
   }
 
   convlen= SQL_NTS;
-  if (attrstr && !(wattrs= sqlchar_as_sqlwchar(myodbc::default_charset_info,
+  if (attrstr && !(wattrs= sqlchar_as_sqlwchar(utf8_charset_info,
                                                (SQLCHAR *)attrstr, &convlen,
                                                NULL)))
   {
