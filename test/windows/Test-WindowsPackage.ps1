@@ -32,11 +32,26 @@ function Add-Result([string]$Scenario, [string]$Status, [string]$Detail) {
     $results.Add([pscustomobject]@{ scenario=$Scenario; status=$Status; detail=$Detail })
 }
 
+function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments) {
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $FilePath
+    $startInfo.UseShellExecute = $false
+    foreach ($argument in $Arguments) {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    try {
+        Assert-True ($process.Start()) "Failed to start $FilePath."
+        $process.WaitForExit()
+        return $process.ExitCode
+    } finally { $process.Dispose() }
+}
+
 function Invoke-Msi([string[]]$Arguments, [string]$LogName, [int[]]$AllowedExitCodes = @(0, 3010)) {
     $log = Join-Path $Artifacts $LogName
     $msiArguments = @($Arguments) + @('/qn', '/norestart', '/l*v', $log)
-    & msiexec.exe @msiArguments
-    $exitCode = $LASTEXITCODE
+    $exitCode = Invoke-NativeProcess -FilePath msiexec.exe -Arguments $msiArguments
     Assert-True ($exitCode -in $AllowedExitCodes) "msiexec exit $exitCode; see $log"
     return $exitCode
 }
@@ -129,8 +144,7 @@ try {
             Add-Result 'mo.1 to mo.2 upgrade keeps DSN' PASS 'major upgrade succeeded'
 
             $downgradeLog = Join-Path $Artifacts '06-downgrade-blocked.log'
-            & msiexec.exe /i $PreviousPackage /qn /norestart '/l*v' $downgradeLog
-            $downgradeExitCode = $LASTEXITCODE
+            $downgradeExitCode = Invoke-NativeProcess -FilePath msiexec.exe -Arguments @('/i', $PreviousPackage, '/qn', '/norestart', '/l*v', $downgradeLog)
             Assert-True ($downgradeExitCode -ne 0) 'Downgrade unexpectedly succeeded.'
             & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
             Add-Result 'downgrade blocked' PASS "exit $downgradeExitCode"

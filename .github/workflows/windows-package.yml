@@ -100,8 +100,15 @@ jobs:
             '/a', (Join-Path $downloads $env:WIX_MSI), '/qn',
             "TARGETDIR=$wixAdmin", '/l*v', $wixLog
           )
-          & msiexec.exe @wixArguments
-          if ($LASTEXITCODE -notin 0,3010) { throw "WiX administrative extraction failed: $LASTEXITCODE" }
+          $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+          $startInfo.FileName = 'msiexec.exe'
+          $startInfo.UseShellExecute = $false
+          foreach ($argument in $wixArguments) { [void]$startInfo.ArgumentList.Add($argument) }
+          $process = [System.Diagnostics.Process]::Start($startInfo)
+          $process.WaitForExit()
+          $exitCode = $process.ExitCode
+          $process.Dispose()
+          if ($exitCode -notin 0,3010) { throw "WiX administrative extraction failed: $exitCode" }
           $wix = Get-ChildItem $wixAdmin -Recurse -Filter wix.exe |
             Where-Object FullName -Match '\\bin\\wix\.exe$' |
             Select-Object -First 1 -ExpandProperty DirectoryName
@@ -156,8 +163,9 @@ jobs:
         with:
           name: matrixone-odbc-windows-package-lifecycle
           retention-days: 14
-          if-no-files-found: error
+          if-no-files-found: warn
           path: |
             ${{ runner.temp }}/packages-mo2/*
             ${{ runner.temp }}/lifecycle-msi/*
             ${{ runner.temp }}/lifecycle-zip/*
+            ${{ runner.temp }}/wix-admin.log
