@@ -32,7 +32,7 @@ function Add-Result([string]$Scenario, [string]$Status, [string]$Detail) {
     $results.Add([pscustomobject]@{ scenario=$Scenario; status=$Status; detail=$Detail })
 }
 
-function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments) {
+function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments, [int]$TimeoutSeconds = 120) {
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $FilePath
     $startInfo.UseShellExecute = $false
@@ -43,7 +43,11 @@ function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments) {
     $process.StartInfo = $startInfo
     try {
         Assert-True ($process.Start()) "Failed to start $FilePath."
-        $process.WaitForExit()
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $process.Kill($true)
+            $process.WaitForExit()
+            throw "$FilePath timed out after $TimeoutSeconds seconds."
+        }
         return $process.ExitCode
     } finally { [void]$process.Dispose() }
 }
@@ -51,7 +55,9 @@ function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments) {
 function Invoke-Msi([string[]]$Arguments, [string]$LogName, [int[]]$AllowedExitCodes = @(0, 3010)) {
     $log = Join-Path $Artifacts $LogName
     $msiArguments = @($Arguments) + @('/qn', '/norestart', '/l*v', $log)
+    Write-Host "Starting MSI scenario $LogName"
     $exitCode = Invoke-NativeProcess -FilePath msiexec.exe -Arguments $msiArguments
+    Write-Host "Completed MSI scenario $LogName with exit code $exitCode"
     Assert-True ($exitCode -in $AllowedExitCodes) "msiexec exit $exitCode; see $log"
     return $exitCode
 }
