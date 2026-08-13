@@ -93,6 +93,13 @@ function Get-DriverPath([string]$Name) {
     (Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\ODBC\ODBCINST.INI\$Name").Driver
 }
 
+function Assert-DriverUsageCount([int]$Expected) {
+    foreach ($name in $driverNames) {
+        $actual = (Get-ItemProperty -LiteralPath "HKLM:\SOFTWARE\ODBC\ODBCINST.INI\$name").UsageCount
+        Assert-True ($actual -eq $Expected) "$name UsageCount is $actual; expected $Expected."
+    }
+}
+
 function Test-Connection {
     if ([string]::IsNullOrWhiteSpace($Server)) { return }
     & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection
@@ -111,6 +118,12 @@ try {
             }
         }
         Remove-TestDsn
+        if ($CleanupMsi) {
+            foreach ($name in $driverNames) {
+                Remove-Item -LiteralPath "HKLM:\SOFTWARE\ODBC\ODBCINST.INI\$name" -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\ODBC\ODBCINST.INI\ODBC Drivers' -Name $name -Force -ErrorAction SilentlyContinue
+            }
+        }
         Assert-True (@(Get-OdbcDriver -Platform '64-bit' | Where-Object Name -In $driverNames).Count -eq 0) 'A previous MatrixOne MSI installation still contaminates the portable test.'
 
         $destination = Join-Path $env:TEMP "MatrixOne ODBC portable 路径 $([guid]::NewGuid()) with spaces"
@@ -153,11 +166,13 @@ try {
         Invoke-Msi $Package "INSTALLDIR=`"$installDir`"" '01-clean-install.log' | Out-Null
         & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
         Assert-True ((Get-DriverPath $driverNames[0]).StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase)) 'Custom INSTALLDIR was ignored.'
+        Assert-DriverUsageCount 1
         Assert-True (-not (Get-ChildItem $installDir -Recurse -File -Include *.h,*.hpp,*.lib)) 'MSI install contains SDK headers or import libraries.'
         Add-Result 'clean MSI/custom path/no MySQL SDK' PASS "$productVersion $productCode"
 
         Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
         Invoke-Msi $Package 'REINSTALL=ALL REINSTALLMODE=vomus' '02-repair.log' | Out-Null
+        Assert-DriverUsageCount 1
         Assert-True (@(Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit').Count -eq 1) 'Repair deleted the system DSN.'
         Test-Connection
         Add-Result 'silent repeat/repair keeps DSN' PASS 'DSN present'
@@ -168,6 +183,7 @@ try {
             Invoke-Msi $PreviousPackage '' '04-install-previous.log' | Out-Null
             Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
             Invoke-Msi $Package '' '05-major-upgrade.log' | Out-Null
+            Assert-DriverUsageCount 1
             Assert-True (@(Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit').Count -eq 1) 'Major upgrade deleted the system DSN.'
             Assert-True ((Get-MsiProperty $Package ProductCode) -ne (Get-MsiProperty $PreviousPackage ProductCode)) 'Upgrade packages share ProductCode.'
             Test-Connection
@@ -185,6 +201,7 @@ try {
             Assert-True ($oracle.Count -ge 2) 'Oracle MySQL ODBC drivers were not installed.'
             & $testInstalled
             Invoke-Msi $OracleMsi 'REMOVE=ALL' '08-oracle-remove.log' | Out-Null
+            Assert-DriverUsageCount 1
             & $testInstalled
             Add-Result 'Oracle MySQL ODBC side by side' PASS "$($oracle.Count) Oracle drivers"
         }
