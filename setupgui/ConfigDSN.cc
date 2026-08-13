@@ -152,6 +152,19 @@ BOOL INSTAPI ConfigDSNW(HWND hWnd, WORD nRequest, LPCWSTR pszDriver,
       return FALSE;
     }
     origdsn = (const SQLWCHAR*)ds.opt_DSN;
+
+    /*
+      lookup() populates the existing DSN and therefore overwrites values
+      supplied by a non-interactive ODBC_CONFIG_DSN call.  Reapply the
+      caller's attributes so they take precedence over the stored defaults.
+    */
+    if (nRequest == ODBC_CONFIG_DSN && ds.from_kvpair(pszAttributes, delim))
+    {
+      SQLPostInstallerError(ODBC_ERROR_INVALID_KEYWORD_VALUE,
+                            W_INVALID_ATTR_STR);
+      return FALSE;
+    }
+
   }
 
   Driver driver;
@@ -160,6 +173,18 @@ BOOL INSTAPI ConfigDSNW(HWND hWnd, WORD nRequest, LPCWSTR pszDriver,
   // For certain operations failure to lookup the driver
   // is not a critical error.
   int driver_lookup_error = driver.lookup();
+
+#ifdef _WIN32
+  /*
+    Windows stores the driver library path in a DSN's DRIVER value.  A
+    non-interactive ODBC_CONFIG_DSN call later feeds that value back to
+    DataSource::add(), which expects a registered driver name and removes
+    the old DSN before discovering that the lookup fails.  pszDriver is the
+    already validated registration name supplied by the driver manager.
+  */
+  if (nRequest == ODBC_CONFIG_DSN && !driver_lookup_error)
+    ds.opt_DRIVER = (const SQLWCHAR*)driver.name;
+#endif
 
   if (!driver_lookup_error)
   {
