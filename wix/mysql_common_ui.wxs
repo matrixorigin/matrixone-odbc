@@ -466,11 +466,7 @@ The following option needs to be set inside &quot;PowerBI Desktop&quot; before u
           <Publish Event="NewDialog" Value="LicenseAgreementDlg" Condition="NOT Installed" />
       </Control>
       <Control Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;">
-        <Publish Property="PBI_WARNING" Value="0"/>
-        <Publish Event="DoAction" Value="FolderExists" Condition="SetupType = &quot;Complete&quot;"/>
-
-        <Publish Event="NewDialog" Value="PowerBINewDirDialog" Condition="SetupType = &quot;Complete&quot; AND PBI_WARNING=1" />
-        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="SetupType = &quot;Typical&quot; OR (SetupType = &quot;Complete&quot; AND PBI_WARNING=0)"/>
+        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="SetupType = &quot;Typical&quot; OR SetupType = &quot;Complete&quot;"/>
         <Publish Event="NewDialog" Value="CustomSetupDialog" Condition="SetupType = &quot;Custom&quot;" />
         <Publish Property="SelectedSetupType" Value="Typical" Condition="SetupType = &quot;Typical&quot;" />
         <Publish Property="SelectedSetupType" Value="Complete" Condition="SetupType = &quot;Complete&quot;" />
@@ -541,15 +537,11 @@ The following option needs to be set inside &quot;PowerBI Desktop&quot; before u
       </Control>
       
       <Control Id="Next" Type="PushButton" X="230" Y="243" Width="66" Height="17" Default="yes" Text="&amp;Next &gt;" Disabled="no">
-        <Publish Property="PBI_WARNING" Value="0"/>
-        <Publish Event="DoAction" Value="FolderExists" Condition="&amp;PBIExtension = 3"/>
-
         <Publish Event="NewDialog" Value="OutOfSpaceDialog" Condition="OutOfNoRbDiskSpace = 1" />
-        <Publish Event="NewDialog" Value="PowerBINewDirDialog" Condition="PBI_WARNING = 1" />
         <!-- in maintenance mode this dialog is called without the setuptypedialog -->
 	      <Publish Property="SetupType" Value="Custom" />
         <!-- for 32bit only installer we don't need those properties here. All required is set in setup type dialog -->
-        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="PBI_WARNING = 0"/>
+        <Publish Event="NewDialog" Value="ReadyToInstallDialog" Condition="OutOfNoRbDiskSpace &lt;&gt; 1"/>
         <Publish Property="SUMMARYDRIVER" Value=" "/>
         <Publish Property="SUMMARYPBI" Value=" "/>
         <Publish Property="SUMMARYDRIVER" Value="&#x0a;[NAMEDRIVER] will be installed into:&#x0a;[INSTALLDIR]&#x0a;" Condition="&amp;ODBC = 3" />

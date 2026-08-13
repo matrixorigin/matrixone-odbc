@@ -78,7 +78,6 @@
     -->
 
     <CustomAction Id="NewerVersionInstalled" Error="A newer version of this product is already installed." />
-    <CustomAction Id="FolderExists" Script="vbscript" Execute="immediate" ScriptSourceFile="FolderExists.vbs" />
     <!-- *****************************************************************************************
       Upgrade Information
     -->
@@ -93,35 +92,35 @@
     <!-- Visual Studio Redistributable Check -->
     <?if $(var.odbc_64bit) = 1 ?>
       <Property Id="VS14REDISTX64_64_MAJOR">
-        <RegistrySearch Id="FindRedistVS14_64_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Major" Type="integer" Bitness="always64" />
+        <RegistrySearch Id="FindRedistVS14_64_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Major" Type="raw" Bitness="always64" />
       </Property>
       <Property Id="VS14REDISTX64_64_MINOR">
-        <RegistrySearch Id="FindRedistVS14_64_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Minor" Type="integer" Bitness="always64" />
+        <RegistrySearch Id="FindRedistVS14_64_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Minor" Type="raw" Bitness="always64" />
       </Property>
       <!-- Through testing we did discover that depending on version of Windows
         VS redist registry keys are available either under 64, or both 32 and 64 bit keys
         (in most cases under both). Just to be safe we decided to always check under both. -->
       <Property Id="VS14REDISTX64_32_MAJOR">
-        <RegistrySearch Id="FindRedistVS14_32_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Major" Type="integer" Bitness="always32" />
+        <RegistrySearch Id="FindRedistVS14_32_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Major" Type="raw" Bitness="always32" />
       </Property>
       <Property Id="VS14REDISTX64_32_MINOR">
-        <RegistrySearch Id="FindRedistVS14_32_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Minor" Type="integer" Bitness="always32" />
+        <RegistrySearch Id="FindRedistVS14_32_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64" Name="Minor" Type="raw" Bitness="always32" />
       </Property>
-      <Launch Condition="Installed OR (VS14REDISTX64_64_MAJOR = $(var.min_vs14_major) AND VS14REDISTX64_64_MINOR &gt;= $(var.min_vs14_minor)) OR (VS14REDISTX64_32_MAJOR = $(var.min_vs14_major) AND VS14REDISTX64_32_MINOR &gt;= $(var.min_vs14_minor))" Message="This application requires Visual Studio $(var.redist_ver_required) x64 Redistributable version $(var.min_vs14_major).$(var.min_vs14_minor). Please install the Redistributable then run this installer again." />
+      <Launch Condition="Installed OR (VS14REDISTX64_64_MAJOR AND VS14REDISTX64_64_MINOR) OR (VS14REDISTX64_32_MAJOR AND VS14REDISTX64_32_MINOR)" Message="This application requires the Visual Studio $(var.redist_ver_required) x64 Redistributable. Please install it, then run this installer again." />
     <?else?>
       <Property Id="VS14REDISTX86_64_MAJOR">
-        <RegistrySearch Id="FindRedistVS14_64_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Major" Type="integer" Bitness="always64" />
+        <RegistrySearch Id="FindRedistVS14_64_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Major" Type="raw" Bitness="always64" />
       </Property>
       <Property Id="VS14REDISTX86_64_MINOR">
-        <RegistrySearch Id="FindRedistVS14_64_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Minor" Type="integer" Bitness="always64" />
+        <RegistrySearch Id="FindRedistVS14_64_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Minor" Type="raw" Bitness="always64" />
       </Property>
       <Property Id="VS14REDISTX86_32_MAJOR">
-        <RegistrySearch Id="FindRedistVS14_32_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Major" Type="integer" Bitness="always32" />
+        <RegistrySearch Id="FindRedistVS14_32_MAJOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Major" Type="raw" Bitness="always32" />
       </Property>
       <Property Id="VS14REDISTX86_32_MINOR">
-        <RegistrySearch Id="FindRedistVS14_32_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Minor" Type="integer" Bitness="always32" />
+        <RegistrySearch Id="FindRedistVS14_32_MINOR" Root="HKLM" Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86" Name="Minor" Type="raw" Bitness="always32" />
       </Property>
-      <Launch Condition="Installed OR (VS14REDISTX86_64_MAJOR = $(var.min_vs14_major) AND VS14REDISTX86_64_MINOR &gt;= $(var.min_vs14_minor)) OR (VS14REDISTX86_32_MAJOR = $(var.min_vs14_major) AND VS14REDISTX86_32_MINOR &gt;= $(var.min_vs14_minor))" Message="This application requires Visual Studio $(var.redist_ver_required) x86 Redistributable version $(var.min_vs14_major).$(var.min_vs14_minor). Please install the Redistributable then run this installer again." />
+      <Launch Condition="Installed OR (VS14REDISTX86_64_MAJOR AND VS14REDISTX86_64_MINOR) OR (VS14REDISTX86_32_MAJOR AND VS14REDISTX86_32_MINOR)" Message="This application requires the Visual Studio $(var.redist_ver_required) x86 Redistributable. Please install it, then run this installer again." />
     <?endif?>
 
     <!--
