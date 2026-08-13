@@ -45,7 +45,7 @@ function Invoke-NativeProcess([string]$FilePath, [string[]]$Arguments) {
         Assert-True ($process.Start()) "Failed to start $FilePath."
         $process.WaitForExit()
         return $process.ExitCode
-    } finally { $process.Dispose() }
+    } finally { [void]$process.Dispose() }
 }
 
 function Invoke-Msi([string[]]$Arguments, [string]$LogName, [int[]]$AllowedExitCodes = @(0, 3010)) {
@@ -61,11 +61,11 @@ function Get-MsiProperty([string]$Path, [string]$Name) {
     $database = $installer.OpenDatabase($Path, 0)
     $view = $database.OpenView("SELECT ``Value`` FROM ``Property`` WHERE ``Property``='$Name'")
     try {
-        $view.Execute()
+        [void]$view.Execute()
         $record = $view.Fetch()
         if ($record) { return $record.StringData(1) }
         return $null
-    } finally { $view.Close() }
+    } finally { [void]$view.Close() }
 }
 
 function Get-DriverPath([string]$Name) {
