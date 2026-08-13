@@ -184,7 +184,6 @@ FOREACH(_WIX_INPUT
         mysql_common_ui.wxs
         mysql_odbc_fragment.wxs
         mysql-connector-odbc-msi-arpprops.wxs
-        DwordToNumber.vbs
         FolderExists.vbs)
   CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${_WIX_INPUT}
                  ${CMAKE_CURRENT_BINARY_DIR}/${_WIX_INPUT} COPYONLY)
