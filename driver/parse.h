@@ -230,6 +230,11 @@ BOOL              case_compare(MY_PARSED_QUERY *parser, const char *pos,
 
 BOOL              parse(MY_PARSED_QUERY *pq);
 
+/* MatrixOne does not parse ODBC scalar function escapes such as
+   {fn ucase(value)}. Rewrite only the function wrapper while preserving
+   date/time escapes and quoted or commented text. */
+void              rewrite_odbc_function_escapes(MY_PARSED_QUERY *pq);
+
 
 const char *mystr_get_prev_token(myodbc::CHARSET_INFO *charset,
                                         const char **query, const char *start);

@@ -418,6 +418,11 @@ SQLRETURN prepare(STMT *stmt, char * query, SQLINTEGER query_length,
 
   stmt->query.reset(query, query + query_length,
                     stmt->dbc->cxn_charset_info);
+  if (stmt->dbc->mysql->server_version &&
+      strstr(stmt->dbc->mysql->server_version, "MatrixOne"))
+  {
+    rewrite_odbc_function_escapes(&stmt->query);
+  }
   /* Tokenising string, detecting and storing parameters placeholders, removing {}
      So far the only possible error is memory allocation. Thus setting it here.
      If that changes we will need to make "parse" to set error and return rc */

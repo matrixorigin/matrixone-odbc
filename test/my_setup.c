@@ -49,7 +49,8 @@ DECLARE_TEST(t_bug66548)
   */
 
   len = sprintf(attrs, "DSN=bug66548dsn;SERVER=%s;USER=%s;PASSWORD=%s;"
-    "PORT=%d;DATABASE=%s;", myserver, myuid, mypwd, myport, mydb);
+    "PORT=%d;DATABASE=%s;SSL-MODE=DISABLED;", myserver, myuid, mypwd,
+    myport, mydb);
   attrs[len] = '\0';
 
   len = (int)strlen(attrs);
@@ -96,8 +97,50 @@ DECLARE_TEST(t_bug66548)
   ));
   ok_con(hdbc1, SQLDisconnect(hdbc1));
   ok_con(hdbc1, SQLFreeHandle(SQL_HANDLE_DBC, hdbc1));
+  hdbc1= SQL_NULL_HDBC;
 
   ok_install(SQLConfigDataSource(NULL, ODBC_REMOVE_DSN, drv, "DSN=bug66548dsn\0\0"));
+#endif
+
+  return OK;
+}
+
+
+/**
+  A non-interactive Windows DSN update must preserve the DSN and resolve the
+  stored driver DLL path back to the registered driver name.
+*/
+DECLARE_TEST(t_matrixone_config_dsn_update)
+{
+#ifdef _WIN32
+  char drv[128];
+  char add_attrs[] = "DSN=matrixone_config_update\0SERVER=localhost\0"
+                     "PORT=6001\0DATABASE=before\0\0";
+  char update_attrs[] = "DSN=matrixone_config_update\0SERVER=localhost\0"
+                        "PORT=6002\0DATABASE=after\0\0";
+  char value[64] = {0};
+  size_t len = strlen(mydriver);
+
+  if (mydriver[0] == '{')
+  {
+    memcpy(drv, mydriver + 1, len - 2);
+    drv[len - 2] = '\0';
+  }
+  else
+  {
+    memcpy(drv, mydriver, len);
+    drv[len] = '\0';
+  }
+
+  SQLConfigDataSource(NULL, ODBC_REMOVE_DSN, drv,
+                      "DSN=matrixone_config_update\0\0");
+  ok_install(SQLConfigDataSource(NULL, ODBC_ADD_DSN, drv, add_attrs));
+  ok_install(SQLConfigDataSource(NULL, ODBC_CONFIG_DSN, drv, update_attrs));
+  is_num(SQLGetPrivateProfileString("matrixone_config_update", "PORT", "",
+                                    value, sizeof(value), "ODBC.INI"), 4);
+  is_str(value, "6002", 4);
+  ok_install(SQLConfigDataSource(NULL, ODBC_REMOVE_DSN, drv,
+                                 "DSN=matrixone_config_update\0\0"));
 #endif
 
   return OK;
@@ -212,6 +255,7 @@ DECLARE_TEST(t_bug17508006)
 
 BEGIN_TESTS
   ADD_TEST(t_bug66548)
+  ADD_TEST(t_matrixone_config_dsn_update)
   // ADD_TEST(t_bug24581) TODO: fix
   ADD_TEST(t_bug17508006)
 END_TESTS

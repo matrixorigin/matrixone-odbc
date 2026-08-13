@@ -670,6 +670,23 @@ void test_result_descriptors(SQLHDBC dbc) {
   }
 }
 
+void test_odbc_function_escapes(SQLHDBC dbc) {
+  expect(scalar_int(dbc, "SELECT {fn ascii('EWR')}") == 69,
+         "ODBC ASCII function escape was not rewritten");
+  expect(scalar_text(
+             dbc,
+             "SELECT {fn substring('Newark Airport', 4, -1)}") == "",
+         "ODBC SUBSTRING function escape returned the wrong value");
+  expect(scalar_text(
+             dbc,
+             "SELECT {fn concat({fn ucase('a')}, 'b')}") == "Ab",
+         "nested ODBC function escapes were not rewritten");
+  expect(scalar_int(dbc, "SELECT {fn year({d '2023-02-01'})}") == 2023,
+         "rewriting a function escape damaged a nested date escape");
+  expect(scalar_int(dbc, "SELECT {fn length('{fn fake()}')}") == 11,
+         "rewriting a function escape modified a quoted brace");
+}
+
 void test_json_descriptor(SQLHDBC dbc) {
   Statement stmt(dbc);
   const std::string sql =
@@ -2280,6 +2297,8 @@ int main() {
     std::vector<TestCase> tests = {
         {"connection capabilities",
          [&] { test_connection_capabilities(db.handle()); }},
+        {"ODBC scalar function escapes",
+         [&] { test_odbc_function_escapes(db.handle()); }},
         {"catalog metadata", [&] { test_catalog_metadata(db.handle()); }},
         {"result descriptors", [&] { test_result_descriptors(db.handle()); }},
         {"JSON descriptor", [&] { test_json_descriptor(db.handle()); }},

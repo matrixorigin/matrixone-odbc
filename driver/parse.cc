@@ -877,6 +877,107 @@ BOOL parse(MY_PARSED_QUERY *pq)
 }
 
 
+void rewrite_odbc_function_escapes(MY_PARSED_QUERY *pq)
+{
+  if (!pq || !pq->query || pq->query == pq->query_end)
+    return;
+
+  struct EscapeFrame
+  {
+    bool function;
+  };
+  std::vector<EscapeFrame> escapes;
+  char *query= const_cast<char *>(pq->query);
+  const size_t length= static_cast<size_t>(pq->query_end - pq->query);
+  char quote= 0;
+  bool line_comment= false;
+  bool block_comment= false;
+
+  for (size_t i= 0; i < length; ++i)
+  {
+    const char ch= query[i];
+
+    if (line_comment)
+    {
+      if (ch == '\n' || ch == '\r')
+        line_comment= false;
+      continue;
+    }
+    if (block_comment)
+    {
+      if (ch == '*' && i + 1 < length && query[i + 1] == '/')
+      {
+        block_comment= false;
+        ++i;
+      }
+      continue;
+    }
+    if (quote)
+    {
+      if (ch == '\\' && i + 1 < length)
+      {
+        ++i;
+        continue;
+      }
+      if (ch == quote)
+      {
+        if (i + 1 < length && query[i + 1] == quote)
+          ++i;
+        else
+          quote= 0;
+      }
+      continue;
+    }
+
+    if (ch == '#' ||
+        (ch == '-' && i + 2 < length && query[i + 1] == '-' &&
+         isspace(static_cast<unsigned char>(query[i + 2]))))
+    {
+      line_comment= true;
+      continue;
+    }
+    if (ch == '/' && i + 1 < length && query[i + 1] == '*')
+    {
+      block_comment= true;
+      ++i;
+      continue;
+    }
+    if (ch == '\'' || ch == '"' || ch == '`')
+    {
+      quote= ch;
+      continue;
+    }
+
+    if (ch == '{')
+    {
+      size_t keyword= i + 1;
+      while (keyword < length &&
+             isspace(static_cast<unsigned char>(query[keyword])))
+        ++keyword;
+      const bool function=
+          keyword + 2 < length &&
+          (query[keyword] == 'f' || query[keyword] == 'F') &&
+          (query[keyword + 1] == 'n' || query[keyword + 1] == 'N') &&
+          isspace(static_cast<unsigned char>(query[keyword + 2]));
+      escapes.push_back({function});
+      if (function)
+      {
+        query[i]= ' ';
+        query[keyword]= ' ';
+        query[keyword + 1]= ' ';
+      }
+      continue;
+    }
+    if (ch == '}' && !escapes.empty())
+    {
+      if (escapes.back().function)
+        query[i]= ' ';
+      escapes.pop_back();
+    }
+  }
+}
+
+
 /* Removes qurly braces off embraced query. Query has to be parsed
    Returns TRUE if braces were removed */
 BOOL remove_braces(MY_PARSER *parser)

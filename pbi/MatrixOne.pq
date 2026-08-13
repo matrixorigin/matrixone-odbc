@@ -70,9 +70,12 @@ TraceTypeInfo = true;
 
 Config_HideNativeQuery = not EnableTraceOutput;
 
-// MatrixOne ODBC inherits parameter binding support from the upstream driver.
+// MatrixOne currently reorders UNION ALL branches used by the ODBC driver's
+// parameter-array SELECT emulation (matrixorigin/matrixone#27034). Power Query
+// also receives incorrect COUNT(?) results through this path. Use escaped SQL
+// literals until the server preserves parameter-set result mapping.
 
-Config_UseParameterBindings = true;
+Config_UseParameterBindings = false;
 
 
 // Note: The .version.pqm file is generated during cmake configuration step.
@@ -248,7 +251,12 @@ let
   SQLGetInfo = LogMsg("SQLGetInfo_Options: #{0}",
   [
     SQL_SQL_CONFORMANCE = ODBC[SQL_SC][SQL_SC_SQL92_FULL],
-    SQL_CONVERT_FUNCTIONS = ODBC[SQL_FN_CVT][SQL_FN_CVT_CAST]
+    // MatrixOne's unqualified DECIMAL means DECIMAL(38,0), while Power
+    // Query expects Decimal.From and Precision.Decimal to retain the scale.
+    // Do not fold CAST-based conversions until the server semantics match.
+    SQL_CONVERT_FUNCTIONS = 0,
+    SQL_CONVERT_DECIMAL = 0,
+    SQL_CONVERT_NUMERIC = 0
   ]),
 
   OdbcDataSource = Odbc.DataSource(ConnectionOpts[Options],
@@ -265,8 +273,10 @@ let
       // Allow upconversion / resizing of numeric and string types
       TolerateConcatOverflow = true,
 
-      // Enables connection pooling via the system ODBC manager
-      ClientConnectionPooling = true,
+      // The Power BI process otherwise keeps handing a dead ODBC connection
+      // back to DirectQuery after MatrixOne restarts. Let the mashup engine
+      // open a fresh physical connection so refresh can recover in-process.
+      ClientConnectionPooling = false,
 
       CredentialConnectionString = ConnectionOpts[Credentials],
 
