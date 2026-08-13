@@ -29,7 +29,7 @@
 -->
 
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Property Id="ARPCOMMENTS" Value="MatrixOne ODBC $(var.odbc_ver_short) connects ODBC applications to MatrixOne." />
+  <Property Id="ARPCOMMENTS" Value="MatrixOne ODBC $(var.matrixone_package_version) connects ODBC applications to MatrixOne." />
   <Property Id="ARPCONTACT" Value="https://github.com/matrixorigin/matrixone-odbc" />
   <Property Id="ARPPRODUCTICON" Value="MySQLConnector.ico" />
   <Property Id="ARPHELPLINK" Value="https://github.com/matrixorigin/matrixone-odbc/issues" />

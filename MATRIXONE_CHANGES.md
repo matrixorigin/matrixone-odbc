@@ -35,6 +35,9 @@ Baseline: MySQL Connector/ODBC 9.7.0
 - Give the Windows MSI separate upgrade/component identities and a separate
   `Matrix Origin\\MatrixOne ODBC` install directory so it cannot upgrade or
   uninstall an Oracle MySQL ODBC installation.
+- Give each `-mo.N` downstream package a distinct, monotonic MSI product
+  version and deterministic ProductCode so upgrade, repair, downgrade blocking,
+  and uninstall work even though the upstream ODBC ABI remains at 9.7.0.
 - Retain the upstream MySQL Power BI icons as private-preview placeholders;
   replace them with approved MatrixOne artwork before public distribution.
 

@@ -56,7 +56,7 @@
     UpgradeCode="$(var.upgrade_code)"
     Codepage="utf-8"
     Name="MatrixOne ODBC $(var.odbc_ver_short)$(var.odbc_license_suffix) ($(var.odbc_arch))"
-    Version="$(var.odbc_ver_long)"
+    Version="$(var.odbc_msi_ver)"
     Language="1033"
     Manufacturer="Matrix Origin"
     InstallerVersion="200"
@@ -85,7 +85,7 @@
 
     <Upgrade Id="$(var.upgrade_code)">
       <!-- !!!SetVersion updates: Minimum, Maximum -->
-      <UpgradeVersion Property="PREVIOUSVERSIONINSTALLED" Minimum="5.0.999" Maximum="$(var.odbc_ver_prev)" IncludeMaximum="yes" IncludeMinimum="yes" />
+      <UpgradeVersion Property="PREVIOUSVERSIONINSTALLED" Minimum="5.0.999" Maximum="$(var.odbc_msi_ver)" IncludeMaximum="no" IncludeMinimum="yes" MigrateFeatures="yes" />
       <!-- !!!SetVersion updates: Minimum, Maximum -->
       <UpgradeVersion Property="NEWERPRODUCTFOUND" Minimum="$(var.odbc_ver_long)" Maximum="$(var.odbc_ver_short).999" OnlyDetect="yes" IncludeMinimum="no" />
     </Upgrade>
