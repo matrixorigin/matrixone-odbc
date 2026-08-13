@@ -20,7 +20,7 @@ MatrixOne ODBC 可以继续使用 MySQL 9.7 SDK 作为**构建输入**，但客�
    Driver Manager；现使用安全的 DLL 所在目录搜索并将加载失败设为硬失败。
 
 当前本机进程不是管理员，因此完整 MSI 写 HKLM 生命周期放到
-`windows-2025` 干净管理员 runner 执行；相关 CI 会保存 MSI 日志和 JSON
+`windows-2022` 干净管理员 runner 执行；相关 CI 会保存 MSI 日志和 JSON
 证据。当前结论是：安装包可进入 PR/CI 验证，CI 全绿前不应发布稳定版。
 
 ## 基线与产物

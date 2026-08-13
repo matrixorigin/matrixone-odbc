@@ -27,7 +27,10 @@ env:
 jobs:
   package-lifecycle:
     name: Windows MSI + ZIP lifecycle
-    runs-on: windows-2025
+    # The source currently targets the VS 2022 toolset. Keep the package job on
+    # the corresponding maintained runner instead of silently switching ABI
+    # when windows-latest advances to a newer Visual Studio generation.
+    runs-on: windows-2022
     timeout-minutes: 45
     steps:
       - name: Check out source
