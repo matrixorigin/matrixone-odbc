@@ -84,9 +84,9 @@
 
     <Upgrade Id="$(var.upgrade_code)">
       <!-- !!!SetVersion updates: Minimum, Maximum -->
-      <UpgradeVersion Property="PREVIOUSVERSIONINSTALLED" Minimum="5.0.999" Maximum="$(var.odbc_msi_ver)" IncludeMaximum="no" IncludeMinimum="yes" MigrateFeatures="yes" />
+      <UpgradeVersion Property="PREVIOUSVERSIONINSTALLED" Minimum="5.0.999" Maximum="$(var.odbc_msi_ver)" IncludeMaximum="no" IncludeMinimum="yes" MigrateFeatures="no" />
       <!-- !!!SetVersion updates: Minimum, Maximum -->
-      <UpgradeVersion Property="NEWERPRODUCTFOUND" Minimum="$(var.odbc_ver_long)" Maximum="$(var.odbc_ver_short).999" OnlyDetect="yes" IncludeMinimum="no" />
+      <UpgradeVersion Property="NEWERPRODUCTFOUND" Minimum="$(var.odbc_msi_ver)" Maximum="$(var.odbc_ver_short).999" OnlyDetect="yes" IncludeMinimum="no" />
     </Upgrade>
 
     <!-- Visual Studio Redistributable Check -->
@@ -185,9 +185,9 @@
       <ComponentRef Id="dependencies" />
       <ComponentRef Id="plugins" />
 
-      <Feature Id="PBIExtension" Description="Installs the Power BI data extension with DirectQuery support for MatrixOne. Requires Power BI Desktop application to be installed." Title="Power BI data extension for MatrixOne" Level="10" ConfigurableDirectory="PBIEXINSTALLDIR" Display="expand">
-        <Level Value="1" Condition="PBIEXINSTALLDIR"/>
+      <Feature Id="PBIExtension" Description="Installs the Power BI data extension with DirectQuery support for MatrixOne. Requires Power BI Desktop application to be installed." Title="Power BI data extension for MatrixOne" Level="1" ConfigurableDirectory="PBIEXINSTALLDIR" Display="expand">
         <ComponentRef Id="ComponentPBIExtension" />
+        <ComponentRef Id="ComponentPBIExtensionMicrosoft" />
       </Feature>
 
     <?if $(var.odbc_64bit) = 1 ?>

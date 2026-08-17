@@ -163,11 +163,18 @@ try {
         Assert-True ($productVersion -match '^9\.7\.[1-9][0-9]?$') "Downstream MSI revision missing from ProductVersion: $productVersion"
 
         $installDir = Join-Path $env:ProgramFiles 'Matrix Origin\MatrixOne ODBC install path'
+        $powerBiConnectors = @(
+            (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Power BI Desktop\Custom Connectors\MatrixOne.mez'),
+            (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Microsoft Power BI Desktop\Custom Connectors\MatrixOne.mez')
+        )
         Invoke-Msi $Package "INSTALLDIR=`"$installDir`"" '01-clean-install.log' | Out-Null
         & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
         Assert-True ((Get-DriverPath $driverNames[0]).StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase)) 'Custom INSTALLDIR was ignored.'
         Assert-DriverUsageCount 1
         Assert-True (-not (Get-ChildItem $installDir -Recurse -File -Include *.h,*.hpp,*.lib)) 'MSI install contains SDK headers or import libraries.'
+        foreach ($powerBiConnector in $powerBiConnectors) {
+            Assert-True (Test-Path -LiteralPath $powerBiConnector) "Default MSI install did not deploy MatrixOne.mez to $powerBiConnector."
+        }
         Add-Result 'clean MSI/custom path/no MySQL SDK' PASS "$productVersion $productCode"
 
         Add-OdbcDsn -Name 'MatrixOnePackageTest' -DriverName $driverNames[0] -DsnType System -Platform '64-bit' -SetPropertyValue @("SERVER=$dsnServer", "PORT=$Port")
@@ -211,6 +218,9 @@ try {
         Invoke-Msi $Package 'REMOVE=ALL' '09-uninstall.log' | Out-Null
         Assert-True (-not (Get-OdbcDriver -Platform '64-bit' | Where-Object Name -In $driverNames)) 'Drivers remain after uninstall.'
         Assert-True (-not (Test-Path -LiteralPath $installedRoot)) "Install directory remains after uninstall: $installedRoot"
+        foreach ($powerBiConnector in $powerBiConnectors) {
+            Assert-True (-not (Test-Path -LiteralPath $powerBiConnector)) "Power BI connector remains after uninstall: $powerBiConnector"
+        }
 
         Invoke-Msi $Package '' '10-reinstall.log' | Out-Null
         & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
@@ -218,6 +228,9 @@ try {
         Invoke-Msi $Package 'REMOVE=ALL' '11-final-uninstall.log' | Out-Null
         Assert-True (-not (Get-OdbcDriver -Platform '64-bit' | Where-Object Name -In $driverNames)) 'Drivers remain after the final uninstall.'
         Assert-True (-not (Test-Path -LiteralPath $reinstalledRoot)) "Reinstalled directory remains after uninstall: $reinstalledRoot"
+        foreach ($powerBiConnector in $powerBiConnectors) {
+            Assert-True (-not (Test-Path -LiteralPath $powerBiConnector)) "Power BI connector remains after the final uninstall: $powerBiConnector"
+        }
         Add-Result 'complete uninstall and reinstall' PASS 'files and registry removed twice'
     }
 } finally {

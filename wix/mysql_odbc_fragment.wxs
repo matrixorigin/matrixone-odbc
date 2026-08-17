@@ -149,6 +149,13 @@
             </Component>
           </Directory>
         </Directory>
+        <Directory Id="MicrosoftPowerBIDesktop" Name="Microsoft Power BI Desktop">
+          <Directory Id="PBIMICROSOFTINSTALLDIR" Name="Custom Connectors">
+            <Component Id='ComponentPBIExtensionMicrosoft' Guid='45E6F601-840B-4283-8757-336499F07662'>
+              <File Id="MatrixOneMicrosoft.mez" Name="MatrixOne.mez" DiskId="1" Source="pbi\MatrixOne.mez" />
+            </Component>
+          </Directory>
+        </Directory>
       </StandardDirectory>
 
     </Fragment>
