@@ -100,9 +100,33 @@ function Assert-DriverUsageCount([int]$Expected) {
     }
 }
 
+function Invoke-InstalledDriverTest([switch]$RequireConnection) {
+    # Loading an ODBC driver through System.Data.Odbc keeps the native DLLs in
+    # the PowerShell process.  Package lifecycle tests replace those DLLs on
+    # disk, so run every probe in a fresh process just like a restarted client.
+    $arguments = @(
+        '-NoProfile',
+        '-ExecutionPolicy', 'Bypass',
+        '-File', $testInstalled
+    )
+    if ($RequireConnection) {
+        $arguments += @(
+            '-Server', $Server,
+            '-Port', $Port,
+            '-User', $User,
+            '-Password', $Password,
+            '-RequireConnection'
+        )
+    }
+
+    $powerShell = (Get-Process -Id $PID).Path
+    & $powerShell @arguments
+    Assert-True ($LASTEXITCODE -eq 0) "Installed driver probe failed with exit code $LASTEXITCODE."
+}
+
 function Test-Connection {
     if ([string]::IsNullOrWhiteSpace($Server)) { return }
-    & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection
+    Invoke-InstalledDriverTest -RequireConnection
 }
 
 function Remove-TestDsn {
@@ -137,17 +161,17 @@ try {
             & $installer -d -a -n $name -t "DRIVER=$lib\$($tuple[1]);SETUP=$lib\myodbc9S.dll"
             Assert-True ($LASTEXITCODE -eq 0) "Portable driver registration failed: $name"
         }
-        & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
+        Invoke-InstalledDriverTest -RequireConnection:$connect
         Add-Result 'portable ZIP/custom Unicode path/no SDK' PASS $root
 
         $saved = Join-Path $lib 'libmysql.dll.saved'
         Move-Item -LiteralPath (Join-Path $lib 'libmysql.dll') -Destination $saved
         try {
             $failed = $false
-            try { & $testInstalled } catch { $failed = $true }
+            try { Invoke-InstalledDriverTest } catch { $failed = $true }
             Assert-True $failed 'Connection unexpectedly succeeded without libmysql.dll.'
         } finally { Move-Item -LiteralPath $saved -Destination (Join-Path $lib 'libmysql.dll') }
-        & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
+        Invoke-InstalledDriverTest -RequireConnection:$connect
         Add-Result 'missing bundled runtime fails and recovers' PASS 'libmysql.dll restored'
 
         foreach ($name in $driverNames) {
@@ -168,7 +192,7 @@ try {
             (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'Microsoft Power BI Desktop\Custom Connectors\MatrixOne.mez')
         )
         Invoke-Msi $Package "INSTALLDIR=`"$installDir`"" '01-clean-install.log' | Out-Null
-        & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
+        Invoke-InstalledDriverTest -RequireConnection:$connect
         Assert-True ((Get-DriverPath $driverNames[0]).StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase)) 'Custom INSTALLDIR was ignored.'
         Assert-DriverUsageCount 1
         Assert-True (-not (Get-ChildItem $installDir -Recurse -File -Include *.h,*.hpp,*.lib)) 'MSI install contains SDK headers or import libraries.'
@@ -194,11 +218,12 @@ try {
             Assert-True (@(Get-OdbcDsn -Name 'MatrixOnePackageTest' -DsnType System -Platform '64-bit').Count -eq 1) 'Major upgrade deleted the system DSN.'
             Assert-True ((Get-MsiProperty $Package ProductCode) -ne (Get-MsiProperty $PreviousPackage ProductCode)) 'Upgrade packages share ProductCode.'
             Test-Connection
-            Add-Result 'mo.1 to mo.2 upgrade keeps DSN' PASS 'major upgrade succeeded'
+            $previousVersion = Get-MsiProperty $PreviousPackage ProductVersion
+            Add-Result "$previousVersion to $productVersion upgrade keeps DSN" PASS 'major upgrade succeeded'
 
             $downgradeExitCode = Invoke-Msi $PreviousPackage '' '06-downgrade-blocked.log' -AllowedExitCodes @(1603, 1638)
             Assert-True ($downgradeExitCode -ne 0) 'Downgrade unexpectedly succeeded.'
-            & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
+            Invoke-InstalledDriverTest -RequireConnection:$connect
             Add-Result 'downgrade blocked' PASS "exit $downgradeExitCode"
         }
 
@@ -206,10 +231,10 @@ try {
             Invoke-Msi $OracleMsi '' '07-oracle-side-by-side.log' | Out-Null
             $oracle = @(Get-OdbcDriver -Platform '64-bit' | Where-Object Name -Like 'MySQL ODBC*')
             Assert-True ($oracle.Count -ge 2) 'Oracle MySQL ODBC drivers were not installed.'
-            & $testInstalled
+            Invoke-InstalledDriverTest
             Invoke-Msi $OracleMsi 'REMOVE=ALL' '08-oracle-remove.log' | Out-Null
             Assert-DriverUsageCount 1
-            & $testInstalled
+            Invoke-InstalledDriverTest
             Add-Result 'Oracle MySQL ODBC side by side' PASS "$($oracle.Count) Oracle drivers"
         }
 
@@ -223,7 +248,7 @@ try {
         }
 
         Invoke-Msi $Package '' '10-reinstall.log' | Out-Null
-        & $testInstalled -Server $Server -Port $Port -User $User -Password $Password -RequireConnection:$connect
+        Invoke-InstalledDriverTest -RequireConnection:$connect
         $reinstalledRoot = Split-Path -Parent (Get-DriverPath $driverNames[0])
         Invoke-Msi $Package 'REMOVE=ALL' '11-final-uninstall.log' | Out-Null
         Assert-True (-not (Get-OdbcDriver -Platform '64-bit' | Where-Object Name -In $driverNames)) 'Drivers remain after the final uninstall.'
