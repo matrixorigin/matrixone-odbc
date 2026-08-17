@@ -5,7 +5,7 @@
 Power BI Desktop and an on-premises data gateway must both have:
 
 1. The matching 64-bit `MatrixOne ODBC 9.7 Unicode Driver` installed.
-2. `MatrixOne.mez` copied to the Power BI custom connectors directory.
+2. `MatrixOne.mez` installed in the Power BI custom connectors directory.
 3. The same connector and driver versions when scheduled refresh uses a
    gateway.
 
@@ -16,8 +16,12 @@ unencrypted local deployment while still preferring TLS when the server offers
 it.
 
 The Windows x64 MSI contains the driver, client runtime DLLs, authentication
-plugins, and `MatrixOne.mez`. End users do not need the MySQL SDK or a MySQL
-Server installation. The installer checks for the Visual C++ 2022 x64 runtime.
+plugins, and `MatrixOne.mez`. A default install deploys the connector to both
+`Documents\Power BI Desktop\Custom Connectors` and
+`Documents\Microsoft Power BI Desktop\Custom Connectors`, covering the
+traditional and Microsoft Store Power BI Desktop layouts. End users do not
+need the MySQL SDK or a MySQL Server installation. The installer checks for the
+Visual C++ 2022 x64 runtime.
 
 The preview connector is unsigned. In Power BI Desktop, enable loading of
 unvalidated custom extensions under **Options and settings > Options >
