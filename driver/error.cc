@@ -128,6 +128,8 @@ void myodbc_sqlstate2_init(void)
     myodbc_stpmov(myodbc3_errors[MYERR_42S12].sqlstate,"S0012");
     myodbc_stpmov(myodbc3_errors[MYERR_42S21].sqlstate,"S0021");
     myodbc_stpmov(myodbc3_errors[MYERR_42S22].sqlstate,"S0022");
+    myodbc_stpmov(myodbc3_errors[MYERR_HYT00].sqlstate,"S1T00");
+    myodbc_stpmov(myodbc3_errors[MYERR_HY008].sqlstate,"S1008");
 }
 
 
@@ -207,6 +209,10 @@ void translate_error(char *save_state, myodbc_errid errid, uint mysql_err,
     if (mysql_err == 3024)
     {
         state= myodbc3_errors[MYERR_HYT00].sqlstate;
+    }
+    else if (mysql_err == 1317)
+    {
+        state= myodbc3_errors[MYERR_HY008].sqlstate;
     }
     else if (mysql_err == 1105 && mysql_error_text &&
              strstr(mysql_error_text, "context canceled") != nullptr)
