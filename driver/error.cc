@@ -99,6 +99,7 @@ static MYODBC3_ERR_STR myodbc3_errors[]=
   {"42S22","Column not found", SQL_ERROR},
   {"08S01","Communication link failure", SQL_ERROR},
   {"08004","Server rejected the connection", SQL_ERROR},
+  {"HY008","Operation canceled", SQL_ERROR},
 };
 
 
@@ -196,9 +197,22 @@ SQLRETURN set_desc_error(DESC *        desc,
   @purpose : translates SQL error to ODBC error
 */
 
-void translate_error(char *save_state, myodbc_errid errid, uint mysql_err)
+void translate_error(char *save_state, myodbc_errid errid, uint mysql_err,
+                     const char *mysql_error_text)
 {
     const char *state= myodbc3_errors[errid].sqlstate;
+
+    /* MatrixOne uses the MySQL-compatible timeout code and reports a
+       cross-thread KILL as ER_UNKNOWN_ERROR with "context canceled". */
+    if (mysql_err == 3024)
+    {
+        state= myodbc3_errors[MYERR_HYT00].sqlstate;
+    }
+    else if (mysql_err == 1105 && mysql_error_text &&
+             strstr(mysql_error_text, "context canceled") != nullptr)
+    {
+        state= myodbc3_errors[MYERR_HY008].sqlstate;
+    }
 
     switch (mysql_err)
     {
