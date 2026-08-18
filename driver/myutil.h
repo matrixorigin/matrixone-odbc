@@ -187,7 +187,8 @@ SQLRETURN set_desc_error  (DESC *desc, const char *state,
 SQLRETURN handle_connection_error (STMT *stmt);
 my_bool   is_connection_lost      (uint errcode);
 void      set_mem_error           (MYSQL *mysql);
-void      translate_error         (char *save_state, myodbc_errid errid, uint mysql_err);
+void      translate_error         (char *save_state, myodbc_errid errid, uint mysql_err,
+                                   const char *mysql_error_text = nullptr);
 
 SQLSMALLINT get_sql_data_type_from_str(const char *mysql_type_name);
 SQLSMALLINT compute_sql_data_type(STMT *stmt, SQLSMALLINT sql_type,

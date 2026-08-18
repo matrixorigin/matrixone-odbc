@@ -748,8 +748,7 @@ DECLARE_TEST(t_getkeywordinfo)
 /*
   WL 7991 Implement SQL_ATTR_QUERY_TIMEOUT statement attribute
 
-  TODO: Fix bug 19157465 ODBC Driver returns HY000 SQL status
-        instead of HYT00 on query timeout
+  MatrixOne returns native error 3024 when the timeout is enforced.
 */
 DECLARE_TEST(t_query_timeout)
 {
@@ -794,7 +793,7 @@ DECLARE_TEST(t_query_timeout)
     t2= time(NULL);
 
     /* We check only for SQL_ERROR and SQLSTATE */
-    is(check_sqlstate(hstmt, "HY000") == OK);
+    is(check_sqlstate(hstmt, "HYT00") == OK);
 
     ok_sql(hstmt, "DROP TABLE if exists t_query_timeout1");
 

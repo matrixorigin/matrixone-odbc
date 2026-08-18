@@ -2229,10 +2229,17 @@ void test_query_timeout_known_issue(SQLHDBC dbc) {
           .count();
   const std::string execute_diagnostics =
       rc == SQL_ERROR ? diagnostic_text(SQL_HANDLE_STMT, stmt.handle()) : "";
+  const auto timeout_records =
+      rc == SQL_ERROR ? diagnostics(SQL_HANDLE_STMT, stmt.handle())
+                      : std::vector<Diagnostic>{};
   check(SQLSetStmtAttr(stmt.handle(), SQL_ATTR_QUERY_TIMEOUT,
                        reinterpret_cast<SQLPOINTER>(uintptr_t{0}), 0),
         SQL_HANDLE_STMT, stmt.handle(), "restore SQL_ATTR_QUERY_TIMEOUT");
-  if (rc == SQL_ERROR && seconds >= 0.5 && seconds < 1.8) return;
+  if (rc == SQL_ERROR && seconds >= 0.5 && seconds < 1.8) {
+    expect(!timeout_records.empty() && timeout_records.front().state == "HYT00",
+           "query timeout should report HYT00" + execute_diagnostics);
+    return;
+  }
   if (succeeded(rc) && seconds >= 1.8) {
     throw KnownIssue(
         "matrixorigin/matrixone#26678: max_execution_time is accepted but not "
@@ -2262,7 +2269,9 @@ void test_cancel(const std::string &connection_string) {
   const double seconds =
       std::chrono::duration<double>(std::chrono::steady_clock::now() - start)
           .count();
-  if (!succeeded(cancel_rc) || execute_rc.load() != SQL_ERROR || seconds > 4.0) {
+  const auto cancel_records = diagnostics(SQL_HANDLE_STMT, stmt.handle());
+  if (!succeeded(cancel_rc) || execute_rc.load() != SQL_ERROR || seconds > 4.0 ||
+      cancel_records.empty() || cancel_records.front().state != "HY008") {
     throw Failure("SQLCancel did not interrupt SELECT sleep(5): cancel_rc=" +
                   std::to_string(cancel_rc) + " execute_rc=" +
                   std::to_string(execute_rc.load()) + " elapsed=" +

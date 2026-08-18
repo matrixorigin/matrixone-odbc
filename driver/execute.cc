@@ -147,7 +147,7 @@ SQLRETURN do_query(STMT *stmt, std::string query)
 
       /* For some errors - translating to more appropriate status */
       translate_error((char*)stmt->error.sqlstate.c_str(), MYERR_S1000,
-                      stmt->error.native_error);
+                      stmt->error.native_error, stmt->error.message.c_str());
       goto exit;
     }
 
