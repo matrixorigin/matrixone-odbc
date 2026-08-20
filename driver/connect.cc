@@ -1027,7 +1027,8 @@ SQLRETURN DBC::connect(DataSource *dsrc)
 #endif
       set_error("HY000", mysql_error(mysql), native_error);
 
-      translate_error((char*)error.sqlstate.c_str(), MYERR_S1000, native_error);
+      translate_error((char*)error.sqlstate.c_str(), MYERR_S1000, native_error,
+                      error.message.c_str());
 
       return SQL_ERROR;
     }

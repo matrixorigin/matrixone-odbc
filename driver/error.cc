@@ -219,6 +219,11 @@ void translate_error(char *save_state, myodbc_errid errid, uint mysql_err,
     {
         state= myodbc3_errors[MYERR_HY008].sqlstate;
     }
+    else if (mysql_error_text &&
+             strstr(mysql_error_text, "there is no user") != nullptr)
+    {
+        state= "28000";
+    }
 
     switch (mysql_err)
     {
@@ -234,6 +239,7 @@ void translate_error(char *save_state, myodbc_errid errid, uint mysql_err,
             state= "23000";
             break;
         case ER_NO_DB_ERROR:
+        case ER_BAD_DB_ERROR:
             state= "3D000";
             break;
         case ER_PARSE_ERROR:
