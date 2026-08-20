@@ -2000,36 +2000,37 @@ void test_unknown_charset_metadata(SQLHDBC dbc) {
              diagnostic_text(SQL_HANDLE_STMT, stmt.handle()));
 }
 
-void test_unreachable_connection_sqlstate(
-    const std::string &connection_string) {
+void expect_connection_failure_sqlstate(const std::string &connection_string,
+                                        const std::string &overrides,
+                                        const std::string &expected_state,
+                                        const std::string &label) {
   SQLHENV env = SQL_NULL_HENV;
   SQLHDBC dbc = SQL_NULL_HDBC;
   check(SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &env),
-        SQL_HANDLE_ENV, env, "SQLAllocHandle unreachable ENV");
+        SQL_HANDLE_ENV, env, "SQLAllocHandle " + label + " ENV");
   try {
     check(SQLSetEnvAttr(env, SQL_ATTR_ODBC_VERSION,
                         reinterpret_cast<SQLPOINTER>(SQL_OV_ODBC3), 0),
-          SQL_HANDLE_ENV, env, "SQLSetEnvAttr unreachable ODBC3");
+          SQL_HANDLE_ENV, env, "SQLSetEnvAttr " + label + " ODBC3");
     check(SQLAllocHandle(SQL_HANDLE_DBC, env, &dbc), SQL_HANDLE_ENV, env,
-          "SQLAllocHandle unreachable DBC");
+          "SQLAllocHandle " + label + " DBC");
     check(SQLSetConnectAttr(dbc, SQL_ATTR_LOGIN_TIMEOUT,
                             reinterpret_cast<SQLPOINTER>(uintptr_t{2}), 0),
-          SQL_HANDLE_DBC, dbc, "SQL_ATTR_LOGIN_TIMEOUT unreachable");
+          SQL_HANDLE_DBC, dbc, "SQL_ATTR_LOGIN_TIMEOUT " + label);
 
-    const std::string unreachable =
-        connection_string + ";SERVER=127.0.0.1;PORT=1;LOGIN_TIMEOUT=2";
-    std::vector<SQLWCHAR> connection = widen_ascii(unreachable);
+    const std::string invalid =
+        connection_string + ";" + overrides + ";LOGIN_TIMEOUT=2";
+    std::vector<SQLWCHAR> connection = widen_ascii(invalid);
     SQLWCHAR completed[4096] = {};
     SQLSMALLINT completed_len = 0;
     SQLRETURN rc = SQLDriverConnectW(
         dbc, nullptr, connection.data(), SQL_NTS, completed,
         sizeof(completed) / sizeof(completed[0]), &completed_len,
         SQL_DRIVER_NOPROMPT);
-    expect(rc == SQL_ERROR,
-           "connection to an unused local port should fail");
+    expect(rc == SQL_ERROR, label + " connection should fail");
     const auto records = diagnostics(SQL_HANDLE_DBC, dbc);
-    expect(!records.empty() && records.front().state == "08001",
-           "initial connection failure should report SQLSTATE 08001" +
+    expect(!records.empty() && records.front().state == expected_state,
+           label + " should report SQLSTATE " + expected_state +
                diagnostic_text(SQL_HANDLE_DBC, dbc));
   } catch (...) {
     if (dbc != SQL_NULL_HDBC) SQLFreeHandle(SQL_HANDLE_DBC, dbc);
@@ -2038,6 +2039,22 @@ void test_unreachable_connection_sqlstate(
   }
   SQLFreeHandle(SQL_HANDLE_DBC, dbc);
   SQLFreeHandle(SQL_HANDLE_ENV, env);
+}
+
+void test_unreachable_connection_sqlstate(
+    const std::string &connection_string) {
+  expect_connection_failure_sqlstate(
+      connection_string, "SERVER=127.0.0.1;PORT=1", "08001",
+      "unreachable server");
+}
+
+void test_login_connection_sqlstates(const std::string &connection_string) {
+  expect_connection_failure_sqlstate(
+      connection_string, "UID=no_such_user_odbc_sqlstate", "28000",
+      "unknown user");
+  expect_connection_failure_sqlstate(
+      connection_string, "DATABASE=no_such_database_odbc_sqlstate", "3D000",
+      "unknown database");
 }
 
 void test_concurrent_connections(const std::string &connection_string) {
@@ -2359,6 +2376,8 @@ int main() {
          [&] { test_unknown_charset_metadata(db.handle()); }},
         {"unreachable connection SQLSTATE",
          [&] { test_unreachable_connection_sqlstate(connection_string); }},
+        {"login connection SQLSTATEs",
+         [&] { test_login_connection_sqlstates(connection_string); }},
         {"concurrent connections",
          [&] { test_concurrent_connections(connection_string); }},
         {"PREFETCH query rewrite",
