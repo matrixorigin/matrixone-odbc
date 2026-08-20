@@ -1622,6 +1622,9 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
   MYSQL *mysql= stmt->dbc->mysql;
   char tmpbuff[1024]; /* This should be big enough. */
   const char *update_rule, *delete_rule, *ref_constraints_join;
+  const bool is_matrixone =
+    mysql->server_version != nullptr &&
+    strstr(mysql->server_version, "MatrixOne") != nullptr;
   SQLRETURN rc;
   std::string query, pk_db, fk_db, order_by;
   query.reserve(4096);
@@ -1691,12 +1694,22 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
                 "A.CONSTRAINT_NAME AS FK_NAME,"
                 "'PRIMARY' AS PK_NAME,"
                 "7 AS DEFERRABILITY"
-                " FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE A"
-                " JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE D"
-                " ON (D.TABLE_SCHEMA=A.REFERENCED_TABLE_SCHEMA AND D.TABLE_NAME=A.REFERENCED_TABLE_NAME"
-                " AND D.COLUMN_NAME=A.REFERENCED_COLUMN_NAME)");
-  query.append(ref_constraints_join).append(" WHERE D.CONSTRAINT_NAME");
-  query.append(" IS NOT NULL ");
+                " FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE A");
+  if (!is_matrixone)
+  {
+    /* MySQL bug #51422 can expose non-key referenced columns, so retain the
+       historical self-join there. MatrixOne does not expose primary-key rows
+       in KEY_COLUMN_USAGE; its foreign-key rows already identify both sides. */
+    query.append(" JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE D"
+                 " ON (D.TABLE_SCHEMA=A.REFERENCED_TABLE_SCHEMA AND D.TABLE_NAME=A.REFERENCED_TABLE_NAME"
+                 " AND D.COLUMN_NAME=A.REFERENCED_COLUMN_NAME)");
+  }
+  query.append(ref_constraints_join);
+  if (is_matrixone)
+    query.append(" WHERE A.REFERENCED_TABLE_NAME IS NOT NULL"
+                 " AND A.REFERENCED_COLUMN_NAME IS NOT NULL ");
+  else
+    query.append(" WHERE D.CONSTRAINT_NAME IS NOT NULL ");
 
   if (pk_table && pk_table[0])
   {
@@ -1751,6 +1764,7 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
   }
 
   query.append(order_by);
+  MYLOG_QUERY(stmt, query.c_str());
   rc= MySQLPrepare(hstmt, (SQLCHAR *)query.c_str(), (SQLINTEGER)(query.length()),
                    true, false);
 

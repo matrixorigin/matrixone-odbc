@@ -299,6 +299,14 @@ INSERT INTO mo_odbc_deep.type_matrix VALUES
                "FROM mo_odbc_deep.type_matrix");
   execute(dbc, "CREATE TABLE mo_odbc_deep.meta_under_score (id INT)");
   execute(dbc, "CREATE TABLE mo_odbc_deep.metaXunderXscore (id INT)");
+  execute(dbc, "CREATE TABLE mo_odbc_deep.fk_parent (id INT PRIMARY KEY)");
+  execute(dbc, R"SQL(
+CREATE TABLE mo_odbc_deep.fk_child (
+  id INT PRIMARY KEY,
+  parent_id INT,
+  CONSTRAINT fk_deep_parent FOREIGN KEY (parent_id)
+    REFERENCES mo_odbc_deep.fk_parent(id)
+))SQL");
   execute(dbc, R"SQL(
 CREATE TABLE mo_odbc_deep.param_values (
   id BIGINT PRIMARY KEY,
@@ -346,7 +354,8 @@ void test_connection_capabilities(SQLHDBC dbc) {
   for (SQLUSMALLINT api : {SQL_API_SQLBINDPARAMETER, SQL_API_SQLDESCRIBEPARAM,
                            SQL_API_SQLNUMPARAMS, SQL_API_SQLTABLES,
                            SQL_API_SQLCOLUMNS, SQL_API_SQLPRIMARYKEYS,
-                           SQL_API_SQLSTATISTICS, SQL_API_SQLGETTYPEINFO}) {
+                           SQL_API_SQLFOREIGNKEYS, SQL_API_SQLSTATISTICS,
+                           SQL_API_SQLGETTYPEINFO}) {
     SQLUSMALLINT supported = SQL_FALSE;
     check(SQLGetFunctions(dbc, api, &supported), SQL_HANDLE_DBC, dbc,
           "SQLGetFunctions " + std::to_string(api));
@@ -544,6 +553,44 @@ void test_catalog_metadata(SQLHDBC dbc) {
            "SQLPrimaryKeys did not report id");
     expect(SQLFetch(stmt.handle()) == SQL_NO_DATA,
            "SQLPrimaryKeys returned more than one key column");
+  }
+  {
+    Statement stmt(dbc);
+    SQLCHAR catalog[] = "mo_odbc_deep";
+    SQLCHAR table[] = "fk_child";
+    check(SQLForeignKeys(stmt.handle(), nullptr, 0, nullptr, 0, nullptr, 0,
+                         catalog, SQL_NTS, nullptr, 0, table, SQL_NTS),
+          SQL_HANDLE_STMT, stmt.handle(), "SQLForeignKeys");
+    check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+          "SQLForeignKeys fetch");
+
+    auto get_text = [&](SQLUSMALLINT column) {
+      SQLCHAR value[256] = {};
+      SQLLEN length = 0;
+      check(SQLGetData(stmt.handle(), column, SQL_C_CHAR, value, sizeof(value),
+                       &length),
+            SQL_HANDLE_STMT, stmt.handle(),
+            "SQLForeignKeys column " + std::to_string(column));
+      return std::string(reinterpret_cast<const char *>(value));
+    };
+    SQLSMALLINT key_seq = 0;
+    SQLLEN key_seq_length = 0;
+    expect(get_text(3) == "fk_parent",
+           "SQLForeignKeys reported the wrong primary-key table");
+    expect(get_text(4) == "id",
+           "SQLForeignKeys reported the wrong primary-key column");
+    expect(get_text(7) == "fk_child",
+           "SQLForeignKeys reported the wrong foreign-key table");
+    expect(get_text(8) == "parent_id",
+           "SQLForeignKeys reported the wrong foreign-key column");
+    check(SQLGetData(stmt.handle(), 9, SQL_C_SSHORT, &key_seq,
+                     sizeof(key_seq), &key_seq_length),
+          SQL_HANDLE_STMT, stmt.handle(), "SQLForeignKeys KEY_SEQ");
+    expect(key_seq == 1, "SQLForeignKeys KEY_SEQ should be 1");
+    expect(get_text(12) == "fk_deep_parent",
+           "SQLForeignKeys reported the wrong foreign-key name");
+    expect(SQLFetch(stmt.handle()) == SQL_NO_DATA,
+           "SQLForeignKeys returned more than one key column");
   }
   {
     Statement stmt(dbc);
