@@ -561,7 +561,18 @@ void test_catalog_metadata(SQLHDBC dbc) {
     check(SQLForeignKeys(stmt.handle(), nullptr, 0, nullptr, 0, nullptr, 0,
                          catalog, SQL_NTS, nullptr, 0, table, SQL_NTS),
           SQL_HANDLE_STMT, stmt.handle(), "SQLForeignKeys");
-    check(SQLFetch(stmt.handle()), SQL_HANDLE_STMT, stmt.handle(),
+    SQLRETURN foreign_key_fetch = SQLFetch(stmt.handle());
+    if (foreign_key_fetch == SQL_NO_DATA &&
+        scalar_int(
+            dbc,
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE "
+            "WHERE TABLE_SCHEMA='mo_odbc_deep' AND TABLE_NAME='fk_child' "
+            "AND REFERENCED_TABLE_NAME IS NOT NULL") == 0) {
+      throw KnownIssue(
+          "older MatrixOne releases do not expose foreign-key rows through "
+          "INFORMATION_SCHEMA.KEY_COLUMN_USAGE; matrixorigin/matrixone#25103");
+    }
+    check(foreign_key_fetch, SQL_HANDLE_STMT, stmt.handle(),
           "SQLForeignKeys fetch");
 
     auto get_text = [&](SQLUSMALLINT column) {
