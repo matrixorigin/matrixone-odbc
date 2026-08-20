@@ -1069,8 +1069,8 @@ const char *SQL_GET_TYPE_INFO_values[][19] =
   { "year",sql_smallint,"4","'","'",NULL,sql_nullable,"0",sql_searchable,"0","0","0","year",NULL,NULL,sql_smallint,NULL,"10",NULL },
 
   /* SQL_TYPE_TIMESTAMP= 93 */
-  { "datetime",sql_timestamp,"21","'","'",NULL,sql_nullable,"0",sql_searchable,NULL,"0",NULL,"datetime","0","0",sql_datetime,sql_timestamp,NULL,NULL },
-  { "timestamp",sql_timestamp,"14","'","'",NULL,sql_no_nulls,"0",sql_searchable,NULL,"0",NULL,"timestamp","0","0",sql_datetime,sql_timestamp,NULL,NULL },
+  { "datetime",sql_timestamp,"26","'","'",NULL,sql_nullable,"0",sql_searchable,NULL,"0",NULL,"datetime","0","6",sql_datetime,sql_timestamp,NULL,NULL },
+  { "timestamp",sql_timestamp,"26","'","'",NULL,sql_no_nulls,"0",sql_searchable,NULL,"0",NULL,"timestamp","0","6",sql_datetime,sql_timestamp,NULL,NULL },
 
   /* SQL_VARCHAR= 12 */
   { "varchar",sql_varchar,"255","'","'","length",sql_nullable,"0",sql_searchable,NULL,"0",NULL,"varchar","0","0",sql_varchar,NULL,"10",NULL },

@@ -379,6 +379,64 @@ void test_connection_capabilities(SQLHDBC dbc) {
          "SQLGetTypeInfo returned too few rows: " +
              std::to_string(type_count));
 
+  // Clients such as pyodbc derive the fractional-second precision used for
+  // Python datetime parameters from SQLGetTypeInfo's COLUMN_SIZE.  MatrixOne
+  // supports DATETIME(6) and TIMESTAMP(6), whose full display width is 26.
+  Statement timestamp_info(dbc);
+  check(SQLGetTypeInfo(timestamp_info.handle(), SQL_TYPE_TIMESTAMP),
+        SQL_HANDLE_STMT, timestamp_info.handle(),
+        "SQLGetTypeInfo SQL_TYPE_TIMESTAMP");
+  bool found_datetime = false;
+  bool found_timestamp = false;
+  SQLRETURN timestamp_fetch;
+  while (succeeded(timestamp_fetch = SQLFetch(timestamp_info.handle()))) {
+    SQLCHAR type_name[64] = {};
+    SQLUINTEGER column_size = 0;
+    SQLSMALLINT minimum_scale = 0;
+    SQLSMALLINT maximum_scale = 0;
+    SQLLEN type_name_length = 0;
+    SQLLEN column_size_length = 0;
+    SQLLEN minimum_scale_length = 0;
+    SQLLEN maximum_scale_length = 0;
+    check(SQLGetData(timestamp_info.handle(), 1, SQL_C_CHAR, type_name,
+                     sizeof(type_name), &type_name_length),
+          SQL_HANDLE_STMT, timestamp_info.handle(),
+          "SQLGetTypeInfo TYPE_NAME");
+    check(SQLGetData(timestamp_info.handle(), 3, SQL_C_ULONG, &column_size,
+                     sizeof(column_size), &column_size_length),
+          SQL_HANDLE_STMT, timestamp_info.handle(),
+          "SQLGetTypeInfo COLUMN_SIZE");
+    check(SQLGetData(timestamp_info.handle(), 14, SQL_C_SSHORT,
+                     &minimum_scale, sizeof(minimum_scale),
+                     &minimum_scale_length),
+          SQL_HANDLE_STMT, timestamp_info.handle(),
+          "SQLGetTypeInfo MINIMUM_SCALE");
+    check(SQLGetData(timestamp_info.handle(), 15, SQL_C_SSHORT,
+                     &maximum_scale, sizeof(maximum_scale),
+                     &maximum_scale_length),
+          SQL_HANDLE_STMT, timestamp_info.handle(),
+          "SQLGetTypeInfo MAXIMUM_SCALE");
+    const std::string name(reinterpret_cast<const char *>(type_name));
+    if (name == "datetime" || name == "timestamp") {
+      expect(column_size_length != SQL_NULL_DATA && column_size == 26,
+             name + " COLUMN_SIZE should be 26, got " +
+                 std::to_string(column_size));
+      expect(minimum_scale_length != SQL_NULL_DATA && minimum_scale == 0,
+             name + " MINIMUM_SCALE should be 0");
+      expect(maximum_scale_length != SQL_NULL_DATA && maximum_scale == 6,
+             name + " MAXIMUM_SCALE should be 6, got " +
+                 std::to_string(maximum_scale));
+      found_datetime = found_datetime || name == "datetime";
+      found_timestamp = found_timestamp || name == "timestamp";
+    }
+  }
+  if (timestamp_fetch != SQL_NO_DATA) {
+    check(timestamp_fetch, SQL_HANDLE_STMT, timestamp_info.handle(),
+          "SQLGetTypeInfo SQL_TYPE_TIMESTAMP fetch");
+  }
+  expect(found_datetime, "SQLGetTypeInfo did not return datetime");
+  expect(found_timestamp, "SQLGetTypeInfo did not return timestamp");
+
   std::cout << "# DBMS=" << dbms_name << " version=" << dbms_version
             << " driver=" << driver_name << " driver_version="
             << driver_version << std::endl;
