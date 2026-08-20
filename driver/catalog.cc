@@ -1638,7 +1638,14 @@ SQLRETURN foreign_keys_i_s(SQLHSTMT hstmt,
   /*
      With 5.1, we can use REFERENTIAL_CONSTRAINTS to get even more info.
   */
-  if (is_minimum_version(mysql->server_version, "5.1"))
+  if (is_matrixone)
+  {
+    /* MatrixOne currently supports NO ACTION semantics and older releases do
+       not consistently expose REFERENTIAL_CONSTRAINTS. */
+    update_rule= delete_rule= "3";
+    ref_constraints_join= "";
+  }
+  else if (is_minimum_version(mysql->server_version, "5.1"))
   {
     update_rule= "CASE"
                  " WHEN R.UPDATE_RULE = 'CASCADE' THEN 0"
