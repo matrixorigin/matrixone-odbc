@@ -400,6 +400,21 @@ int add_driver(Driver *driver, const SQLWCHAR *attrs)
     return 1;
   }
 
+  /*
+    Some Windows Driver Manager versions can return TRUE from
+    SQLInstallDriverExW() to a non-elevated caller even though the system
+    registration was not persisted. Do not report success until the driver is
+    observable through the same installer profile APIs used by list/lookup.
+  */
+  if (driver->lookup() != 0)
+  {
+    fprintf(stderr,
+            "[ERROR] Driver Manager reported success, but the driver "
+            "registration could not be verified\n");
+    print_installer_error();
+    return 1;
+  }
+
   printf("Success: Usage count is %lu\n", (long unsigned)usage_count);
 
   return 0;
