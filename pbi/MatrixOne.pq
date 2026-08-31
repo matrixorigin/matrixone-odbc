@@ -237,11 +237,17 @@ let
   ]
   else [],
 
+  SQLGetFunctions =
+  if Config_UseParameterBindings = false
+  then [SQL_API_SQLBINDPARAMETER = false]
+  else [],
+
   SqlCapabilities = LogMsg("SqlCapabilities_Options: #{0}",
   [
-    // LimitOffset also requires OFFSET without LIMIT, which MatrixOne does not
-    // support yet (matrixorigin/matrixone#26769).
-    LimitClauseKind = LimitClauseKind.Limit,
+    // MatrixOne now supports LIMIT, LIMIT ... OFFSET, and standalone OFFSET
+    // (matrixorigin/matrixone#26769), so Power Query can fold both Table.Skip
+    // and combined Skip/Take operations instead of fetching skipped rows.
+    LimitClauseKind = LimitClauseKind.LimitOffset,
     SupportsTop = false,
     GroupByCapabilities = ODBC[SQL_GB][SQL_GB_NO_RELATION],
     FractionalSecondsScale = 3
@@ -258,6 +264,25 @@ let
     SQL_CONVERT_DECIMAL = 0,
     SQL_CONVERT_NUMERIC = 0
   ]),
+
+  // Keep the connector's existing literal mode while complex prepared
+  // aggregation/pagination is not yet reliable (matrixorigin/matrixone#27907).
+  // Power Query has no built-in SQL literal capability flag for logical values,
+  // so teach its SQL generator how to inline BOOL/SQL_BIT constants. Without
+  // this hook, filters such as Table.SelectRows(..., each [active] = true)
+  // cannot fold.
+  AstVisitor =
+  [
+    Constant = (typeInfo, ast) =>
+    let
+      typeName = Text.Lower(Text.From(Record.FieldOrDefault(typeInfo, "TYPE_NAME", ""))),
+      value = Record.FieldOrDefault(ast, "Value", null)
+    in
+      if List.Contains({"bit", "bool", "boolean"}, typeName)
+        and Value.Is(value, type logical)
+      then [Text = if value then "TRUE" else "FALSE"]
+      else null
+  ],
 
   OdbcDataSource = Odbc.DataSource(ConnectionOpts[Options],
   [
@@ -282,6 +307,8 @@ let
 
       SqlCapabilities = SqlCapabilities,
       SQLGetInfo = SQLGetInfo,
+      SQLGetFunctions = SQLGetFunctions,
+      AstVisitor = AstVisitor,
 
       // Hooks
 
@@ -431,6 +458,14 @@ let
     "float" = ty_name_lc
   then
     [ TYPE_NAME = "double", DATA_TYPE = ODBC[SQL_TYPE][DOUBLE] ]
+
+  else if
+    "bit" = ty_name_lc and ty_id = ODBC[SQL_TYPE][BIT]
+  then
+    // SQLColumns reports MatrixOne's native BOOL name, while SQLGetTypeInfo
+    // exposes the corresponding ODBC SQL_BIT row as "bit". Preserve the
+    // native column name and expose the same logical type through both paths.
+    [ TYPE_NAME = "bool" ]
 
   else
     null
