@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 99)]
-    [int]$PackageRevision = 2,
+    [int]$PackageRevision = 4,
     [ValidateSet('Release', 'RelWithDebInfo')]
     [string]$Configuration = 'RelWithDebInfo',
     [Parameter(Mandatory)]

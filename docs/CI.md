@@ -28,8 +28,11 @@ and blocks force pushes and deletion. Keep `pull_request` rather than
 `pull_request_target`: CI builds contributor code and must not receive write
 permissions or repository secrets.
 
-## Deliberate next step
+## Windows package gate
 
-This first gate does not claim Windows coverage. Add a Windows driver/MSI job
-after the MySQL client SDK and WiX toolchain are pinned and the resulting MSI
-has been tested for side-by-side install and uninstall with Oracle MySQL ODBC.
+`.github/workflows/windows-package.yml` builds the pinned Windows x64 MSI and
+portable ZIP, rejects SDK files in runtime packages, and verifies clean install,
+repair, upgrade from the previous published MatrixOne ODBC release, downgrade
+blocking, DSN preservation, Oracle MySQL ODBC coexistence, dependency failure
+recovery, uninstall, and reinstall. The release revision and previous-package
+hash must be advanced together for every release candidate.

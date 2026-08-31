@@ -19,8 +19,8 @@ env:
   MYSQL_MD5: 8778341c62eb2ab1a95b1f22bee70f9e
   ORACLE_ODBC_MSI: mysql-connector-odbc-9.7.0-winx64.msi
   ORACLE_ODBC_MD5: 6339a03e5b5ae2d9b1a7c5a94bbd6b87
-  PREVIOUS_MSI: matrixone-odbc-9.7.0-mo.1-winx64.msi
-  PREVIOUS_MSI_SHA256: 14ca707c458f64aacf1df77e8750225d414fa665dc9dbddbe7db63a035f8c4cf
+  PREVIOUS_MSI: matrixone-odbc-9.7.0-mo.3-winx64.msi
+  PREVIOUS_MSI_SHA256: 203c0ba7866333a9f1094dcbd960f48e8e77082267fa1e56706a482af23d3543
   WIX_MSI: wix-cli-x64.msi
   WIX_SHA256: 097383b2773bdd3d76a6a2cd3f4de6357bae59172e1b6fa5ad87ce062074e8d0
 
@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/downloads
-          key: windows-inputs-mysql-9.7.1-wix-5.0.2-odbc-9.7.0-mo1
+          key: windows-inputs-mysql-9.7.1-wix-5.0.2-odbc-9.7.0-mo3
 
       - name: Download and verify pinned build inputs
         shell: pwsh
@@ -69,7 +69,7 @@ jobs:
             },
             @{
               Name = $env:PREVIOUS_MSI
-              Url = "https://github.com/matrixorigin/matrixone-odbc/releases/download/v9.7.0-mo.1/$env:PREVIOUS_MSI"
+              Url = "https://github.com/matrixorigin/matrixone-odbc/releases/download/v9.7.0-mo.3/$env:PREVIOUS_MSI"
               Algorithm = 'SHA256'
               Expected = $env:PREVIOUS_MSI_SHA256
             }
@@ -117,20 +117,20 @@ jobs:
             Select-Object -First 1 -ExpandProperty DirectoryName
           "WIX_DIR=$wix" >> $env:GITHUB_ENV
 
-      - name: Build mo.2 current package
+      - name: Build mo.4 current package
         shell: pwsh
         run: |
           ./scripts/build-windows-packages.ps1 `
-            -PackageRevision 2 `
+            -PackageRevision 4 `
             -MySqlDir $env:MYSQL_DIR `
             -WixDir $env:WIX_DIR `
-            -BuildDirectory (Join-Path $env:RUNNER_TEMP 'build-mo2') `
-            -OutputDirectory (Join-Path $env:RUNNER_TEMP 'packages-mo2')
+            -BuildDirectory (Join-Path $env:RUNNER_TEMP 'build-mo4') `
+            -OutputDirectory (Join-Path $env:RUNNER_TEMP 'packages-mo4')
 
       - name: Prove the runtime package contains no SDK
         shell: pwsh
         run: |
-          $zip = Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.zip'
+          $zip = Join-Path $env:RUNNER_TEMP 'packages-mo4\matrixone-odbc-9.7.0-mo.4-winx64.zip'
           $inspect = Join-Path $env:RUNNER_TEMP 'inspect-runtime'
           Expand-Archive $zip $inspect
           $sdk = @(Get-ChildItem $inspect -Recurse -File -Include *.h,*.hpp,*.lib)
@@ -148,7 +148,7 @@ jobs:
           }
           ./test/windows/Test-WindowsPackage.ps1 `
             -Mode MsiLifecycle `
-            -Package (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.msi') `
+            -Package (Join-Path $env:RUNNER_TEMP 'packages-mo4\matrixone-odbc-9.7.0-mo.4-winx64.msi') `
             -PreviousPackage (Join-Path $env:RUNNER_TEMP "downloads\$env:PREVIOUS_MSI") `
             -OracleMsi (Join-Path $env:RUNNER_TEMP "downloads\$env:ORACLE_ODBC_MSI") `
             -Artifacts (Join-Path $env:RUNNER_TEMP 'lifecycle-msi')
@@ -159,9 +159,9 @@ jobs:
         run: |
           ./test/windows/Test-WindowsPackage.ps1 `
             -Mode PortableZip `
-            -Package (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.zip') `
+            -Package (Join-Path $env:RUNNER_TEMP 'packages-mo4\matrixone-odbc-9.7.0-mo.4-winx64.zip') `
             -CleanupMsi @(
-              (Join-Path $env:RUNNER_TEMP 'packages-mo2\matrixone-odbc-9.7.0-mo.2-winx64.msi'),
+              (Join-Path $env:RUNNER_TEMP 'packages-mo4\matrixone-odbc-9.7.0-mo.4-winx64.msi'),
               (Join-Path $env:RUNNER_TEMP "downloads\$env:PREVIOUS_MSI")
             ) `
             -Artifacts (Join-Path $env:RUNNER_TEMP 'lifecycle-zip')
@@ -174,7 +174,7 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
           path: |
-            ${{ runner.temp }}/packages-mo2/*
+            ${{ runner.temp }}/packages-mo4/*
             ${{ runner.temp }}/lifecycle-msi/*
             ${{ runner.temp }}/lifecycle-zip/*
             ${{ runner.temp }}/wix-admin.log
