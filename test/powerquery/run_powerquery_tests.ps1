@@ -34,7 +34,7 @@ if ($LASTEXITCODE -ne 0 -or $actualCommit -ne $expectedCommit) {
 $connectorConfig = Join-Path $testsDir 'ConnectorConfigs\MatrixOne'
 $settingsDir = Join-Path $connectorConfig 'Settings'
 $parameterDir = Join-Path $connectorConfig 'ParameterQueries'
-$diagnosticsDir = Join-Path $testsDir 'Diagnostics\MatrixOne'
+$diagnosticsDir = $null
 New-Item -ItemType Directory -Force -Path $settingsDir, $parameterDir | Out-Null
 
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'SanitySettings.json') `
@@ -47,7 +47,14 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'MatrixOne.parameterquery.pq') `
 Push-Location $testsDir
 try {
     if ($FailOnFoldingFailure) {
-        New-Item -ItemType Directory -Force -Path $diagnosticsDir | Out-Null
+        # PQTest treats existing .diagnostics files as golden command text.
+        # Reusing the functional-test output makes strict folding report false
+        # failures whenever the current folded SQL differs from a previous run.
+        # Give every strict invocation an empty, private diagnostics directory.
+        $diagnosticsDir = Join-Path ([System.IO.Path]::GetTempPath()) (
+            'matrixone-powerquery-diagnostics-{0}-{1}' -f $PID,
+            [Guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $diagnosticsDir | Out-Null
         $failed = 0
         foreach ($settings in 'SanitySettings.json', 'StandardSettings.json') {
             $settingsPath = Join-Path $settingsDir $settings
@@ -99,4 +106,8 @@ try {
     }
 } finally {
     Pop-Location
+    if ($null -ne $diagnosticsDir -and
+        (Test-Path -LiteralPath $diagnosticsDir)) {
+        Remove-Item -LiteralPath $diagnosticsDir -Recurse -Force
+    }
 }

@@ -1169,7 +1169,7 @@ LIMIT ? OFFSET ?)SQL";
          "DirectQuery-shaped LIMIT returned more than one row");
 }
 
-void test_offset_without_limit_known_issue(SQLHDBC dbc) {
+void test_offset_without_limit(SQLHDBC dbc) {
   Statement stmt(dbc);
   const std::string sql =
       "SELECT id FROM mo_odbc_deep.pbi_sales ORDER BY id OFFSET ?";
@@ -2454,7 +2454,7 @@ int main() {
         {"Power BI DirectQuery SQL shape",
          [&] { test_directquery_shape(db.handle()); }},
         {"offset without limit",
-         [&] { test_offset_without_limit_known_issue(db.handle()); }},
+         [&] { test_offset_without_limit(db.handle()); }},
         {"VARBINARY wide conversion",
          [&] { test_varbinary_wide_conversion(db.handle()); }},
         {"unquoted Unicode identifier",
