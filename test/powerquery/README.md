@@ -40,7 +40,22 @@ so the test does not depend on where either repository was cloned:
 
 Use `-FailOnFoldingFailure` for the stricter DirectQuery run. It treats every
 query that cannot be completely folded as a failure and writes diagnostic
-traces under the framework's `Diagnostics\MatrixOne` directory. The functional
+traces into a fresh temporary directory for each invocation. The functional
 run and the strict folding run should be reported separately because an
 expression can return the correct value after local Power Query evaluation
 without satisfying DirectQuery folding requirements.
+
+### Boolean slicer regression
+
+After loading the same public fixture, run `BooleanSlicer.query.pq` with
+`PQTest.exe run-test -p -e <MatrixOne.mez> -q <query> --failOnFoldingFailure`.
+It must fold boolean-to-Int64 conversion, distinct, sorting, and LIMIT 501,
+returning null/0/1 for the pinned fixture. This catches the conversion needed
+by Power BI DirectQuery boolean slicers. Also rerun the standard DecimalFrom
+and Precision.Decimal tests: globally advertising CAST fixes the slicer but
+can silently truncate fractions through MO's unqualified DECIMAL type.
+
+Desktop acceptance remains separate: restart Power BI after replacing the
+MEZ, use a DirectQuery table containing TRUE/FALSE/NULL, and verify each
+slicer selection filters a dependent aggregate correctly. SDK folding alone
+is not evidence that a Desktop visual works.
