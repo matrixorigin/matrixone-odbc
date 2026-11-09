@@ -138,6 +138,18 @@ jobs:
           $runtime = Get-ChildItem $inspect -Recurse -File -Filter libmysql.dll
           if (@($runtime).Count -ne 1) { throw 'Runtime ZIP must contain exactly one bundled libmysql.dll.' }
 
+      - name: Test signing fail-closed guards without a signing key
+        shell: pwsh
+        run: |
+          $inspect = Join-Path $env:RUNNER_TEMP 'inspect-runtime'
+          $unsigned = Get-ChildItem $inspect -Recurse -File -Filter myodbc9w.dll | Select-Object -First 1
+          $signed = Get-ChildItem $inspect -Recurse -File -Filter libmysql.dll | Select-Object -First 1
+          $tool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -File -Filter signtool.exe |
+            Where-Object FullName -Match '\\x64\\signtool.exe$' | Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $unsigned -or -not $signed -or -not $tool) { throw 'Signing guard test inputs missing.' }
+          ./test/windows/Test-SigningGuards.ps1 -SignToolPath $tool.FullName `
+            -UnsignedFile $unsigned.FullName -SignedFile $signed.FullName
+
       - name: Test MSI install, repair, upgrade, downgrade, coexistence, and uninstall
         shell: pwsh
         run: |

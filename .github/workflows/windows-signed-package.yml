@@ -1,0 +1,55 @@
+name: Windows signed release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: New package revision (never overwrite an existing release)
+        required: true
+        default: '5'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-signing
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/main'
+    # Dedicated runner: never attach this label/key to untrusted PR jobs.
+    runs-on: [self-hosted, Windows, X64, matrixone-release-signing]
+    environment: windows-release-signing
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and sign approved main source
+        shell: pwsh
+        env:
+          REVISION: ${{ inputs.revision }}
+          MYSQL_DIR: ${{ vars.MYSQL_DIR }}
+          WIX_DIR: ${{ vars.WIX_DIR }}
+          SIGNTOOL_PATH: ${{ vars.SIGNTOOL_PATH }}
+          CERT_THUMBPRINT: ${{ vars.CERT_THUMBPRINT }}
+          CERT_STORE: ${{ vars.CERT_STORE }}
+          TIMESTAMP_URL: ${{ vars.TIMESTAMP_URL }}
+        run: |
+          if ($env:REVISION -notmatch '^[1-9][0-9]?$') { throw 'Invalid package revision.' }
+          $build = Join-Path $env:RUNNER_TEMP "mo-sign-build-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $output = Join-Path $env:RUNNER_TEMP "mo-sign-output-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          ./scripts/build-windows-packages.ps1 -PackageRevision ([int]$env:REVISION) `
+            -MySqlDir $env:MYSQL_DIR -WixDir $env:WIX_DIR `
+            -BuildDirectory $build -OutputDirectory $output -RequireSigning `
+            -SignToolPath $env:SIGNTOOL_PATH -CertificateThumbprint $env:CERT_THUMBPRINT `
+            -CertificateStore $env:CERT_STORE -TimestampUrl $env:TIMESTAMP_URL
+          "SIGNED_OUTPUT=$output" >> $env:GITHUB_ENV
+      - name: Upload verified candidates (not a public release)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: matrixone-odbc-signed-candidate
+          path: ${{ env.SIGNED_OUTPUT }}/*
+          if-no-files-found: error
+          retention-days: 14
