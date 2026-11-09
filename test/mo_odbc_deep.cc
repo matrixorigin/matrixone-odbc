@@ -318,8 +318,10 @@ CREATE TABLE mo_odbc_deep.param_values (
 ))SQL");
   execute(dbc, "CREATE TABLE mo_odbc_deep.tx_values (id INT PRIMARY KEY, "
                "value VARCHAR(64))");
+  // The streaming test sends 1 MiB. TEXT only permits 65,535 bytes;
+  // use MEDIUMTEXT so this exercises ODBC streaming, not SQL type overflow.
   execute(dbc, "CREATE TABLE mo_odbc_deep.long_values (id INT PRIMARY KEY, "
-               "payload TEXT, binary_payload BLOB)");
+               "payload MEDIUMTEXT, binary_payload BLOB)");
   execute(dbc, R"SQL(
 CREATE TABLE mo_odbc_deep.pbi_sales (
   id INT PRIMARY KEY,
@@ -1169,7 +1171,7 @@ LIMIT ? OFFSET ?)SQL";
          "DirectQuery-shaped LIMIT returned more than one row");
 }
 
-void test_offset_without_limit_known_issue(SQLHDBC dbc) {
+void test_offset_without_limit(SQLHDBC dbc) {
   Statement stmt(dbc);
   const std::string sql =
       "SELECT id FROM mo_odbc_deep.pbi_sales ORDER BY id OFFSET ?";
@@ -2454,7 +2456,7 @@ int main() {
         {"Power BI DirectQuery SQL shape",
          [&] { test_directquery_shape(db.handle()); }},
         {"offset without limit",
-         [&] { test_offset_without_limit_known_issue(db.handle()); }},
+         [&] { test_offset_without_limit(db.handle()); }},
         {"VARBINARY wide conversion",
          [&] { test_varbinary_wide_conversion(db.handle()); }},
         {"unquoted Unicode identifier",

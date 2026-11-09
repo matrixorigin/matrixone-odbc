@@ -1,12 +1,13 @@
 # Compatibility snapshot
 
-Tested on 2026-08-12 with:
+Latest Power BI-focused regression tested on 2026-08-31 with:
 
-- MatrixOne `8.0.30-MatrixOne-v` at `9a7c98b8f3aa07fad24b411d54c7a9f6cb3a8731`
+- MatrixOne `main` at `989e5f2976f5a098e08d89cfbb5f326a1e008dfa`
   (`main`, WSL2 Ubuntu 24.04, Windows x64 host)
-- MatrixOne ODBC based on MySQL Connector/ODBC `9.7.0`
-- MySQL command-line client `9.7.1`
-- Power BI Desktop `2.152.1279.0` (64-bit)
+- MatrixOne ODBC `main` at `6168fe4a7fb428fb993a4817dc4457f2825ba069`,
+  version `9.7.0-mo.4`
+- Power BI Desktop `2.157.879.0` (64-bit)
+- Power Query SDK/PQTest `2.155.2`
 
 ## Dedicated MatrixOne coverage
 
@@ -23,11 +24,11 @@ Tested on 2026-08-12 with:
 - Unicode `SQLExecDirectW`
 - authentication failure classification as SQLSTATE `28000`, native error 1045
 
-The deeper `mo_odbc_deep` suite passes through both registered driver variants:
+The deeper `mo_odbc_deep` suite was run through both registered driver variants:
 
 ```text
-Unicode: 13 passed, 5 expected MatrixOne failures, 0 failed
-ANSI:    13 passed, 5 expected MatrixOne failures, 0 failed
+Unicode: 37 passed, 0 expected failures, 1 failed
+ANSI:    37 passed, 0 expected failures, 1 failed
 ```
 
 In addition to the smoke paths, it verifies `SQLGetTypeInfo`, tables and views,
@@ -41,13 +42,30 @@ diagnostics, 72 reads over six concurrent connections, timeout, and
 cancellation. MatrixOne `BOOL` is now asserted as ODBC `SQL_BIT` in catalog and
 result descriptors while ordinary `TINYINT` remains `SQL_TINYINT`. Catalog
 tests also verify that MatrixOne physical helper columns are not exposed by
-`SQLColumns`. The five XFAILs are linked to
+`SQLColumns`. Conditional XFAIL branches retained for older MatrixOne
+baselines are linked to
 [matrixone#26678](https://github.com/matrixorigin/matrixone/issues/26678),
 [matrixone#26715](https://github.com/matrixorigin/matrixone/issues/26715),
 [matrixone#26716](https://github.com/matrixorigin/matrixone/issues/26716), and
 [matrixone#26769](https://github.com/matrixorigin/matrixone/issues/26769), plus
-the current UTF-8 descriptor regression
-[matrixone#26967](https://github.com/matrixorigin/matrixone/issues/26967).
+the historical UTF-8 descriptor regression
+[matrixone#26967](https://github.com/matrixorigin/matrixone/issues/26967). All
+of these cases pass on the MatrixOne commit above. The single current failure
+is the prepared `HAVING` plus pagination parameter combination tracked by
+[matrixone#27907](https://github.com/matrixorigin/matrixone/issues/27907).
+
+On current MatrixOne main, offset-only pagination from
+[matrixone#26769](https://github.com/matrixorigin/matrixone/issues/26769) passes.
+The Power BI connector now advertises `LimitOffset`: Microsoft's strict
+`SkipTake` case folds `Table.Skip` to `OFFSET 264` and combined skip/take to
+`LIMIT 1 OFFSET 200`, instead of fetching and discarding the skipped rows in
+the mashup engine.
+
+MatrixOne reports `BOOL` from `SQLColumns` and the same ODBC `SQL_BIT` type as
+`bit` from `SQLGetTypeInfo`. The Power BI connector normalizes both to `bool` and
+emits `TRUE`/`FALSE` literals while parameter bindings remain disabled. The
+public strict `SelectRowsBoolColumn` case now folds its filter, projection,
+sort, and limit into one server query.
 
 ## Public-data validation
 
@@ -61,12 +79,19 @@ parallel analytics clients.
 
 Microsoft's Power Query SDK Test Framework was run at DataConnectors commit
 `c7b9d81d0d1a62b5f5486f63087c8587e2ca0160` with its 20,266-row modified NYC
-Taxi data set. Sanity passed 8 of 9 cases; Standard functional comparison
-passed 188 of 203. Strict DirectQuery folding passed at least 115 of 203;
-57 of its 88 failures were PQTest `NullReferenceException` results rather than
-confirmed connector folding failures. `FoldListCount` and `FoldTableRowCount`
-isolated the MatrixOne prepared aggregate correctness bug
-[#26994](https://github.com/matrixorigin/matrixone/issues/26994).
+Taxi data set. Functional comparison passed 206 of 212 mechanically. The six
+differences are stale public expected values: one nullability expectation,
+four current-M-engine rounding results, and one mathematically incorrect date
+expectation. The current prepared aggregate cases from
+[#26994](https://github.com/matrixorigin/matrixone/issues/26994) pass.
+
+With `--failOnFoldingFailure`, Sanity passes 8 of 9 (the same stale
+nullability output) and Standard passes 88 of 203. The 115 Standard failures
+split into 77 PQTest `NullReferenceException` results before an ODBC call and
+38 explicit folding failures, concentrated in conversion, math, and temporal
+expressions. Core pagination passes 4/4, metadata 2/2, grouping 3/4, the basic
+join control, and 27/34 text cases. These numbers are a DirectQuery support
+boundary, not 115 independent driver/server defects.
 
 Full hashes, classifications, and release gates are in the
 [Chinese deep-test report](POWER_BI_TEST_REPORT_ZH_CN.md).
@@ -77,10 +102,10 @@ fixed [#26684](https://github.com/matrixorigin/matrixone/issues/26684) by
 returning native error 1146; the driver maps it to ODBC SQLSTATE `42S02`.
 
 The older invalid descriptor-length cases from
-[#26683](https://github.com/matrixorigin/matrixone/issues/26683) remain fixed,
-but current `main` reports a `VARCHAR(128)` utf8mb4 wire length of 384 bytes.
-Connector/ODBC consequently exposes `ColumnSize=96` instead of 128. This is
-tracked separately as [#26967](https://github.com/matrixorigin/matrixone/issues/26967).
+[#26683](https://github.com/matrixorigin/matrixone/issues/26683) and the later
+utf8mb4 `ColumnSize` regression
+[#26967](https://github.com/matrixorigin/matrixone/issues/26967) both pass on
+the current MatrixOne commit.
 
 Driver compatibility fixes are covered for uppercase information-schema type
 names ([#26680](https://github.com/matrixorigin/matrixone/issues/26680)),
@@ -101,6 +126,15 @@ Reopening the DirectQuery PBIX with the latest driver and clicking Refresh
 caused MatrixOne to receive new `SHOW KEYS` and grouped `SUM` statements. The
 refreshed visual retained the expected total, proving the live Desktop query
 path rather than only a cached PBIX result.
+
+A real text slicer also passed: selecting `category=A` generated a MatrixOne
+query containing `WHERE category = 'A'` and updated the table visual. A real
+boolean slicer fails before any ODBC query, even though equivalent strict M
+boolean filtering and grouping fully fold. This Power BI DirectQuery semantic
+layer gap is tracked in
+[matrixone-odbc#26](https://github.com/matrixorigin/matrixone-odbc/issues/26).
+Until a metadata-preserving workaround is found, expose a numeric or text
+proxy column from a MatrixOne view when a DirectQuery boolean slicer is needed.
 
 For the narrower validation snapshot that accompanied the `v9.7.0-mo.1`
 developer preview, see its
@@ -150,11 +184,11 @@ by MySQL-only stored procedures, cursor updates, TLS fixtures, account syntax,
 VECTOR, and exact MySQL metadata expectations, so module totals are not a
 MatrixOne compatibility score.
 
-## Upstream Unicode suite observations
+## Historical upstream Unicode suite observations
 
-The upstream `my_unicode` executable currently reports 10 passing tests, 2
-skips, and 8 failures against this local setup. The failures are grouped rather
-than treated as eight independent MatrixOne defects:
+The earlier upstream `my_unicode` snapshot reported 10 passing tests, 2 skips,
+and 8 failures. Those historical failures were grouped rather than treated as
+eight independent MatrixOne defects:
 
 - Seven use a valid unquoted BMP character in an identifier. The same SQL fails
   through a native UTF-8 MySQL client, while the backtick-quoted control passes;
@@ -162,6 +196,10 @@ than treated as eight independent MatrixOne defects:
 - One requests a VARBINARY value as `SQL_C_WCHAR`; the driver reports an
   unknown character conversion failure because the result metadata omits
   MySQL `BINARY_FLAG` (#26716).
+
+Both equivalent contracts now pass in the current dedicated Unicode and ANSI
+deep suites. The full MySQL-specific `my_unicode` executable was not rerun in
+the 2026-08-31 Power BI-focused pass.
 
 ## Not yet validated
 
