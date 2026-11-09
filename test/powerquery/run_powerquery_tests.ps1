@@ -46,11 +46,13 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'MatrixOne.parameterquery.pq') `
 
 Push-Location $testsDir
 try {
-    if ($FailOnFoldingFailure) {
+    if ($FailOnFoldingFailure -or $ValidateQueryFolding) {
         # PQTest treats existing .diagnostics files as golden command text.
         # Reusing the functional-test output makes strict folding report false
         # failures whenever the current folded SQL differs from a previous run.
-        # Give every strict invocation an empty, private diagnostics directory.
+        # Functional folding validation also needs fresh diagnostics: otherwise
+        # a previous connector's SQL is compared as a golden expectation.
+        # Give each invocation an empty, private diagnostics directory.
         $diagnosticsDir = Join-Path ([System.IO.Path]::GetTempPath()) (
             'matrixone-powerquery-diagnostics-{0}-{1}' -f $PID,
             [Guid]::NewGuid().ToString('N'))
@@ -58,9 +60,10 @@ try {
         $failed = 0
         foreach ($settings in 'SanitySettings.json', 'StandardSettings.json') {
             $settingsPath = Join-Path $settingsDir $settings
+            $foldingArguments = @()
+            if ($FailOnFoldingFailure) { $foldingArguments += '--failOnFoldingFailure' }
             $rawResult = & $pqTestPath compare -p -e $extension `
-                -sf $settingsPath -dfp $diagnosticsDir `
-                --failOnFoldingFailure 2>&1
+                -sf $settingsPath -dfp $diagnosticsDir @foldingArguments 2>&1
             $processExitCode = $LASTEXITCODE
             $rawResult | Write-Output
 
@@ -71,20 +74,22 @@ try {
                 $testFailures = @($testResults | Where-Object {
                     $_.Status -ne 'Passed'
                 })
+                if (@($testResults).Count -eq 0) { throw 'PQTest returned no test results.' }
             } catch {
                 Write-Warning "Could not parse PQTest output for $settings`: $_"
                 $testFailures = @('unparseable output')
             }
 
-            Write-Host ("STRICT {0}: total={1} failed={2} exit={3}" -f `
-                $settings, @($testResults).Count, $testFailures.Count,
+            $mode = if ($FailOnFoldingFailure) { 'STRICT' } else { 'FUNCTIONAL' }
+            Write-Host ("{0} {1}: total={2} failed={3} exit={4}" -f `
+                $mode, $settings, @($testResults).Count, $testFailures.Count,
                 $processExitCode)
             if ($processExitCode -ne 0 -or $testFailures.Count -ne 0) {
                 $failed++
             }
         }
         if ($failed -ne 0) {
-            throw "$failed strict folding test suite(s) failed."
+            throw "$failed $mode test suite(s) failed."
         }
     } else {
         $arguments = @{

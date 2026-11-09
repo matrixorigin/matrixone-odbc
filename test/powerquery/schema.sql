@@ -28,7 +28,7 @@ CREATE TABLE pqsdk_test.NycTaxiData (
 CREATE TABLE pqsdk_test.NycTaxiDateData (
   `RecordID` INT NOT NULL,
   `lpep_pickup_date` DATE NOT NULL,
-  `lpep_dropoff_date` DATE NOT NULL
+  `lpep_dropoff_date` DATE
 );
 
 CREATE TABLE pqsdk_test.TaxiZoneLookup (

@@ -318,8 +318,10 @@ CREATE TABLE mo_odbc_deep.param_values (
 ))SQL");
   execute(dbc, "CREATE TABLE mo_odbc_deep.tx_values (id INT PRIMARY KEY, "
                "value VARCHAR(64))");
+  // The streaming test sends 1 MiB. TEXT only permits 65,535 bytes;
+  // use MEDIUMTEXT so this exercises ODBC streaming, not SQL type overflow.
   execute(dbc, "CREATE TABLE mo_odbc_deep.long_values (id INT PRIMARY KEY, "
-               "payload TEXT, binary_payload BLOB)");
+               "payload MEDIUMTEXT, binary_payload BLOB)");
   execute(dbc, R"SQL(
 CREATE TABLE mo_odbc_deep.pbi_sales (
   id INT PRIMARY KEY,
