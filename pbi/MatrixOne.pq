@@ -257,10 +257,27 @@ let
   SQLGetInfo = LogMsg("SQLGetInfo_Options: #{0}",
   [
     SQL_SQL_CONFORMANCE = ODBC[SQL_SC][SQL_SC_SQL92_FULL],
-    // MatrixOne's unqualified DECIMAL means DECIMAL(38,0), while Power
-    // Query expects Decimal.From and Precision.Decimal to retain the scale.
-    // Do not fold CAST-based conversions until the server semantics match.
-    SQL_CONVERT_FUNCTIONS = 0,
+    // DirectQuery represents logical grouping keys as integers. Permit that
+    // lossless CAST without advertising the driver's broad conversion matrix:
+    // unqualified DECIMAL on MO has scale zero and silently loses fractions.
+    SQL_CONVERT_FUNCTIONS = ODBC[SQL_FN_CVT][SQL_FN_CVT_CAST],
+    SQL_CONVERT_BIT = ODBC[SQL_CVT][BIGINT],
+    SQL_CONVERT_BIGINT = 0,
+    SQL_CONVERT_INTEGER = 0,
+    SQL_CONVERT_SMALLINT = 0,
+    SQL_CONVERT_TINYINT = 0,
+    SQL_CONVERT_DOUBLE = 0,
+    SQL_CONVERT_FLOAT = 0,
+    SQL_CONVERT_REAL = 0,
+    SQL_CONVERT_CHAR = 0,
+    SQL_CONVERT_VARCHAR = 0,
+    SQL_CONVERT_LONGVARCHAR = 0,
+    SQL_CONVERT_WCHAR = 0,
+    SQL_CONVERT_WVARCHAR = 0,
+    SQL_CONVERT_WLONGVARCHAR = 0,
+    SQL_CONVERT_DATE = 0,
+    SQL_CONVERT_TIME = 0,
+    SQL_CONVERT_TIMESTAMP = 0,
     SQL_CONVERT_DECIMAL = 0,
     SQL_CONVERT_NUMERIC = 0
   ]),
